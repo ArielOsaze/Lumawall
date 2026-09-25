@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LumaWall — Live Wallpaper Engine untuk Windows</title>
+<meta name="description" content="Live wallpaper engine untuk Windows dengan GPU hardware decode, pause per-monitor otomatis, profil multi-display, dan 5.000+ wallpaper. Gratis, ringan, tanpa iklan.">
+<meta name="theme-color" content="#08090c">
+<meta property="og:title" content="LumaWall — Live Wallpaper Engine untuk Windows">
+<meta property="og:description" content="Wallpaper video di GPU, bukan CPU. Pause per-monitor otomatis, 5.000+ katalog, profil multi-display.">
+<meta property="og:image" content="assets/shots/ui-discover.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/logo/app.ico">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">
+      <img src="assets/logo/logo-150.png" alt="LumaWall" class="brand-mark">
+      <span class="brand-text">LumaWall</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Fitur</a>
+      <a href="#video">Video</a>
+      <a href="#performance">Performa</a>
+      <a href="#screens">Tampilan</a>
+      <a href="#compare">Perbandingan</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a href="#download" class="btn btn-primary btn-sm">Unduh</a>
+  </div>
+</header>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero" id="top">
+  <div class="hero-bg">
+    <img src="assets/shots/desktop-live.png" alt="" aria-hidden="true">
+    <div class="hero-scrim"></div>
+  </div>
+  <div class="wrap hero-in">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      <span>Versi 4.0.1 &middot; Windows 10 / 11 &middot; Gratis</span>
+    </div>
+    <h1>
+      Wallpaper hidup.<br>
+      <span class="grad">Decode di GPU.</span><br>
+      CPU tetap santai.
+    </h1>
+    <p class="hero-sub">
+      LumaWall memutar wallpaper video di setiap monitor dengan hardware decode —
+      pemakaian CPU tetap di bawah 1%. Saat ada game fullscreen, wallpaper
+      di monitor itu berhenti otomatis dalam <strong>4&nbsp;ms</strong>, dan
+      langsung jalan lagi begitu kamu keluar.
+    </p>
+    <div class="hero-cta">
+      <a href="#download" class="btn btn-primary btn-lg">
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+        Unduh Gratis
+      </a>
+      <a href="#screens" class="btn btn-ghost btn-lg">Lihat tampilan</a>
+    </div>
+    <div class="hero-stats">
+      <div><b>5.000+</b><span>wallpaper katalog</span></div>
+      <div><b>&lt;1%</b><span>CPU saat jalan</span></div>
+      <div><b>4 ms</b><span>respon pause</span></div>
+      <div><b>3</b><span>monitor sekaligus</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ HIGHLIGHT STRIP ═══════════════ -->
+<section class="strip">
+  <div class="wrap strip-in">
+    <span>GPU HARDWARE DECODE</span><i></i>
+    <span>PAUSE PER-MONITOR</span><i></i>
+    <span>5.000+ WALLPAPER</span><i></i>
+    <span>PROFIL MULTI-DISPLAY</span><i></i>
+    <span>TANPA IKLAN</span><i></i>
+    <span>4 BAHASA</span>
+  </div>
+</section>
+
+<!-- ═══════════════ FEATURES ═══════════════ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Kenapa LumaWall</span>
+      <h2>Semua yang wallpaper engine seharusnya lakukan</h2>
+      <p class="sec-sub">
+        Dibuat ulang dari nol untuk performa. Setiap keputusan teknis punya
+        alasan yang bisa kamu rasakan langsung di desktop.
+      </p>
+    </div>
+
+    <div class="grid grid-3">
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+        </div>
+        <h3>GPU, bukan CPU</h3>
+        <p>
+          Video didecode di chip grafis (NVDEC / DXVA) dan dikomposit lewat DWM.
+          Hasil ukur: pemakaian CPU <strong>0%</strong> saat tiga wallpaper 1080p
+          berjalan bersamaan.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="14" rx="1.5"/><rect x="13" y="5" width="8" height="14" rx="1.5"/><path d="M11 12h2"/></svg>
+        </div>
+        <h3>Pause per-monitor</h3>
+        <p>
+          Game fullscreen di monitor 2 hanya menghentikan wallpaper monitor 2.
+          Monitor 1 dan 3 tetap beranimasi. Tidak ada lagi wallpaper yang ikut
+          mati karena aplikasi di layar lain.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13H11l-.5 9L19 11h-6.5z"/></svg>
+        </div>
+        <h3>Respons 4 milidetik</h3>
+        <p>
+          Pause dan resume dipicu oleh event sistem Windows, bukan polling.
+          Terukur <strong>4&nbsp;ms</strong> saat fullscreen dibuka dan
+          <strong>1&nbsp;ms</strong> saat ditutup — tanpa perlu klik apa pun.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3>Satu wallpaper, beda tiap layar</h3>
+        <p>
+          Pasang video berbeda di setiap monitor, atau simpan seluruh susunan
+          sebagai profil dan pulihkan dengan satu klik. Layout monitor berubah?
+          LumaWall menyesuaikan sendiri.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        </div>
+        <h3>Katalog 5.000 wallpaper</h3>
+        <p>
+          Cari karakter atau suasana, lihat preview, lalu unduh. Setiap unduhan
+          menyertakan file <code>.license.txt</code> berisi kreator, lisensi, dan
+          tautan sumbernya.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Tidak menyentuh file kamu</h3>
+        <p>
+          Wallpaper ditempatkan di lapisan desktop Windows (WorkerW), jadi ikon
+          desktop dan aplikasi biasa tetap di atasnya. Tidak ada overlay yang
+          mencuri klik.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PERFORMANCE ═══════════════ -->
+<section class="sec sec-alt" id="performance">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Performa terukur</span>
+      <h2>Angkanya, bukan klaim</h2>
+      <p class="sec-sub">
+        Diukur pada tiga monitor 1080p dengan tiga wallpaper video berjalan
+        bersamaan.
+      </p>
+    </div>
+
+    <div class="perf">
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Decode video</b>
+          <span>Beban dipindah ke chip grafis</span>
+        </div>
+        <div class="bar"><div class="bar-fill" style="--w:100%"><span>GPU</span></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>CPU proses utama</b>
+          <span>Turun dari 168% menjadi di bawah 1%</span>
+        </div>
+        <div class="bar"><div class="bar-fill low" style="--w:3%"><span>&lt;1%</span></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Respons saat fullscreen</b>
+          <span>Jauh di bawah ambang terasa</span>
+        </div>
+        <div class="bar"><div class="bar-fill low" style="--w:4%"><span>4 ms</span></div></div>
+      </div>
+    </div>
+
+    <div class="perf-notes">
+      <div class="note">
+        <b>Wallpaper statis tidak memakai WebView</b>
+        <span>Gambar diam dirender langsung, hemat ±130&nbsp;MB RAM per monitor.</span>
+      </div>
+      <div class="note">
+        <b>Hemat saat layar tidak terlihat</b>
+        <span>Lock screen, layar mati, atau baterai: decode dihentikan otomatis.</span>
+      </div>
+      <div class="note">
+        <b>Loop tanpa jeda</b>
+        <span>Handoff antar-loop dirancang mulus, tanpa kedip hitam.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ VIDEO ═══════════════ -->
+<section class="sec sec-video" id="video">
+  <div class="wrap">
+    <div class="sec-head sec-head-center">
+      <span class="kicker">Lihat cara kerjanya</span>
+      <h2>LumaWall dalam 52 detik</h2>
+      <p class="sec-sub">
+        Semua yang ada di video ini direkam dari aplikasi aslinya.
+      </p>
+    </div>
+    <div class="video-frame">
+      <video
+        id="promo"
+        controls
+        playsinline
+        preload="metadata"
+        poster="assets/shots/ui-discover.png">
+        <source src="assets/video/lumawall-promo.mp4" type="video/mp4">
+        Browser kamu tidak mendukung pemutaran video.
+      </video>
+      <div class="video-badge">Promo resmi &middot; 1080p</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREENS ═══════════════ -->
+<section class="sec" id="screens">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Tampilan asli</span>
+      <h2>Antarmuka yang dibuat untuk dipakai</h2>
+      <p class="sec-sub">
+        Semua gambar di bawah diambil langsung dari aplikasi — bukan mockup.
+      </p>
+    </div>
+
+    <div class="shots">
+      <figure class="shot shot-wide">
+        <img src="assets/shots/ui-discover.png" alt="Katalog LumaWall dengan grid wallpaper">
+        <figcaption><b>Katalog</b><span>Cari, filter, dan unduh dari 5.000+ wallpaper</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/shots/ui-library.png" alt="Pustaka wallpaper LumaWall">
+        <figcaption><b>Pustaka</b><span>Semua koleksi kamu di satu tempat</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/shots/ui-displays.png" alt="Pengaturan monitor LumaWall">
+        <figcaption><b>Layar</b><span>Atur wallpaper tiap monitor &amp; simpan profil</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/shots/ui-performance.png" alt="Telemetri performa LumaWall">
+        <figcaption><b>Performa</b><span>Telemetri CPU, RAM, dan FPS secara langsung</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ COMPARE ═══════════════ -->
+<section class="sec sec-alt" id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Perbandingan</span>
+      <h2>Bedanya di mana</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="cmp">
+        <thead>
+          <tr><th>Fitur</th><th class="us">LumaWall</th><th>Wallpaper bawaan Windows</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Wallpaper video</td><td class="us yes">Ya, di setiap monitor</td><td class="no">Tidak</td></tr>
+          <tr><td>Hardware decode GPU</td><td class="us yes">Ya (NVDEC / DXVA)</td><td class="no">—</td></tr>
+          <tr><td>Pause per-monitor saat fullscreen</td><td class="us yes">Ya, 4 ms</td><td class="no">Tidak</td></tr>
+          <tr><td>Wallpaper berbeda tiap layar</td><td class="us yes">Ya</td><td class="no">Terbatas</td></tr>
+          <tr><td>Profil susunan multi-display</td><td class="us yes">Ya, satu klik</td><td class="no">Tidak</td></tr>
+          <tr><td>Katalog wallpaper bawaan</td><td class="us yes">5.000+</td><td class="no">Tidak</td></tr>
+          <tr><td>Pemulihan otomatis setelah Explorer restart</td><td class="us yes">Ya, &lt;4 detik</td><td class="no">—</td></tr>
+          <tr><td>Harga</td><td class="us yes">Gratis</td><td class="no">Gratis</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ DOWNLOAD ═══════════════ -->
+<section class="sec" id="download">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Unduh</span>
+      <h2>Pasang dalam satu menit</h2>
+      <p class="sec-sub">
+        Pilih format yang kamu mau. Semua versi berisi aplikasi yang sama.
+      </p>
+    </div>
+
+    <div class="grid grid-3 dl-grid">
+      <article class="dl-card featured">
+        <span class="dl-tag">Paling mudah</span>
+        <h3>Installer</h3>
+        <p class="dl-desc">Pasang seperti aplikasi Windows biasa. Sudah termasuk pintasan Start Menu dan opsi jalan otomatis.</p>
+        <div class="dl-meta"><span>14,5 MB</span><span>.exe</span><span>Windows 10/11 x64</span></div>
+        <a class="btn btn-primary btn-block" href="assets/downloads/LumaWall-Setup-4.0.1.exe" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+          Unduh Installer
+        </a>
+      </article>
+
+      <article class="dl-card">
+        <span class="dl-tag alt">Microsoft Store</span>
+        <h3>Paket MSIX</h3>
+        <p class="dl-desc">Untuk dipasang lewat Microsoft Store atau sideload. Terkelola penuh oleh Windows.</p>
+        <div class="dl-meta"><span>13,7 MB</span><span>.msix</span><span>x64</span></div>
+        <a class="btn btn-outline btn-block" href="assets/downloads/LumaWall_4.0.1.0_x64.msix" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+          Unduh MSIX
+        </a>
+      </article>
+
+      <article class="dl-card">
+        <span class="dl-tag">Tanpa install</span>
+        <h3>Portable</h3>
+        <p class="dl-desc">Ekstrak ke folder mana saja dan jalankan. Cocok untuk flashdisk atau komputer bersama.</p>
+        <div class="dl-meta"><span>13,0 MB</span><span>.zip</span><span>tanpa registry</span></div>
+        <a class="btn btn-outline btn-block" href="assets/downloads/LumaWall-portable-4.0.1.zip" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+          Unduh Portable
+        </a>
+      </article>
+    </div>
+
+    <div class="req">
+      <b>Syarat sistem</b>
+      <ul>
+        <li>Windows 10 versi 1809 atau lebih baru, atau Windows 11</li>
+        <li>Prosesor &amp; Windows 64-bit (x64)</li>
+        <li>WebView2 Runtime — sudah ada di Windows 11 dan Windows 10 yang terbarui</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<section class="sec sec-alt" id="faq">
+  <div class="wrap wrap-narrow">
+    <div class="sec-head">
+      <span class="kicker">Pertanyaan</span>
+      <h2>Yang sering ditanya</h2>
+    </div>
+    <details class="faq" open>
+      <summary>Apakah LumaWall memberatkan komputer?</summary>
+      <p>Tidak. Video didecode di GPU, bukan CPU. Pada tiga wallpaper 1080p yang berjalan bersamaan, proses utama LumaWall memakai CPU di bawah 1%. Aplikasi juga berhenti melakukan decode saat layar terkunci, mati, atau saat memakai baterai.</p>
+    </details>
+    <details class="faq">
+      <summary>Bagaimana kalau saya main game fullscreen?</summary>
+      <p>Wallpaper di monitor yang tertutup game langsung berhenti, dalam sekitar 4 milidetik, dan jalan lagi begitu game ditutup atau diminimize. Monitor lain tetap beranimasi — pause bekerja per layar, bukan untuk semua monitor sekaligus.</p>
+    </details>
+    <details class="faq">
+      <summary>Apakah ikon desktop saya masih bisa diklik?</summary>
+      <p>Bisa. LumaWall menempatkan wallpaper di lapisan desktop Windows (WorkerW), tepat di bawah ikon. Ia bukan jendela overlay, jadi tidak mencuri klik, tidak muncul di Alt+Tab, dan tidak menghalangi apa pun.</p>
+    </details>
+    <details class="faq">
+      <summary>Bisa pakai video saya sendiri?</summary>
+      <p>Bisa. Klik Tambah dan pilih file video atau gambar milikmu (mp4, m4v, wmv, avi, mov, webm, jpg, png, bmp). LumaWall juga menyimpan file <code>.license.txt</code> untuk setiap unduhan dari katalog.</p>
+    </details>
+    <details class="faq">
+      <summary>Bagaimana kalau Explorer saya restart atau crash?</summary>
+      <p>LumaWall memeriksa kesehatannya setiap dua detik. Kalau jendela desktop hilang, wallpaper dibangun ulang dan dipasang kembali secara otomatis dalam waktu kurang dari empat detik — tanpa perlu menjalankan ulang aplikasi.</p>
+    </details>
+    <details class="faq">
+      <summary>Apakah ada iklan atau pelacakan?</summary>
+      <p>Tidak ada iklan, tidak ada akun, dan tidak ada telemetri. Satu-satunya koneksi internet adalah saat kamu sendiri mengunduh wallpaper dari katalog.</p>
+    </details>
+    <details class="faq">
+      <summary>Bahasa apa saja yang didukung?</summary>
+      <p>Antarmuka tersedia dalam Bahasa Indonesia, English, 简体中文, dan 日本語. Kamu bisa menggantinya kapan saja lewat pemilih bahasa di bar atas.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ═══════════════ FINAL CTA ═══════════════ -->
+<section class="cta-final">
+  <div class="wrap wrap-narrow">
+    <img src="assets/logo/logo-150.png" alt="" class="cta-mark">
+    <h2>Desktop kamu layak terlihat hidup</h2>
+    <p>Gratis, tanpa iklan, dan dirancang supaya kamu lupa kalau ini sedang berjalan.</p>
+    <a href="assets/downloads/LumaWall-Setup-4.0.1.exe" class="btn btn-primary btn-lg" download>
+      <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+      Unduh LumaWall 4.0.1
+    </a>
+    <span class="cta-note">Windows 10 / 11 &middot; x64 &middot; 14,5 MB</span>
+  </div>
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div class="foot-brand">
+      <img src="assets/logo/logo-50.png" alt="LumaWall" class="foot-mark">
+      <div>
+        <b>LumaWall</b>
+        <span>Live wallpaper engine untuk Windows</span>
+      </div>
+    </div>
+    <nav class="foot-links">
+      <div>
+        <b>Produk</b>
+        <a href="#features">Fitur</a>
+        <a href="#performance">Performa</a>
+        <a href="#screens">Tampilan</a>
+        <a href="#download">Unduh</a>
+      </div>
+      <div>
+        <b>Bantuan</b>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/ArielOsaze/Lumawall" target="_blank" rel="noopener">Kode sumber</a>
+        <a href="https://github.com/ArielOsaze/Lumawall/issues" target="_blank" rel="noopener">Laporkan masalah</a>
+      </div>
+      <div>
+        <b>Versi</b>
+        <a href="assets/downloads/LumaWall-Setup-4.0.1.exe" download>Installer 4.0.1</a>
+        <a href="assets/downloads/LumaWall_4.0.1.0_x64.msix" download>MSIX 4.0.1</a>
+        <a href="assets/downloads/LumaWall-portable-4.0.1.zip" download>Portable 4.0.1</a>
+      </div>
+    </nav>
+  </div>
+  <div class="wrap foot-bottom">
+    <span>© <span id="yr">2026</span> LumaWall</span>
+    <span class="partof">Part of <b>Xinet Group</b></span>
+    <span>Windows adalah merek dagang Microsoft Corporation.</span>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

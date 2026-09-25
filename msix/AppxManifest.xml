@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:win32dependencies="http://schemas.microsoft.com/appx/manifest/externaldependencies"
+  IgnorableNamespaces="uap rescap desktop win32dependencies">
+
+  <!--
+    LumaWall - Microsoft Store (MSIX) manifest.
+
+    Packaging notes for Store submission:
+      * Identity/@Name must match the reserved app name in Partner Center.
+      * Identity/@Publisher must match the publisher CN exactly.
+      * TargetDeviceFamily MinVersion 10.0.17763 keeps the supported floor in
+        line with the desktop installer (Windows 10 1809).
+      * `runFullTrust` is required because the app reparents a window into the
+        desktop WorkerW layer and starts FFmpeg; both need unrestricted access.
+      * File-system access is declared so users can import their own videos.
+  -->
+  <Identity
+    Name="LumaWall.DesktopEngine"
+    Publisher="CN=LumaWall"
+    Version="4.0.1.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>LumaWall</DisplayName>
+    <PublisherDisplayName>LumaWall</PublisherDisplayName>
+    <Logo>TileAssets\StoreLogo.png</Logo>
+    <Description>Live wallpaper engine for every monitor: video and image wallpapers, multi-display profiles and GPU-accelerated playback.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <!--
+      WebView2 Runtime as an external dependency.
+
+      LumaWall renders its animated wallpapers through WebView2, so the Runtime
+      must exist on the client. Windows 11 and almost every updated Windows 10
+      machine already ship it; on the rare machine that does not, App Installer
+      chain-installs it from Microsoft's repository during the Store install.
+      Optional="true" keeps offline installs working (the app then shows a clear
+      message instead of failing to start).
+    -->
+    <win32dependencies:ExternalDependency
+      Name="Microsoft.WebView2"
+      Publisher="CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+      MinVersion="1.1.1.1"
+      Optional="true" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="id-id" />
+    <Resource Language="en-us" />
+    <Resource Language="zh-cn" />
+    <Resource Language="ja-jp" />
+  </Resources>
+
+  <Applications>
+    <Application Id="LumaWall" Executable="LumaWall.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="LumaWall"
+        Description="Live wallpaper engine for every monitor: video and image wallpapers, multi-display profiles and GPU-accelerated playback."
+        BackgroundColor="#07080B"
+        Square150x150Logo="TileAssets\Square150x150Logo.png"
+        Square44x44Logo="TileAssets\Square44x44Logo.png"
+        AppListEntry="default">
+        <uap:DefaultTile
+          Wide310x150Logo="TileAssets\Wide310x150Logo.png"
+          Square71x71Logo="TileAssets\Square44x44Logo.png"
+          Square310x310Logo="TileAssets\Square150x150Logo.png"
+          ShortName="LumaWall">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+        <uap:SplashScreen Image="TileAssets\SplashScreen.png" BackgroundColor="#07080B" />
+        <uap:LockScreen Notification="badge" BadgeLogo="TileAssets\BadgeLogo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Startup task so "run with Windows" keeps working under MSIX, where
+             the classic HKCU Run key is virtualised away. -->
+        <desktop:Extension Category="windows.startupTask" Executable="LumaWall.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="LumaWallStartup" Enabled="false" DisplayName="LumaWall" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

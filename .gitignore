@@ -1,0 +1,98 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LumaWall repository
+#
+# Principle: only source, the marketing site, and the reusable tools are
+# tracked. Build output, captured frames, exploratory scripts, sample media and
+# installers are all regenerable, and installers are published as GitHub
+# Releases instead (they are ~40 MB per version; committing them would add that
+# to every clone forever).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── build output ──
+bin/
+obj/
+*.user
+*.suo
+.vs/
+msix/verify/
+msix/stage/
+__pycache__/
+*.pyc
+*.prelegacy.bak
+
+# ── generated during development ──
+build/
+outputs/
+installer/Output/
+*.log
+
+# ── installers: published as Releases, never committed ──
+site/assets/downloads/*.exe
+site/assets/downloads/*.msix
+site/assets/downloads/*.zip
+*.exe
+!tools/FullscreenCover.exe
+*.msi
+*.msix
+
+# ── wallpaper library (user content, not source) ──
+LumaWall/assets/*
+!LumaWall/assets/.gitkeep
+
+# ── development scratch at the repository root ──
+# Every file below was part of exploring the logo, capturing frames, testing
+# media handling, or iterating on the UI. None of it is needed to build or
+# understand LumaWall, and it is all regenerable.
+/*.png
+/*.jpg
+/*.mp4
+/*.ico
+/logo_*.py
+/explore_logo*.py
+/patch_icons*.py
+/diag_icon.py
+/fix_manifest_paths.py
+/build_mature_contact_sheets.py
+/build_*catalog*.ps1
+/build_dynamic_loops.ps1
+/apply_mature_audit.ps1
+/create-brand.ps1
+/capture_window.ps1
+/decode-ab.ps1
+/detector-test.ps1
+/fullscreen-test.ps1
+/hook-proof.ps1
+/inspect-desktop.ps1
+/lock-test*.ps1
+/maximized-test*.ps1
+/measure-decode.ps1
+/pause-probe.ps1
+/pause-test*.ps1
+/perf-state.ps1
+/probe-windows.ps1
+/resume-latency.ps1
+/test_flicker*.ps1
+/test_loop_seam.ps1
+/test-animation.ps1
+
+# ── scratch directories ──
+/catalog_sources/
+/mature-audit/
+/loop-bases/
+/reference/
+/archive/
+/backup-*/
+/store-art/
+/single-instance-test-*/
+/packages/
+
+# ── OS noise ──
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── leftovers from development ──
+LumaWall/*.bak
+LumaWall/fps-test-*.mp4
+tools/render-DISPLAY*.png
+tools/FullscreenCover.exe
