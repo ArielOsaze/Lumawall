@@ -5,9 +5,8 @@
 // sees the product being used rather than a picture of the product.
 
 import React from 'react';
-import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
-import WallpaperStage from '../WallpaperStage.jsx';
+import BrandStage from '../BrandStage.jsx';
 import { seg, easeOut, easeOutQuint, parallax } from '../anim.js';
 
 const TOTAL = 52;
@@ -15,7 +14,6 @@ const FONT = '"Plus Jakarta Sans", sans-serif';
 
 export default function SceneCatalog({ t, global }) {
   const enter = easeOutQuint(seg(t, 0.3, 1.5));
-  const bg = parallax(global, TOTAL, 0.28, 44);
   const shot = parallax(global, TOTAL, 0.55, 38);
   const head = parallax(global, TOTAL, 0.95, 26);
 
@@ -30,25 +28,9 @@ export default function SceneCatalog({ t, global }) {
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <div
-        style={{
-          position: 'absolute',
-          inset: '-6%',
-          opacity: 0.40,
-          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
-        }}
-      >
-        <WallpaperStage clip="raiden" t={global} offset={3} mode="fill" width="100%" radius={0} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(100deg, rgba(7,7,10,.88) 0%, rgba(7,7,10,.70) 45%, rgba(7,7,10,.55) 100%)',
-        }}
-      />
-      <Aurora t={t} intensity={0.14} />
+      {/* The brand surface. The app window is the subject here, and a wallpaper
+          behind it competed with the wallpapers inside it. */}
+      <BrandStage t={global} intensity={1.0} warmSide="right" />
 
       <div
         style={{

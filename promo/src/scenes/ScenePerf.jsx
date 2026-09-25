@@ -4,10 +4,9 @@
 // the app is doing something while those numbers are true.
 
 import React from 'react';
-import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
 import CountUp from '../CountUp.jsx';
-import WallpaperStage from '../WallpaperStage.jsx';
+import BrandStage from '../BrandStage.jsx';
 import { seg, easeOut, parallax } from '../anim.js';
 
 const TOTAL = 52;
@@ -66,18 +65,9 @@ export default function ScenePerf({ t, global }) {
     <div style={{ position: 'absolute', inset: 0 }}>
       {/* A wallpaper playing behind the numbers, heavily dimmed, so even the
           statistics beat shows the product working. */}
-      <div style={{ position: 'absolute', inset: '-5%', opacity: 0.46 }}>
-        <WallpaperStage clip="astra" t={global} offset={4} mode="fill" width="100%" radius={0} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(180deg, rgba(7,7,10,.76) 0%, rgba(7,7,10,.84) 50%, rgba(7,7,10,.78) 100%)',
-        }}
-      />
-      <Aurora t={t} accent="#3ad0e0" intensity={0.15} />
+      {/* The brand surface: these are measured figures, and the figures are the
+          only thing that should be competing for attention. */}
+      <BrandStage t={global} intensity={1.1} warmSide="right" />
 
       <div
         style={{

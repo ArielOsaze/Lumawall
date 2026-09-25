@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -44,6 +45,54 @@ namespace LumaWall
             return true;
         }
 
+        /// <summary>
+        /// The process-wide button style, which exists to remove one thing.
+        ///
+        /// WPF's built-in Button template has a trigger on IsMouseOver that sets
+        /// the background to #FFBEE6FD. That value is baked into the template, so a
+        /// button whose Background is set in code still turns pale blue on hover -
+        /// the template's trigger wins over the local value it is templating.
+        ///
+        /// The visible result was a light blue rectangle over whichever button the
+        /// pointer was on. It appeared on the title-bar buttons, the settings rows
+        /// and the section links, and it looked like a rendering fault rather than
+        /// a hover state.
+        ///
+        /// This style uses a template with no hover trigger at all. Buttons that
+        /// want a hover set their own, as the title-bar buttons do. Because it is
+        /// the implicit style for Button, a button added later inherits it and
+        /// cannot bring the blue back.
+        /// </summary>
+        private static System.Windows.Style BuildDefaultButtonStyle()
+        {
+            var style = new System.Windows.Style(typeof(System.Windows.Controls.Button));
+
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetBinding(Border.BackgroundProperty,
+                new Binding("Background") { RelativeSource = RelativeSource.TemplatedParent });
+            border.SetBinding(Border.BorderBrushProperty,
+                new Binding("BorderBrush") { RelativeSource = RelativeSource.TemplatedParent });
+            border.SetBinding(Border.BorderThicknessProperty,
+                new Binding("BorderThickness") { RelativeSource = RelativeSource.TemplatedParent });
+            border.SetBinding(Border.PaddingProperty,
+                new Binding("Padding") { RelativeSource = RelativeSource.TemplatedParent });
+            border.SetValue(Border.SnapsToDevicePixelsProperty, true);
+
+            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenter.SetBinding(ContentPresenter.ContentProperty,
+                new Binding("Content") { RelativeSource = RelativeSource.TemplatedParent });
+            presenter.SetBinding(ContentPresenter.HorizontalAlignmentProperty,
+                new Binding("HorizontalContentAlignment") { RelativeSource = RelativeSource.TemplatedParent });
+            presenter.SetBinding(ContentPresenter.VerticalAlignmentProperty,
+                new Binding("VerticalContentAlignment") { RelativeSource = RelativeSource.TemplatedParent });
+            border.AppendChild(presenter);
+
+            var template = new ControlTemplate(typeof(System.Windows.Controls.Button)) { VisualTree = border };
+            style.Setters.Add(new Setter(System.Windows.Controls.Control.TemplateProperty, template));
+
+            return style;
+        }
+
         [STAThread]
         private static void Main()
         {
@@ -60,6 +109,21 @@ namespace LumaWall
 
                 AppLog.Write("Primary process started");
                 var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+
+                // A default button style for the whole app.
+                //
+                // WPF's built-in Button style carries an Aero hover trigger that
+                // paints the button #FFBEE6FD, a pale blue. Setting Background in
+                // code does not override it, because a template trigger beats a
+                // local value on the property the template reads. The visible
+                // result was a light blue rectangle appearing over whichever
+                // control the pointer was on - title-bar buttons, settings rows,
+                // section links - which looked like a rendering fault.
+                //
+                // This replaces that style process-wide, so a button added later
+                // cannot reintroduce it. Buttons that want a hover of their own
+                // still set one; this only removes the blue.
+                app.Resources[typeof(System.Windows.Controls.Button)] = BuildDefaultButtonStyle();
 
                 // Production safety net. Without these, any exception that
                 // escapes a handler kills the process with no trace - the app

@@ -293,7 +293,7 @@ p { text-wrap: pretty; }
 
 .hero .lead {
   margin-top: 1.5rem;
-  line-height: 1.75;
+  line-height: 1.85;
   /* Over the wallpaper rather than flat colour: a busy image reduces apparent
      legibility at the same measured contrast, so this is brighter than the
      shared muted tone and carries a faint shadow for separation. */
@@ -828,8 +828,35 @@ p { text-wrap: pretty; }
   font-size: .8125rem;
   color: var(--ink-subtle);
 }
-.partof { color: var(--ink-muted); }
-.partof b { color: var(--ink); font-weight: 600; }
+.foot-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .4rem;
+  margin-top: 1.35rem;
+  padding: .5rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: .8125rem;
+  color: var(--ink-subtle);
+  text-decoration: none;
+  transition: border-color .25s var(--ease), color .25s var(--ease);
+}
+.foot-group b {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.foot-group:hover { border-color: rgba(255, 59, 87, .45); color: var(--ink-muted); }
+
+/* The legal line is the quietest thing on the page, which is what it should be. */
+.foot-legal { color: var(--ink-subtle); }
+
+/* On a narrow screen the three columns become one, and the group mark reads
+   better left-aligned with everything else than centred. */
+@media (max-width: 700px) {
+  .foot-in { grid-template-columns: 1fr; gap: 2rem; }
+  .foot-bottom { flex-direction: column; align-items: flex-start; gap: .5rem; }
+}
 
 /* ─────────────── responsive ─────────────── */
 @media (max-width: 980px) {

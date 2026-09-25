@@ -763,7 +763,7 @@ namespace LumaWall
                 System.Windows.Automation.AutomationProperties.SetName(max, maximized ? "Restore" : "Maximize");
             };
 
-            var close = TitleButton("\uE8BB");
+            var close = TitleButton("\uE8BB", isClose: true);
             System.Windows.Automation.AutomationProperties.SetName(close, "Close to tray");
             close.Click += delegate { Hide(); ShowToast(Tr("toast.tray")); };
             right.Children.Add(min);
@@ -855,8 +855,17 @@ namespace LumaWall
             return button;
         }
 
-        private Button TitleButton(string glyph)
+        private Button TitleButton(string glyph, bool isClose = false)
         {
+            // The title-bar buttons need their own template, for the same reason
+            // the rest of the app's buttons do: WPF's default Button style carries
+            // an Aero hover trigger that paints the button #FFBEE6FD - a pale blue
+            // that has nothing to do with this app's palette. Setting Background
+            // in code does not override it, because the template's trigger wins.
+            //
+            // The symptom was a light blue rectangle appearing over whichever
+            // title-bar button the pointer happened to be on, which looked like a
+            // rendering fault in every screenshot.
             var b = new Button
             {
                 Width = 44,
@@ -866,8 +875,27 @@ namespace LumaWall
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand
             };
-            b.MouseEnter += delegate { b.Background = new SolidColorBrush(CSurface2); };
+            SetRoundedButton(b, 0);
+
+            // Hover: a neutral lift, matching the rest of the chrome. Close gets
+            // the conventional red, which is the one place a strong colour on this
+            // bar is expected.
+            var hover = isClose ? CPrimary : CSurface2;
+            b.MouseEnter += delegate { b.Background = new SolidColorBrush(hover); };
             b.MouseLeave += delegate { b.Background = Brushes.Transparent; };
+
+            // The icon has to lift with the background or it disappears into it.
+            // Icons.Build returns a Canvas of Paths, so it is rebuilt with the new
+            // brush rather than recoloured in place.
+            b.MouseEnter += delegate
+            {
+                b.Content = Icons.Build(IconNameFor(glyph), 11, Brushes.White);
+            };
+            b.MouseLeave += delegate
+            {
+                b.Content = Icons.Build(IconNameFor(glyph), 11, new SolidColorBrush(CMuted));
+            };
+
             return b;
         }
 
@@ -2065,6 +2093,9 @@ namespace LumaWall
             Grid.SetColumn(track, 1);
             row.Children.Add(track);
             var button = new Button { Content = row, Height = 38, Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(0), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            // Without its own template this button inherits the Aero hover, which
+            // paints a pale blue rectangle across the whole settings row.
+            SetRoundedButton(button, 7);
             System.Windows.Automation.AutomationProperties.SetName(button, text);
             button.Click += delegate
             {
@@ -3128,6 +3159,9 @@ namespace LumaWall
             head.Children.Add(new TextBlock { Text = title, Foreground = new SolidColorBrush(CText), FontSize = 16, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
             grid.Children.Add(head);
             var button = new Button { Content = action, Foreground = new SolidColorBrush(CPrimaryHi), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontSize = 12 };
+            // Same reason as the settings toggle: the default template's hover is a
+            // pale blue that does not belong in this palette.
+            SetRoundedButton(button, 5);
             button.Click += click;
             Grid.SetColumn(button, 1);
             grid.Children.Add(button);

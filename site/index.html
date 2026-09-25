@@ -3,17 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LumaWall. Wallpaper hidup untuk Windows</title>
+<title>LumaWall - Wallpaper hidup untuk Windows</title>
 <meta name="description" content="LumaWall memutar wallpaper video di setiap monitor dengan hardware decode GPU. CPU tetap rendah, berhenti otomatis saat ada game fullscreen, dan 5.000+ wallpaper siap pakai. Gratis, tanpa iklan.">
 <meta name="theme-color" content="#080a0c">
-<meta property="og:title" content="LumaWall. Wallpaper hidup untuk Windows">
-<meta property="og:description" content="Wallpaper video diproses chip grafis. Berhenti otomatis saat game fullscreen, jalan lagi begitu game ditutup. 5.000+ wallpaper, gratis, tanpa iklan.">
-<meta property="og:image" content="assets/shots/wallpaper-i14.png">
+<link rel="canonical" href="https://lumawall.xinet.id/">
+
+<!-- ── sharing ────────────────────────────────────────────────────────────────
+     Every URL here is absolute. A relative og:image is resolved against the
+     crawler's own base rather than the page's, so the preview silently falls back
+     to a bare link with no thumbnail. That was the bug: og:image was
+     "assets/shots/wallpaper-i14.png".
+     The image is 1200x630, which is the size every platform crops from. -->
+<meta property="og:site_name" content="LumaWall">
+<meta property="og:title" content="LumaWall - Wallpaper hidup untuk Windows">
+<meta property="og:description" content="Wallpaper video diproses chip grafis, bukan CPU. Berhenti otomatis saat game fullscreen, jalan lagi begitu game ditutup. 5.000+ wallpaper, gratis, tanpa iklan.">
+<meta property="og:image" content="https://lumawall.xinet.id/assets/shots/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LumaWall: wallpaper hidup di setiap monitor, tanpa membebani komputer">
+<meta property="og:url" content="https://lumawall.xinet.id/">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="id_ID">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LumaWall - Wallpaper hidup untuk Windows">
+<meta name="twitter:description" content="Wallpaper video diproses chip grafis, bukan CPU. Berhenti otomatis saat game fullscreen, jalan lagi begitu game ditutup.">
+<meta name="twitter:image" content="https://lumawall.xinet.id/assets/shots/og-card.png">
+
 <link rel="icon" href="assets/logo/app.ico">
+<link rel="apple-touch-icon" href="assets/logo/logo-150.png">
 <link rel="preload" href="assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/style.css">
+
+<!-- Structured data, so a search result can show the app rather than a plain
+     link. Every field here is verifiable: the version and the file size come from
+     the package that is actually served. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "LumaWall",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows 10, Windows 11",
+  "softwareVersion": "4.0.1",
+  "fileSize": "15.2MB",
+  "description": "Wallpaper hidup untuk Windows. Video diproses chip grafis, jadi CPU tetap di bawah 1%, dan wallpaper berhenti otomatis saat ada aplikasi fullscreen.",
+  "url": "https://lumawall.xinet.id/",
+  "downloadUrl": "https://lumawall.xinet.id/assets/downloads/LumaWall-Setup-4.0.1.exe",
+  "image": "https://lumawall.xinet.id/assets/shots/og-card.png",
+  "license": "https://github.com/ArielOsaze/Lumawall/blob/master/LICENSE",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR" },
+  "publisher": { "@type": "Organization", "name": "Xinet Group", "url": "https://xinet.id" }
+}
+</script>
 </head>
 <body>
 
@@ -38,7 +81,29 @@
 <!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero" id="top">
   <div class="hero-bg">
-    <img src="assets/shots/hero-bg.jpg" alt="" aria-hidden="true" fetchpriority="high">
+    <!-- The poster is a still from the loop, graded the same way, so there is
+         something to see before the video decodes and nothing shifts when it
+         starts. `muted` and `playsinline` are what let it autoplay; `loop` makes
+         it endless. The loop is cut with its own tail cross-faded into its head,
+         so the join is not visible.
+         `aria-hidden` because it is decoration: the same information is in the
+         heading beside it. -->
+    <video
+      class="hero-video"
+      poster="assets/shots/hero-bg.jpg"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+      tabindex="-1">
+      <source src="assets/video/hero-loop.mp4" type="video/mp4">
+    </video>
+    <!-- A real still rather than only the video's poster attribute: a poster is
+         not painted when the video is display:none, which is the reduced-motion
+         case. -->
+    <img class="hero-poster" src="assets/shots/hero-bg.jpg" alt="" aria-hidden="true">
     <div class="hero-scrim"></div>
   </div>
   <div class="wrap hero-in">
@@ -47,9 +112,8 @@
       <span class="accent">Tanpa membebani komputer.</span>
     </h1>
     <p class="lead" data-reveal>
-      Video diproses chip grafis, bukan prosesor, jadi CPU tetap di bawah 1%.
-      Buka game fullscreen dan wallpaper di layar itu berhenti sendiri, lalu jalan
-      lagi begitu game ditutup.
+      Video diproses chip grafis, jadi CPU tetap di bawah 1%.<br>
+      Buka game fullscreen, dan wallpaper di layar itu berhenti sendiri.
     </p>
     <div class="hero-cta" data-reveal>
       <a href="#download" class="btn btn-primary btn-lg">
@@ -547,17 +611,25 @@
 <!-- ═══════════════ FOOTER ═══════════════ -->
 <footer class="foot">
   <div class="wrap foot-in">
-    <div>
+    <div class="foot-col foot-about">
       <div class="foot-brand">
         <img src="assets/logo/logo-50.png" alt="">
         <span>LumaWall</span>
       </div>
       <p>
-        Wallpaper hidup untuk Windows, dengan hardware decode GPU dan pause
-        otomatis per monitor.
+        Wallpaper hidup untuk Windows. Video diproses chip grafis, dan wallpaper
+        berhenti sendiri saat kamu membuka aplikasi fullscreen.
       </p>
+      <!-- The group mark, where a reader looking for who made this will find
+           it. A link rather than plain text: "part of" is a claim about a
+           relationship, and a claim should be checkable. -->
+      <a class="foot-group" href="https://xinet.id" target="_blank" rel="noopener">
+        <span>Bagian dari</span>
+        <b>Xinet Group</b>
+      </a>
     </div>
-    <div>
+
+    <div class="foot-col">
       <h4>Produk</h4>
       <ul>
         <li><a href="#features">Fitur</a></li>
@@ -566,19 +638,20 @@
         <li><a href="#download">Unduh</a></li>
       </ul>
     </div>
-    <div>
+
+    <div class="foot-col">
       <h4>Bantuan</h4>
       <ul>
-        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#faq">Pertanyaan</a></li>
         <li><a href="https://github.com/ArielOsaze/Lumawall" target="_blank" rel="noopener">Kode sumber</a></li>
         <li><a href="https://github.com/ArielOsaze/Lumawall/issues" target="_blank" rel="noopener">Laporkan masalah</a></li>
       </ul>
     </div>
   </div>
+
   <div class="wrap foot-bottom">
-    <span>© <span id="yr">2026</span> LumaWall</span>
-    <span class="partof">Part of <b>Xinet Group</b></span>
-    <span>Windows adalah merek dagang Microsoft Corporation.</span>
+    <span>&copy; <span id="yr">2026</span> Xinet Group</span>
+    <span class="foot-legal">LumaWall adalah perangkat lunak gratis dan terbuka.</span>
   </div>
 </footer>
 

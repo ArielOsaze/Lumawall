@@ -5,10 +5,9 @@
 // felt rather than read.
 
 import React from 'react';
-import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
 import CountUp from '../CountUp.jsx';
-import WallpaperStage from '../WallpaperStage.jsx';
+import BrandStage from '../BrandStage.jsx';
 import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
 
 const TOTAL = 52;
@@ -93,32 +92,13 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0,
 
 export default function SceneProblem({ t, global }) {
   const head = parallax(global, TOTAL, 0.9, 30);
-  const bg = parallax(global, TOTAL, 0.3, 44);
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {/* A wallpaper behind the comparison, so the beat is set in the product's
-          world rather than on a black slide. Heavily dimmed: the bars are the
-          subject and must stay dominant. */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: '-6%',
-          opacity: 0.34,
-          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
-        }}
-      >
-        <WallpaperStage clip="albedo" t={global} offset={1} mode="fill" width="100%" radius={0} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(180deg, rgba(7,7,10,.80) 0%, rgba(7,7,10,.62) 45%, rgba(7,7,10,.84) 100%)',
-        }}
-      />
-      <Aurora t={t} accent="#ff3b57" accent2="#ff3b57" intensity={0.16} />
+      {/* The brand surface, not a wallpaper. This beat is about a number, and a
+          wallpaper behind a number says nothing while costing the wallpaper its
+          impact when it does appear later. */}
+      <BrandStage t={global} intensity={1.15} warmSide="left" />
 
       <div
         style={{
