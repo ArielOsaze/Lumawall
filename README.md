@@ -11,7 +11,7 @@
 [![.NET](https://img.shields.io/badge/.NET%20Framework-4.8-512bd4?style=flat-square)](https://dotnet.microsoft.com/download/dotnet-framework)
 [![License](https://img.shields.io/badge/license-MIT-35d6e8?style=flat-square)](LICENSE.txt)
 
-[Unduh](../../releases) &middot; [Situs web](site/index.html) &middot; [Laporkan masalah](../../issues)
+[**Situs web**](https://arielosaze.github.io/Lumawall/) &middot; [Unduh](../../releases/latest) &middot; [Laporkan masalah](../../issues)
 
 </div>
 
@@ -44,7 +44,8 @@ Windows, bukan polling.
 
 ## Unduh
 
-Ambil installer terbaru dari halaman [Releases](../../releases):
+**[arielosaze.github.io/Lumawall](https://arielosaze.github.io/Lumawall/)** &mdash;
+atau ambil langsung dari halaman [Releases](../../releases/latest):
 
 | Berkas | Ukuran | Untuk |
 |---|---|---|
@@ -85,6 +86,14 @@ site/               situs pemasaran
   assets/video/     video promo
 tools/              skrip pembangun & pengujian
 ```
+
+## Situs & video
+
+- Situs: <https://arielosaze.github.io/Lumawall/>
+- Video promo 52 detik dirender dari frame memakai tangkapan layar asli aplikasi:
+  [`site/assets/video/lumawall-promo.mp4`](site/assets/video/lumawall-promo.mp4)
+- Tangkapan layar diambil langsung dari aplikasi yang berjalan, bukan mockup:
+  [`tools/capture-ui-for-site.ps1`](tools/capture-ui-for-site.ps1)
 
 ## Pengujian
 
