@@ -150,13 +150,28 @@ def rounded(draw, box, radius, fill=None, outline=None, width=1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
+_vignette_mask_cache = {}
+
+
 def vignette(img, strength=0.55):
-    mask = Image.new("L", (W, H), 0)
-    md = ImageDraw.Draw(mask)
-    md.ellipse([-W * 0.25, -H * 0.35, W * 1.25, H * 1.35], fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(220))
+    """Darkens the frame edges.
+
+    The mask is identical for every frame of the video, but building it costs a
+    full 1920x1080 L image plus a Gaussian blur with a 220 px radius. Doing that
+    per frame allocated tens of gigabytes across the render and ended in a
+    MemoryError, so the mask is built once and reused.
+    """
+    mask = _vignette_mask_cache.get(strength)
+    if mask is None:
+        mask = Image.new("L", (W, H), 0)
+        md = ImageDraw.Draw(mask)
+        md.ellipse([-W * 0.25, -H * 0.35, W * 1.25, H * 1.35], fill=255)
+        mask = mask.filter(ImageFilter.GaussianBlur(220))
+        _vignette_mask_cache[strength] = mask
+
     dark = Image.new("RGB", (W, H), (0, 0, 0))
     out = Image.composite(img, dark, mask)
+    dark = None
     return Image.blend(img, out, strength)
 
 
@@ -362,7 +377,7 @@ def scene_ui(t, shot, kicker, title, sub, pan=(0.0, 0.0)):
     d = ImageDraw.Draw(img)
 
     ka = enter(t, 0.0, 0.20)
-    ta = ease_out(span(t, 0.06, 0.32))
+    ta = enter(t, 0.06, 0.32)
     sa = ease_out(span(t, 0.16, 0.42))
 
     if ka > 0:
@@ -415,7 +430,7 @@ def scene_monitors(t):
     d = ImageDraw.Draw(img)
 
     ka = enter(t, 0.0, 0.18)
-    ta = ease_out(span(t, 0.05, 0.28))
+    ta = enter(t, 0.05, 0.28)
     if ka > 0:
         layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         text(ImageDraw.Draw(layer), (120, 92), "MULTI-MONITOR", font(F_MONO, 21), CYAN + (255,), spacing=5)
@@ -477,7 +492,7 @@ def scene_pause(t):
     d = ImageDraw.Draw(img)
 
     ka = enter(t, 0.0, 0.18)
-    ta = ease_out(span(t, 0.05, 0.28))
+    ta = enter(t, 0.05, 0.28)
     if ka > 0:
         layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         text(ImageDraw.Draw(layer), (120, 92), "PAUSE PER-MONITOR", font(F_MONO, 21), ACCENT + (255,), spacing=5)
@@ -701,33 +716,44 @@ def main():
     # crossfade so a transition is never an empty frame.
     CROSSFADE = int(0.5 * FPS)
 
-    rendered = []
-    for name, duration, render in timeline:
+    # Crossfading needs the outgoing scene's tail and the incoming scene's head.
+    # Holding whole scenes in memory caused a MemoryError (a 6 s scene is 180
+    # frames of 1920x1080 RGBA = ~1.5 GB), and holding every scene was ~13 GB.
+    # Only the head of the next scene is needed for the blend, so that is all
+    # that is kept: the rest of the scene is rendered afterwards, frame by frame.
+    frame_no = 0
+
+    def scene_frame(render, i, count):
+        return render(i / max(1, count - 1))
+
+    for idx, (name, duration, render) in enumerate(timeline):
         if only and only != name:
             continue
-        count = int(duration * FPS)
-        print("  scene %-14s %5.1fs  %4d frames" % (name, duration, count))
-        scene_frames = []
-        for i in range(count):
-            t = i / max(1, count - 1)
-            scene_frames.append(render(t))
-        rendered.append((name, scene_frames))
 
-    frame_no = 0
-    for idx, (name, frames) in enumerate(rendered):
-        is_last = idx == len(rendered) - 1
-        for i, img in enumerate(frames):
-            frame = img
-            # Blend the tail of this scene with the head of the next one.
-            if not is_last and i >= len(frames) - CROSSFADE:
-                nxt = rendered[idx + 1][1]
-                k = (i - (len(frames) - CROSSFADE)) / CROSSFADE
-                j = min(len(nxt) - 1, int(k * CROSSFADE))
-                frame = Image.blend(img, nxt[j], ease_in_out(k))
-            out = vignette(frame.convert("RGB"), 0.42)
-            path = os.path.join(FRAME_DIR, "f%05d.png" % frame_no)
-            out.save(path, "PNG", compress_level=1)
+        count = int(duration * FPS)
+        is_last = idx + 1 >= len(timeline)
+        head = []
+        if not is_last:
+            next_duration, next_render = timeline[idx + 1][1], timeline[idx + 1][2]
+            next_count = int(next_duration * FPS)
+            head = [scene_frame(next_render, i, next_count) for i in range(min(CROSSFADE, next_count))]
+
+        print("  scene %-14s %5.1fs  %4d frames" % (name, duration, count))
+
+        for i in range(count):
+            img = scene_frame(render, i, count)
+            if head and i >= count - CROSSFADE:
+                k = (i - (count - CROSSFADE)) / CROSSFADE
+                j = min(len(head) - 1, int(k * CROSSFADE))
+                img = Image.blend(img, head[j], ease_in_out(k))
+            out = vignette(img.convert("RGB"), 0.42)
+            out.save(os.path.join(FRAME_DIR, "f%05d.png" % frame_no), "PNG", compress_level=1)
             frame_no += 1
+            # Release the frame immediately: at 1920x1080 a lingering reference
+            # is 8 MB, and the loop runs 1560 times.
+            img = None
+            out = None
+        head = None
 
     print("frames written to", FRAME_DIR)
 
