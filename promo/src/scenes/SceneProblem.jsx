@@ -143,25 +143,30 @@ export default function SceneProblem({ t, global }) {
         </div>
 
         <div style={{ display: 'flex', gap: 64, marginTop: 4 }}>
+          {/* Both bars are measured on this machine, three 1080p30 wallpapers
+              playing at once, and both are expressed as a share of ONE core so the
+              comparison is like for like. The earlier pair (168% against 0.6%) was
+              never measured: 168 came from the first version of the video, and the
+              gap it drew was about eight times the real one. Software decode of
+              these clips costs about 60% of one core; LumaWall costs about 11%. */}
           <Bar
             t={t}
             delay={1.35}
-            to={168}
-            max={168}
+            to={60}
+            max={60}
             color="#ff3b57"
             label="Tanpa LumaWall"
-            sub="Software decode — semua di core CPU"
+            sub="Software decode, semuanya di core CPU"
             depth={1.0}
           />
           <Bar
             t={t}
             delay={2.05}
-            to={0.6}
-            max={168}
+            to={11}
+            max={60}
             color="#35e07a"
             label="Dengan LumaWall"
-            sub="Hardware decode — ditangani blok GPU"
-            decimals={1}
+            sub="Hardware decode, ditangani blok GPU"
             depth={0.7}
           />
         </div>

@@ -110,9 +110,9 @@ export default function ScenePerf({ t, global }) {
         </div>
 
         <div style={{ display: 'flex', gap: 20 }}>
-          <Stat t={t} label="CPU" to={0.6} decimals={1} suffix="%" color="#35e07a" delay={0.7}
-                sub="Tiga wallpaper 1080p bersamaan" depth={1.0} />
-          <Stat t={t} label="RAM" to={169} decimals={0} suffix=" MB" color="#3ad0e0" delay={0.85}
+          <Stat t={t} label="CPU" to={0.9} decimals={1} suffix="%" color="#35e07a" delay={0.7}
+                sub="Dari 12 core, tiga wallpaper 1080p" depth={1.0} />
+          <Stat t={t} label="RAM" to={153} decimals={0} suffix=" MB" color="#3ad0e0" delay={0.85}
                 sub="Seluruh proses, tiga monitor" depth={0.8} />
           <Stat t={t} label="Resume" to={141} decimals={0} suffix=" ms" color="#ff3b57" delay={1.0}
                 sub="Dari game ditutup sampai jalan lagi" depth={0.6} />
@@ -132,8 +132,8 @@ export default function ScenePerf({ t, global }) {
             transform: `translateY(${(1 - easeOut(seg(t, 1.5, 2.2))) * 18}px)`,
           }}
         >
-          Wallpaper statis dirender langsung, bukan lewat WebView — hemat sekitar
-          130 MB RAM per monitor.
+          Wallpaper statis dirender langsung, bukan lewat WebView: hemat 75 MB
+          RAM per monitor, diukur pada tiga layar.
         </div>
       </div>
     </div>

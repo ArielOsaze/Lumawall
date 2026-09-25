@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LumaWall - Wallpaper hidup untuk Windows</title>
-<meta name="description" content="LumaWall memutar wallpaper video di setiap monitor dengan hardware decode GPU. CPU tetap rendah, berhenti otomatis saat ada game fullscreen, dan 5.000+ wallpaper siap pakai. Gratis, tanpa iklan.">
+<meta name="description" content="Wallpaper video di setiap monitor, diproses chip grafis supaya CPU tetap di bawah 1%. Berhenti otomatis saat game fullscreen. Gratis, 5.000+ wallpaper.">
 <meta name="theme-color" content="#080a0c">
 <link rel="canonical" href="https://lumawall.xinet.id/">
 
@@ -124,7 +124,7 @@
     </div>
     <div class="hero-meta" data-reveal>
       <div><b>5.000+</b><span>wallpaper siap pakai</span></div>
-      <div><b>&lt;1%</b><span>pemakaian CPU</span></div>
+      <div><b>11%</b><span>satu core, tiga wallpaper</span></div>
       <div><b>Per layar</b><span>pause otomatis</span></div>
       <div><b>Gratis</b><span>tanpa iklan</span></div>
     </div>
@@ -251,17 +251,17 @@
     <div class="perf" data-reveal>
       <div class="perf-row">
         <div class="perf-label">
-          <b>CPU sebelum LumaWall</b>
-          <span>Wallpaper video didecode di CPU</span>
+          <b>Tanpa LumaWall</b>
+          <span>Video didecode software, semuanya di core CPU</span>
         </div>
-        <div class="bar"><div class="bar-fill bad" style="--w:100%"><span>168%</span></div></div>
+        <div class="bar"><div class="bar-fill bad" style="--w:100%"><span>60%</span></div></div>
       </div>
       <div class="perf-row">
         <div class="perf-label">
-          <b>CPU dengan LumaWall</b>
-          <span>Decode dipindahkan ke chip grafis</span>
+          <b>Dengan LumaWall</b>
+          <span>Decode dipindahkan ke blok khusus chip grafis</span>
         </div>
-        <div class="bar"><div class="bar-fill good" style="--w:3%"><span>&lt;1%</span></div></div>
+        <div class="bar"><div class="bar-fill good" style="--w:18%"><span>11%</span></div></div>
       </div>
       <div class="perf-row">
         <div class="perf-label">
@@ -301,7 +301,7 @@
     <div class="perf-notes">
       <div class="note" data-reveal data-delay="1">
         <b>Wallpaper statis tanpa WebView</b>
-        <span>Gambar diam dirender langsung, menghemat sekitar 130 MB RAM per monitor.</span>
+        <span>Gambar diam dirender langsung, menghemat sekitar 75 MB RAM per monitor.</span>
       </div>
       <div class="note" data-reveal data-delay="2">
         <b>Hemat saat layar tidak terlihat</b>
@@ -410,7 +410,7 @@
           <tr><td>Wallpaper berbeda tiap layar</td><td class="us yes">Ya</td><td class="no">Terbatas</td></tr>
           <tr><td>Profil susunan multi-display</td><td class="us yes">Satu klik</td><td class="no">Tidak</td></tr>
           <tr><td>Katalog wallpaper bawaan</td><td class="us yes">5.000+</td><td class="no">Tidak</td></tr>
-          <tr><td>Pemulihan otomatis setelah Explorer restart</td><td class="us yes">Di bawah 4 detik</td><td class="no">&ndash;</td></tr>
+          <tr><td>Pemulihan otomatis setelah Explorer restart</td><td class="us yes">2,7 detik</td><td class="no">&ndash;</td></tr>
           <tr><td>Harga</td><td class="us yes">Gratis</td><td class="no">Gratis</td></tr>
         </tbody>
       </table>

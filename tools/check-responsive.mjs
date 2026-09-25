@@ -120,13 +120,23 @@ for (const size of SIZES) {
     window.scrollTo({ top: 0, behavior: 'instant' });
     await new Promise(r => setTimeout(r, 800));
 
-    const hero = document.querySelector('.hero-bg img');
-    let kept = null;
-    if (hero && hero.naturalWidth) {
-      const r = hero.getBoundingClientRect();
-      const sr = hero.naturalWidth / hero.naturalHeight;
-      const br = r.width / r.height;
-      kept = Math.round((sr > br ? br / sr : sr / br) * 100);
+    // The hero background has to fill the band. Measuring the fraction of the
+    // source that survives the crop was a proxy for "is the composition right",
+    // and it stopped meaning anything once the background became a composed clip:
+    // a 16:9 source in a 21:9 band keeps 59% of its height by geometry, and that
+    // is a deliberate crop, not a defect. What is a defect is the element not
+    // covering the band at all - which is what happened when the video rendered
+    // at its intrinsic 1920px in a 2560px window and left flat black beside it.
+    const bg = document.querySelector('.hero-bg video') || document.querySelector('.hero-bg img');
+    const band = document.querySelector('.hero-bg');
+    let covers = null, kept = null;
+    if (bg && band) {
+      const r = bg.getBoundingClientRect();
+      const b = band.getBoundingClientRect();
+      covers = Math.round((r.width * r.height) / (b.width * b.height) * 100);
+      const src = bg.naturalWidth ? bg.naturalWidth / bg.naturalHeight
+                                  : (bg.videoWidth || 16) / (bg.videoHeight || 9);
+      kept = Math.round((src > b.width / b.height ? (b.width / b.height) / src : src / (b.width / b.height)) * 100);
     }
 
     // Anything wider than the viewport means the page scrolls sideways, which is
@@ -143,6 +153,7 @@ for (const size of SIZES) {
 
     return {
       hero_kept: kept,
+      hero_covers: covers,
       h_overflow: overflow,
       clipped,
       nav_visible: !!document.querySelector('.nav'),
@@ -156,12 +167,14 @@ for (const size of SIZES) {
   // On a phone the hero band is tall and narrow, so a wide image can only keep a
   // small fraction of its height. That is geometry, not a defect: the checks that
   // matter are that nothing overflows and nothing is clipped.
-  const isNarrow = size.w < 700;
+  // The background must fill the band at every size. `hero_covers` is that
+  // measurement; 98% allows for sub-pixel rounding.
   const ok = report.h_overflow <= 1 && report.clipped.length === 0 &&
-             (isNarrow || report.hero_kept === null || report.hero_kept >= 60);
+             (report.hero_covers === null || report.hero_covers >= 98);
 
   console.log('  ' + size.name.padEnd(22) +
-    ' hero kept ' + String(report.hero_kept).padStart(4) + '%' +
+    ' bg fills ' + String(report.hero_covers).padStart(4) + '%' +
+    '  crop ' + String(report.hero_kept).padStart(4) + '%' +
     '  h-overflow ' + String(report.h_overflow).padStart(3) + 'px' +
     '  video ' + String(report.video_w).padStart(4) + 'px' +
     '  ' + (ok ? 'OK' : 'PROBLEM'));
