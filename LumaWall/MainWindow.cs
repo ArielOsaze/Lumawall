@@ -381,6 +381,13 @@ namespace LumaWall
         ///
         /// Without this, closing a game triggers several events in a few
         /// milliseconds and each one would re-scan every window.
+        ///
+        /// The priority matters for how it feels. DispatcherPriority.Background
+        /// is the lowest useful priority, so the evaluation waited behind every
+        /// other queued UI operation - measured at ~400 ms of visible delay
+        /// before the wallpaper actually stopped. Input-level priority runs
+        /// ahead of layout and rendering work, which is what "immediate" means
+        /// here: the wallpaper stops while the window is still appearing.
         /// </summary>
         private void SchedulePauseEvaluation()
         {
@@ -390,7 +397,7 @@ namespace LumaWall
             {
                 pauseEvaluationPending = false;
                 ApplyPauseState();
-            }), DispatcherPriority.Background);
+            }), DispatcherPriority.Input);
         }
 
         private void RemoveForegroundHook()

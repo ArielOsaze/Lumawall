@@ -37,7 +37,13 @@
 <!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero" id="top">
   <div class="hero-bg">
-    <img src="assets/shots/desktop-live.png" alt="" aria-hidden="true">
+    <!--
+      A clean render of a wallpaper, straight from the source video. The
+      previous image was a screen grab of the live desktop and contained the
+      user's desktop icons, the taskbar and other windows, which looked
+      careless in the hero.
+    -->
+    <img src="assets/shots/wallpaper-i14.png" alt="" aria-hidden="true">
     <div class="hero-scrim"></div>
   </div>
   <div class="wrap hero-in">
@@ -46,15 +52,14 @@
       <span>Versi 4.0.1 &middot; Windows 10 / 11 &middot; Gratis</span>
     </div>
     <h1>
-      Wallpaper hidup.<br>
-      <span class="grad">Decode di GPU.</span><br>
-      CPU tetap santai.
+      <span data-split>Wallpaper hidup.</span><br>
+      <span class="grad" data-split>Didecode GPU.</span><br>
+      <span data-split>CPU tetap santai.</span>
     </h1>
     <p class="hero-sub">
-      LumaWall memutar wallpaper video di setiap monitor dengan hardware decode —
-      pemakaian CPU tetap di bawah 1%. Saat ada game fullscreen, wallpaper
-      di monitor itu berhenti otomatis dalam <strong>4&nbsp;ms</strong>, dan
-      langsung jalan lagi begitu kamu keluar.
+      LumaWall memutar wallpaper video di setiap monitor lewat hardware decode —
+      CPU-nya tetap di bawah 1%, bukan 168%. Begitu ada game fullscreen, wallpaper
+      di layar itu berhenti sendiri, dan langsung jalan lagi saat game ditutup.
     </p>
     <div class="hero-cta">
       <a href="#download" class="btn btn-primary btn-lg">
@@ -64,10 +69,10 @@
       <a href="#screens" class="btn btn-ghost btn-lg">Lihat tampilan</a>
     </div>
     <div class="hero-stats">
-      <div><b>5.000+</b><span>wallpaper katalog</span></div>
-      <div><b>&lt;1%</b><span>CPU saat jalan</span></div>
-      <div><b>4 ms</b><span>respon pause</span></div>
-      <div><b>3</b><span>monitor sekaligus</span></div>
+      <div><b data-count="5000" data-suffix="+" data-dur="1600">5.000+</b><span>wallpaper katalog</span></div>
+      <div><b data-count="1" data-decimals="0" data-prefix="&lt;" data-suffix="%" data-dur="1200">&lt;1%</b><span>CPU saat jalan</span></div>
+      <div><b data-count="141" data-suffix=" ms" data-dur="1400">141 ms</b><span>resume setelah game</span></div>
+      <div><b data-count="3" data-dur="900">3</b><span>monitor sekaligus</span></div>
     </div>
   </div>
 </section>
@@ -88,8 +93,8 @@
 <section class="sec" id="features">
   <div class="wrap">
     <div class="sec-head">
-      <span class="kicker">Kenapa LumaWall</span>
-      <h2>Semua yang wallpaper engine seharusnya lakukan</h2>
+      <span class="kicker shiny">Kenapa LumaWall</span>
+      <h2 data-split>Semua yang wallpaper engine seharusnya lakukan</h2>
       <p class="sec-sub">
         Dibuat ulang dari nol untuk performa. Setiap keputusan teknis punya
         alasan yang bisa kamu rasakan langsung di desktop.
@@ -128,8 +133,8 @@
         <h3>Respons 4 milidetik</h3>
         <p>
           Pause dan resume dipicu oleh event sistem Windows, bukan polling.
-          Terukur <strong>4&nbsp;ms</strong> saat fullscreen dibuka dan
-          <strong>1&nbsp;ms</strong> saat ditutup — tanpa perlu klik apa pun.
+          Fullscreen dibuka atau ditutup: wallpaper bereaksi dalam <strong>ratusan
+          milidetik</strong>, dan animasinya langsung jalan lagi tanpa perlu klik apa pun.
         </p>
       </article>
 
@@ -176,35 +181,53 @@
 <section class="sec sec-alt" id="performance">
   <div class="wrap">
     <div class="sec-head">
-      <span class="kicker">Performa terukur</span>
-      <h2>Angkanya, bukan klaim</h2>
+      <span class="kicker shiny">Performa terukur</span>
+      <h2 data-split>Angkanya, bukan klaim</h2>
       <p class="sec-sub">
         Diukur pada tiga monitor 1080p dengan tiga wallpaper video berjalan
         bersamaan.
       </p>
     </div>
 
+    <!--
+      The comparison is CPU before vs CPU after. An earlier version drew a
+      full-width red bar labelled "GPU" to mean "the work moved to the GPU",
+      but a filled red bar reads as "GPU is at 100%", which is the opposite of
+      the message. The GPU row is now a plain statement with a small chip, and
+      the two bars compare the same thing: CPU load.
+    -->
     <div class="perf">
       <div class="perf-row">
         <div class="perf-label">
-          <b>Decode video</b>
-          <span>Beban dipindah ke chip grafis</span>
+          <b>CPU sebelum LumaWall</b>
+          <span>Wallpaper video didecode di CPU</span>
         </div>
-        <div class="bar"><div class="bar-fill" style="--w:100%"><span>GPU</span></div></div>
+        <div class="bar"><div class="bar-fill high" style="--w:100%"><span>168%</span></div></div>
       </div>
       <div class="perf-row">
         <div class="perf-label">
-          <b>CPU proses utama</b>
-          <span>Turun dari 168% menjadi di bawah 1%</span>
+          <b>CPU dengan LumaWall</b>
+          <span>Decode dipindah ke chip grafis</span>
         </div>
         <div class="bar"><div class="bar-fill low" style="--w:3%"><span>&lt;1%</span></div></div>
       </div>
       <div class="perf-row">
         <div class="perf-label">
-          <b>Respons saat fullscreen</b>
-          <span>Jauh di bawah ambang terasa</span>
+          <b>Decode video</b>
+          <span>Ditangani blok khusus di GPU, bukan core CPU</span>
         </div>
-        <div class="bar"><div class="bar-fill low" style="--w:4%"><span>4 ms</span></div></div>
+        <div class="chip-row">
+          <span class="chip good">NVDEC</span>
+          <span class="chip good">DXVA2</span>
+          <span class="chip good">D3D11</span>
+        </div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Resume setelah game ditutup</b>
+          <span>Dari game ditutup sampai animasi jalan lagi</span>
+        </div>
+        <div class="bar"><div class="bar-fill low" style="--w:14%"><span>141 ms</span></div></div>
       </div>
     </div>
 
@@ -229,8 +252,8 @@
 <section class="sec sec-video" id="video">
   <div class="wrap">
     <div class="sec-head sec-head-center">
-      <span class="kicker">Lihat cara kerjanya</span>
-      <h2>LumaWall dalam 52 detik</h2>
+      <span class="kicker shiny">Lihat cara kerjanya</span>
+      <h2 data-split>LumaWall dalam 52 detik</h2>
       <p class="sec-sub">
         Semua yang ada di video ini direkam dari aplikasi aslinya.
       </p>
@@ -241,7 +264,7 @@
         controls
         playsinline
         preload="metadata"
-        poster="assets/shots/ui-discover.png">
+        poster="assets/shots/wallpaper-raiden.png">
         <source src="assets/video/lumawall-promo.mp4" type="video/mp4">
         Browser kamu tidak mendukung pemutaran video.
       </video>
@@ -254,8 +277,8 @@
 <section class="sec" id="screens">
   <div class="wrap">
     <div class="sec-head">
-      <span class="kicker">Tampilan asli</span>
-      <h2>Antarmuka yang dibuat untuk dipakai</h2>
+      <span class="kicker shiny">Tampilan asli</span>
+      <h2 data-split>Antarmuka yang dibuat untuk dipakai</h2>
       <p class="sec-sub">
         Semua gambar di bawah diambil langsung dari aplikasi — bukan mockup.
       </p>
@@ -286,8 +309,8 @@
 <section class="sec sec-alt" id="compare">
   <div class="wrap">
     <div class="sec-head">
-      <span class="kicker">Perbandingan</span>
-      <h2>Bedanya di mana</h2>
+      <span class="kicker shiny">Perbandingan</span>
+      <h2 data-split>Bedanya di mana</h2>
     </div>
     <div class="table-wrap">
       <table class="cmp">
@@ -297,7 +320,7 @@
         <tbody>
           <tr><td>Wallpaper video</td><td class="us yes">Ya, di setiap monitor</td><td class="no">Tidak</td></tr>
           <tr><td>Hardware decode GPU</td><td class="us yes">Ya (NVDEC / DXVA)</td><td class="no">—</td></tr>
-          <tr><td>Pause per-monitor saat fullscreen</td><td class="us yes">Ya, 4 ms</td><td class="no">Tidak</td></tr>
+          <tr><td>Pause per-monitor saat fullscreen</td><td class="us yes">Ya, otomatis</td><td class="no">Tidak</td></tr>
           <tr><td>Wallpaper berbeda tiap layar</td><td class="us yes">Ya</td><td class="no">Terbatas</td></tr>
           <tr><td>Profil susunan multi-display</td><td class="us yes">Ya, satu klik</td><td class="no">Tidak</td></tr>
           <tr><td>Katalog wallpaper bawaan</td><td class="us yes">5.000+</td><td class="no">Tidak</td></tr>
@@ -313,8 +336,8 @@
 <section class="sec" id="download">
   <div class="wrap">
     <div class="sec-head">
-      <span class="kicker">Unduh</span>
-      <h2>Pasang dalam satu menit</h2>
+      <span class="kicker shiny">Unduh</span>
+      <h2 data-split>Pasang dalam satu menit</h2>
       <p class="sec-sub">
         Pilih format yang kamu mau. Semua versi berisi aplikasi yang sama.
       </p>
@@ -370,8 +393,8 @@
 <section class="sec sec-alt" id="faq">
   <div class="wrap wrap-narrow">
     <div class="sec-head">
-      <span class="kicker">Pertanyaan</span>
-      <h2>Yang sering ditanya</h2>
+      <span class="kicker shiny">Pertanyaan</span>
+      <h2 data-split>Yang sering ditanya</h2>
     </div>
     <details class="faq" open>
       <summary>Apakah LumaWall memberatkan komputer?</summary>
@@ -408,7 +431,7 @@
 <section class="cta-final">
   <div class="wrap wrap-narrow">
     <img src="assets/logo/logo-150.png" alt="" class="cta-mark">
-    <h2>Desktop kamu layak terlihat hidup</h2>
+    <h2 data-split>Desktop kamu layak terlihat hidup</h2>
     <p>Gratis, tanpa iklan, dan dirancang supaya kamu lupa kalau ini sedang berjalan.</p>
     <a href="https://github.com/ArielOsaze/Lumawall/releases/download/v4.0.1/LumaWall-Setup-4.0.1.exe" class="btn btn-primary btn-lg" download>
       <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>

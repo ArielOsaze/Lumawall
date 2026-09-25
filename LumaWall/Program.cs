@@ -430,6 +430,7 @@ namespace LumaWall
         /// <summary>Public wrapper: other classes must not P/Invoke user32 themselves.</summary>
         public static bool IsWindowAlive(IntPtr hwnd) { return hwnd != IntPtr.Zero && IsWindow(hwnd); }
         [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern int GetClassName(IntPtr hwnd, StringBuilder className, int maxCount);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int maxCount);
 
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -668,22 +669,90 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// Transient shell surfaces that cover the screen but show nothing the
-        /// user considers "an app": the input-method host, the NVIDIA overlay,
-        /// the Start menu and friends. Pausing on these would make the wallpaper
-        /// flicker on every mouse move over the taskbar.
+        /// True for windows that must never pause the wallpaper.
+        ///
+        /// The earlier version rejected whole window classes, which was wrong in
+        /// both directions. Windows.UI.Core.CoreWindow and
+        /// ApplicationFrameWindow are not shell-only classes: every UWP
+        /// application uses them, so a fullscreen Store game never paused the
+        /// wallpaper at all. Meanwhile the real shell surfaces share those
+        /// classes with real apps, so the class alone says nothing.
+        ///
+        /// What actually distinguishes them, verified with tools/UwpClassAudit.cs:
+        ///
+        ///   shell furniture          real app window
+        ///   -----------------------  ------------------------
+        ///   no title                 has a title
+        ///   136x39, 160x28, offscreen  full size
+        ///   ShellExperienceHost,     any normal process
+        ///   SearchHost, TextInputHost
+        ///
+        /// So the decision is made on evidence about the window itself, not on
+        /// the class name.
         /// </summary>
         private static bool IsOverlayWindow(IntPtr hwnd)
         {
             string value = ClassName(hwnd);
-            if (value.Length == 0) return false;
-            return value == "Windows.UI.Core.CoreWindow" ||
+            if (value.Length == 0) return true;
+
+            // Shell processes are never "an app the user launched". This is the
+            // strongest signal and covers the Start menu, search, and the input
+            // host regardless of which class they happen to use.
+            if (IsShellProcess(hwnd)) return true;
+
+            // Windowless helpers that exist only to broker something.
+            if (value == "CEF-OSC-WIDGET" ||                      // NVIDIA overlay
                 value == "TextInputHost" ||
-                value == "CEF-OSC-WIDGET" ||
-                value == "ApplicationFrameWindow" ||
-                value == "XamlExplorerHostIslandWindow" ||
                 value.StartsWith("Windows.UI.Composition", StringComparison.Ordinal) ||
-                value.StartsWith("Cua.", StringComparison.Ordinal);
+                value.StartsWith("Cua.", StringComparison.Ordinal) ||
+                value == "XamlExplorerHostIslandWindow")
+                return true;
+
+            // An unnamed window cannot be something the user is looking at. The
+            // shell's hidden ApplicationFrameWindow hosts read as empty titles,
+            // while a real UWP app always has one.
+            if (WindowTitle(hwnd).Length == 0) return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// True when the window belongs to a Windows shell process.
+        ///
+        /// These processes render the Start menu, search, the taskbar and the
+        /// input panel. They appear and disappear while the user does nothing
+        /// meaningful, so pausing the wallpaper for them would make it flicker.
+        /// </summary>
+        private static bool IsShellProcess(IntPtr hwnd)
+        {
+            try
+            {
+                uint pid;
+                GetWindowThreadProcessId(hwnd, out pid);
+                if (pid == 0) return false;
+
+                string name = null;
+                using (var process = Process.GetProcessById((int)pid))
+                    name = process.ProcessName;
+                if (string.IsNullOrEmpty(name)) return false;
+
+                return name == "ShellExperienceHost" ||
+                       name == "StartMenuExperienceHost" ||
+                       name == "SearchHost" ||
+                       name == "SearchApp" ||
+                       name == "TextInputHost" ||
+                       name == "LockApp" ||
+                       name == "ShellHost" ||
+                       name == "explorer";      // desktop, taskbar, file windows
+            }
+            catch { return false; }
+        }
+
+        private static string WindowTitle(IntPtr hwnd)
+        {
+            var title = new StringBuilder(256);
+            if (GetWindowText(hwnd, title, title.Capacity) == 0) return "";
+            return title.ToString();
         }
 
         private static string ClassName(IntPtr hwnd)
@@ -887,6 +956,11 @@ namespace LumaWall
                         int request;
                         if (int.TryParse(message.Substring("media-error:".Length), out request)) ReportFailed(request);
                     }
+                    else if (message.StartsWith("pause-ack:") || message.StartsWith("resume-frame:") ||
+                             message.StartsWith("resume-rejected:") || message.StartsWith("pb-noactive:"))
+                    {
+                        AppLog.Write("Playback timing " + screen.DeviceName + " " + message);
+                    }
                     else if (message == "loop-seamless")
                     {
                         AppLog.Write("Seamless loop handoff completed on " + screen.DeviceName + " -> " + currentMediaPath);
@@ -954,7 +1028,27 @@ namespace LumaWall
   function element(src,isImage){var el=document.createElement(isImage?'img':'video');el.className='media';el.style.opacity='0';el.src=src;if(!isImage){el.preload='auto';el.playsInline=true;el.loop=true;el.muted=muted;el.disablePictureInPicture=true}stage.appendChild(el);return el}
   function watchLoop(video,myGeneration){var last=0;function tick(){if(myGeneration!==generation||video!==active||!video.isConnected)return;var now=video.currentTime||0;if(last>0.5&&now+0.5<last)report('loop-seamless');last=now;if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}
   function prepare(src,isImage,newMuted,token,fps){generation++;var myGeneration=generation;muted=newMuted;var next=element(src,isImage);if(!isImage){next.muted=muted;next.play().catch(function(){})}firstFrame(next,isImage,function(){if(myGeneration!==generation){remove(next);return}var previous=active;next.style.zIndex='2';next.style.transition='opacity 120ms linear';active=next;if(paused&&!isImage)active.pause();requestAnimationFrame(function(){next.style.opacity='1';setTimeout(function(){next.style.transition='';if(previous)remove(previous);if(!isImage)watchLoop(next,myGeneration)},150)});report('media-ready:'+token)},function(){if(myGeneration!==generation)return;remove(next);report('media-error:'+token)})}
-  function setPlayback(isPaused,isMuted){paused=isPaused;muted=isMuted;if(active&&active.tagName==='VIDEO'){active.muted=muted;if(paused)active.pause();else active.play().catch(function(){})}}
+  function setPlayback(isPaused,isMuted){
+    paused=isPaused;muted=isMuted;
+    if(!active||active.tagName!=='VIDEO'){report('pb-noactive:'+(active?active.tagName:'null'));return}
+    active.muted=muted;
+    var v=active,t0=performance.now();
+    if(paused){
+      v.pause();
+      report('pause-ack:'+Math.round(performance.now()-t0)+' rs='+v.readyState);
+    }else{
+      var pr=v.play();
+      if(pr&&pr.catch)pr.catch(function(e){report('resume-rejected:'+e.name)});
+      var done=false;
+      function mark(){
+        if(done)return;done=true;
+        report('resume-frame:'+Math.round(performance.now()-t0)
+          +' rs='+v.readyState+' paused='+v.paused+' seeking='+v.seeking
+          +' ct='+v.currentTime.toFixed(2)+' net='+v.networkState);
+      }
+      if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(mark);else setTimeout(mark,60);
+    }
+  }
   function setFps(fps){}
   window.luma={prepare:prepare,setPlayback:setPlayback,setFps:setFps};
  })();

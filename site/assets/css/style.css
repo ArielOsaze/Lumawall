@@ -159,6 +159,9 @@ h1, h2, h3 {
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
 
 .hero h1 { font-size: clamp(38px, 6.2vw, 68px); font-weight: 700; }
+/* Gradient text. When the headline is split into characters (see .ch-grad) the
+   gradient must be painted per character; this rule is the fallback for the
+   moments before the split runs, and for readers with JS disabled. */
 .grad {
   background: linear-gradient(100deg, var(--accent) 0%, #ff8a5c 46%, var(--cyan) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -259,11 +262,25 @@ h1, h2, h3 {
   border-radius: 8px;
   transition: width 1.1s cubic-bezier(.2,.8,.2,1);
 }
+.bar-fill.high { background: linear-gradient(90deg, #7a1f22, #e2454a); }
+/* Red is reserved for the "before" state. A red bar that means "this is bad"
+   must never be used for a good value, or the chart reads backwards: a filled
+   red bar labelled "GPU" looked like "GPU at 100%", the opposite of the point. */
 .bar-fill.low { background: linear-gradient(90deg, #1f7a4d, #35e07a); }
 .bar-fill span {
   font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,.5);
 }
+
+/* Chip row: a bar implies a scale. "Decoding happens on NVDEC" has no scale, so
+   presenting it as a bar invited exactly the wrong reading. */
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-height: 40px; }
+.chip {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .04em; padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--line-soft); background: var(--panel); color: var(--dim);
+}
+.chip.good { border-color: rgba(53,224,122,.35); background: rgba(53,224,122,.08); color: #7ff0ac; }
 
 .perf-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 46px; }
 .note {
@@ -391,6 +408,70 @@ h1, h2, h3 {
 .cta-final h2 { font-size: clamp(27px, 4vw, 40px); }
 .cta-final p { margin: 16px 0 30px; color: var(--muted); font-size: 16.5px; }
 .cta-note { display: block; margin-top: 16px; font-family: var(--font-mono); font-size: 12px; color: var(--dim); }
+
+/* ── kinetic headline: per-character reveal ─────────────────────────────── */
+/* The characters are injected by main.js. Each one rises and un-blurs slightly
+   after the last, which reads as the line being written rather than switched on.
+   The delay comes from --i, so a 40-character headline costs one CSS rule. */
+.ch { display: inline-block; }
+/* The gradient is painted per character (a transformed child cannot inherit a
+   parent's background-clip), which would restart the gradient inside every letter
+   and read as stripes. background-size makes each character's slice the full
+   width of the line, and background-position offsets it by the character's
+   index, so the visible result is one continuous gradient across the headline.
+
+   --ch-total is set by main.js to the number of characters in the line. */
+.grad .ch-grad {
+  background-image: linear-gradient(100deg, #e2454a 0%, #ff7a8a 42%, #3ad0e0 100%);
+  background-size: calc(var(--ch-total, 12) * 100%) 100%;
+  background-position: calc(var(--i, 0) * -100%) 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.reveal[data-split] .ch {
+  opacity: 0;
+  transform: translateY(.42em);
+  filter: blur(9px);
+}
+.reveal[data-split].in .ch {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition:
+    opacity .62s cubic-bezier(.16,1,.3,1),
+    transform .62s cubic-bezier(.16,1,.3,1),
+    filter .62s cubic-bezier(.16,1,.3,1);
+  transition-delay: calc(var(--i) * 32ms);
+}
+
+/* ── shiny text: a light sweep across the letters ───────────────────────── */
+/* Used for small uppercase labels so they have life without shouting. */
+.shiny {
+  background-image: linear-gradient(100deg, var(--dim) 30%, #fff 50%, var(--dim) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shine 3.6s linear infinite;
+}
+@keyframes shine {
+  from { background-position: 220% 0; }
+  to   { background-position: -120% 0; }
+}
+
+/* ── count-up numbers keep their final width ────────────────────────────── */
+/* A figure that changes from "0" to "5.000+" reflows its container while it
+   animates. Reserving the width with a tabular figure stops the layout jumping. */
+[data-count] { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch, .reveal { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
+  .shiny { animation: none; background-image: none; -webkit-text-fill-color: currentColor; color: var(--dim); }
+}
 
 /* ─────────────── footer ─────────────── */
 .foot { background: var(--bg-alt); border-top: 1px solid var(--line-soft); }

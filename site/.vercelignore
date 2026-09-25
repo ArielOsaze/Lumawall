@@ -1,0 +1,6 @@
+# Nothing here needs excluding from the site itself; the downloads are the point.
+# This file exists so a stray local build artefact cannot leak into a deploy.
+*.log
+*.bak
+.DS_Store
+Thumbs.db

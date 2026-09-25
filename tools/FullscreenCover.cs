@@ -77,7 +77,7 @@ internal static class FullscreenCover
     {
         if (args.Length < 5)
         {
-            Console.Error.WriteLine("usage: FullscreenCover <left> <top> <w> <h> <seconds>");
+            Console.Error.WriteLine("usage: FullscreenCover <left> <top> <w> <h> <seconds> [stampfile]");
             return 2;
         }
         int left = int.Parse(args[0]);
@@ -85,6 +85,22 @@ internal static class FullscreenCover
         int width = int.Parse(args[2]);
         int height = int.Parse(args[3]);
         double seconds = double.Parse(args[4]);
+
+        // A winexe has no console, so Console.WriteLine is discarded and a test
+        // cannot tell when the window appeared or closed. When a stamp file is
+        // given, the probe appends its own millisecond timestamps there instead.
+        string stampFile = args.Length > 5 ? args[5] : null;
+        Action<string> stamp = delegate(string what)
+        {
+            if (string.IsNullOrEmpty(stampFile)) return;
+            try
+            {
+                System.IO.File.AppendAllText(stampFile,
+                    what + " " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + Environment.NewLine,
+                    new System.Text.UTF8Encoding(false));
+            }
+            catch { }
+        };
 
         Application.EnableVisualStyles();
         var form = new Form
@@ -101,6 +117,7 @@ internal static class FullscreenCover
         form.Shown += delegate
         {
             ForceForeground(form.Handle);
+            stamp("shown");
             Console.WriteLine("open " + form.Handle.ToInt64());
             Console.Out.Flush();
         };
@@ -110,6 +127,7 @@ internal static class FullscreenCover
         // window class.
         form.HandleCreated += delegate
         {
+            stamp("hwnd");
             Console.WriteLine("hwnd " + form.Handle.ToInt64());
             Console.Out.Flush();
         };
@@ -118,6 +136,7 @@ internal static class FullscreenCover
         timer.Tick += delegate
         {
             timer.Stop();
+            stamp("closing");
             Console.WriteLine("closing");
             Console.Out.Flush();
             form.Close();

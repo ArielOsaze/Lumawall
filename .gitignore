@@ -105,3 +105,12 @@ msix/*.pfx
 msix/*.pvk
 msix/*.snk
 *.pfx
+
+# ── promo video renderer ─────────────────────────────────────────────────────
+# The promo is built from source (promo/src) plus the real product assets in
+# site/assets. node_modules and the vite output are build products, and dist
+# contains a full copy of the site's assets (62 MB) that would duplicate what is
+# already tracked under site/.
+promo/node_modules/
+promo/dist/
+promo/package-lock.json
