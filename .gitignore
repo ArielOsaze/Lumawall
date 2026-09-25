@@ -26,14 +26,24 @@ outputs/
 installer/Output/
 *.log
 
-# ── installers: published as Releases, never committed ──
-site/assets/downloads/*.exe
-site/assets/downloads/*.msix
-site/assets/downloads/*.zip
+# ── installers ──
+# These were ignored on the reasoning that they are "published as Releases, never
+# committed". That was wrong for this project: the site links to
+# site/assets/downloads/LumaWall-Setup-4.0.1.exe, so the files have to be in the
+# deploy. Ignoring them meant every download on the live site returned 404 while the
+# files sat on this machine - the site looked finished and could not be installed
+# from. 42 MB of installers is the point of a download page.
+#
+# The pattern is scoped to the site's own folder; a stray .exe elsewhere (a build
+# artefact, a test binary) is still ignored.
 *.exe
 !tools/FullscreenCover.exe
+!site/assets/downloads/*.exe
 *.msi
 *.msix
+!site/assets/downloads/*.msix
+site/assets/downloads/*.zip
+!site/assets/downloads/*.zip
 
 # ── wallpaper library (user content, not source) ──
 LumaWall/assets/*
