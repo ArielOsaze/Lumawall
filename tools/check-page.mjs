@@ -35,7 +35,34 @@ const srv = createServer(async (req, res) => {
     let rel = decodeURIComponent(req.url.split('?')[0]);
     if (rel === '/' || rel.endsWith('/')) rel += 'index.html';
     const b = await readFile(join(SITE, rel));
-    res.writeHead(200, { 'Content-Type': MIME[extname(rel)] || 'application/octet-stream' });
+    const type = MIME[extname(rel)] || 'application/octet-stream';
+
+    // Range support. Chrome asks for byte ranges when seeking a video, and a server
+    // that ignores the header makes it buffer from the start every time - which is
+    // what left the promo at t=0 in this check while the CDN served it fine.
+    const range = req.headers.range;
+    if (range) {
+      const m = /bytes=(\d*)-(\d*)/.exec(range);
+      if (m) {
+        const start = m[1] ? parseInt(m[1], 10) : 0;
+        const end = m[2] ? parseInt(m[2], 10) : b.length - 1;
+        const chunk = b.subarray(start, end + 1);
+        res.writeHead(206, {
+          'Content-Type': type,
+          'Content-Range': `bytes ${start}-${end}/${b.length}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunk.length,
+        });
+        res.end(chunk);
+        return;
+      }
+    }
+
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': b.length,
+    });
     res.end(b);
   } catch { res.writeHead(404).end('nf'); }
 });
@@ -166,11 +193,29 @@ check('no 1080p badge over the video', !badge.badge_element && !badge.text_over_
   JSON.stringify(badge));
 
 // ── 2. the video autoplays when scrolled to ──────────────────────────────────
+//
+// The wait has to be adaptive. This is a 16 MB file served by a plain Node static
+// server, which is slower than the CDN, and a fixed 3.5s wait was not always enough
+// for the browser to buffer the first frames - the check then failed with t=0 and
+// the whole run took five minutes waiting on a retry. It now polls until the video
+// actually advances, and reports what it saw if it never does.
 const videoState = await evalJs(`(async () => {
   const v = document.getElementById('promo');
   if (!v) return { exists: false };
   v.scrollIntoView({ block: 'center' });
-  await new Promise(r => setTimeout(r, 3500));
+
+  const started = Date.now();
+  let lastTime = -1;
+  let stalledFor = 0;
+  while (Date.now() - started < 45000) {
+    await new Promise(r => setTimeout(r, 500));
+    if (v.currentTime > lastTime) { lastTime = v.currentTime; stalledFor = 0; }
+    else { stalledFor += 500; }
+    // Enough to prove it plays, or clearly stuck.
+    if (v.currentTime > 0.5) break;
+    if (stalledFor > 20000) break;
+  }
+
   return {
     exists: true,
     paused: v.paused,
@@ -178,7 +223,9 @@ const videoState = await evalJs(`(async () => {
     muted: v.muted,
     autoplay_attr: v.hasAttribute('autoplay'),
     ready: v.readyState,
+    network: v.networkState,
     error: v.error ? v.error.code : null,
+    waited_ms: Date.now() - started,
     cover_present: !!document.querySelector('.video-cover'),
     badge_present: !!document.querySelector('.video-badge'),
   };

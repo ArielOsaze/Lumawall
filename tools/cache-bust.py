@@ -113,11 +113,18 @@ def main():
 
         # Copy (not move) so a reference elsewhere cannot break, then point the html
         # at the versioned copy.
+        #
+        # The replacement must be NAME for NAME. An earlier version replaced the old
+        # name with the new full path, so `assets/shots/hero-bg.OLD.jpg` became
+        # `assets/shots/assets/shots/hero-bg.NEW.jpg` - every asset 404'd, including
+        # the promo video, and the page loaded with a broken hero and no video. The
+        # live behaviour check caught it (4x "Failed to load resource: 404").
         shutil.copy2(src, want_path)
+        new_name = os.path.basename(want)
         if referenced_name:
-            html = html.replace(referenced_name, want.replace(os.sep, '/'))
+            html = html.replace(referenced_name, new_name)
         else:
-            html = html.replace(rel, want.replace(os.sep, '/'))
+            html = html.replace(name, new_name)
         moved.append((rel, want))
 
         # Any earlier versioned copy of this file is now dead weight: nothing in the
@@ -133,6 +140,32 @@ def main():
     if check_only:
         stale = [l for l in moved]
         return 1 if stale else 0
+
+    # ── every reference must resolve ──────────────────────────────────────────
+    #
+    # A versioning step that rewrites URLs can break them, and a broken URL is
+    # invisible from the server side: the page returns 200, the html is valid, and
+    # the asset 404s in the browser. That happened - a name-for-path replacement
+    # produced `assets/shots/assets/shots/hero-bg.jpg` and the promo video stopped
+    # loading while every server-side check passed.
+    #
+    # So the rewrite is verified here, before the file is written.
+    refs = set(re.findall(r'assets/[a-z]+/[a-zA-Z0-9._-]+\.[a-z0-9]+', html))
+    broken = [r for r in refs if not os.path.exists(os.path.join(SITE, r))]
+    if broken:
+        print()
+        print('  REFUSING TO WRITE: %d reference(s) do not resolve:' % len(broken))
+        for b in broken:
+            print('    ' + b)
+        return 1
+
+    doubled = [r for r in refs if r.count('assets/') > 1]
+    if doubled:
+        print()
+        print('  REFUSING TO WRITE: %d doubled path(s):' % len(doubled))
+        for d in doubled:
+            print('    ' + d)
+        return 1
 
     if html != original:
         io.open(INDEX, 'w', encoding='utf-8').write(html)
