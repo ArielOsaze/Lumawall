@@ -282,11 +282,18 @@ p { text-wrap: pretty; }
   .hero h1 { font-size: clamp(1.9rem, 8.4vw, 2.6rem); }
 }
 
-.hero h1 { max-width: 22ch; }
+.hero h1 {
+  max-width: 22ch;
+  /* The headline sits over artwork whose brightness varies. Against the
+     brightest part of it the accent measures 3.83:1 - enough for large text, but
+     only just, so the type carries a shadow to hold it off whatever is behind. */
+  text-shadow: 0 2px 18px rgba(6, 6, 9, .65);
+}
 .hero h1 .accent { color: var(--accent); }
 
 .hero .lead {
   margin-top: 1.5rem;
+  line-height: 1.75;
   /* Over the wallpaper rather than flat colour: a busy image reduces apparent
      legibility at the same measured contrast, so this is brighter than the
      shared muted tone and carries a faint shadow for separation. */
