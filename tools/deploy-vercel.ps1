@@ -42,6 +42,30 @@ if (-not (Test-Path (Join-Path $site 'index.html'))) {
     exit 1
 }
 
+# The 404 this project actually hit, and how it happens:
+#
+# There is a `.vercel` link file at the repo root as well as in site/. Both point at
+# the same project, so `vercel deploy` run from the ROOT links to the same project
+# and publishes the root - which has no index.html. The deployment comes back Ready,
+# it becomes the production deployment, and the production alias moves to it, so
+# lumawall.xinet.id serves "The page could not be found" while every step reported
+# success.
+#
+# The guard is to refuse unless the folder being published actually contains a site.
+$rootVercel = Join-Path (Split-Path -Parent $PSScriptRoot) '.vercel'
+if (Test-Path $rootVercel) {
+    $rootIndex = Join-Path (Split-Path -Parent $PSScriptRoot) 'index.html'
+    if (-not (Test-Path $rootIndex)) {
+        Write-Host ""
+        Write-Host "WARNING: a .vercel link exists at the repo root, which has no index.html." -ForegroundColor Yellow
+        Write-Host "         Deploying from there produces an empty deployment that still" -ForegroundColor Yellow
+        Write-Host "         becomes production - that is what caused the 404." -ForegroundColor Yellow
+        Write-Host "         This script deploys '$site' only. Do not run 'vercel deploy'" -ForegroundColor Yellow
+        Write-Host "         from the repo root." -ForegroundColor Yellow
+        Write-Host ""
+    }
+}
+
 function Step($t) { Write-Host ""; Write-Host "== $t ==" -ForegroundColor Cyan }
 function Ok($t)   { Write-Host "   $t" -ForegroundColor Green }
 function Bad($t)  { Write-Host "   $t" -ForegroundColor Red }
@@ -176,7 +200,42 @@ foreach ($d in $domains) {
     }
 
     if ($code -eq 200) {
-        Ok "$d -> 200"
+        # A 200 is not enough on its own: the empty deployment this project served
+        # also answered, and only the body revealed it was "The page could not be
+        # found". Check that the response actually contains the site.
+        $body = ''
+        try {
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            $body = (Invoke-WebRequest "https://$d" -UseBasicParsing -TimeoutSec 30).Content
+            $ErrorActionPreference = $prev
+        } catch { }
+
+        if ($body -match 'LumaWall' -and $body -match 'lumawall-promo\.mp4') {
+            Ok "$d -> 200, and the page is the LumaWall site"
+        } else {
+            Bad "$d -> 200 but the body is not the site (empty deployment?)"
+            Write-Host ""
+            Write-Host "   First 200 characters of what was served:" -ForegroundColor Yellow
+            Write-Host ("   " + $body.Substring(0, [Math]::Min(200, $body.Length))) -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "   Repointing the domain at the deployment just made:" -ForegroundColor Yellow
+            $aliasOut = Invoke-Vercel @('alias', 'set', $url, $d)
+            Write-Host $aliasOut
+            Start-Sleep -Seconds 6
+            $code2 = 0
+            try {
+                $prev = $ErrorActionPreference
+                $ErrorActionPreference = 'Continue'
+                $resp2 = Invoke-WebRequest "https://$d" -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 0 -ErrorAction SilentlyContinue
+                $ErrorActionPreference = $prev
+                if ($resp2) { $code2 = [int]$resp2.StatusCode }
+            } catch {
+                if ($_.Exception.Response) { $code2 = [int]$_.Exception.Response.StatusCode }
+            }
+            if ($code2 -eq 200) { Ok "$d -> 200 after re-aliasing" }
+            else { Bad "$d still returns $code2 - check the domain in the Vercel dashboard"; exit 6 }
+        }
     } else {
         Bad "$d -> $code"
         Write-Host ""

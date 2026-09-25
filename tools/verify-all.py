@@ -46,11 +46,17 @@ CHECKS = [
 ]
 
 results = []
+
+# Several checks need Pillow and numpy, which are installed in the environment this
+# script itself runs in. `python` on PATH can be a different interpreter that has
+# neither, and the checks then fail with ModuleNotFoundError - a failure that says
+# nothing about the work. Use the interpreter running this script.
+PY = sys.executable
+
 for name, cmd in CHECKS:
-    if cmd[0] == 'python' and not os.path.exists(cmd[1]):
-        results.append((name, 'MISSING', 'the check script does not exist'))
-        continue
-    if cmd[0] == 'node' and not os.path.exists(cmd[1]):
+    if cmd[0] == 'python':
+        cmd = [PY] + cmd[1:]
+    if not os.path.exists(cmd[1]):
         results.append((name, 'MISSING', 'the check script does not exist'))
         continue
 
