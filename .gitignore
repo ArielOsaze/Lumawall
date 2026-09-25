@@ -127,3 +127,6 @@ site/assets/video/clips/
 # A render in progress writes here; it must never be committed or deployed.
 *.part.mp4
 site/assets/video/*.part.mp4
+
+# esbuild on Windows writes its /dev/null equivalent into the working directory.
+promo/dev/

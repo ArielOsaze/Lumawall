@@ -62,6 +62,28 @@ arriving somewhere new rather than one picture replacing another. Layers at
 different depths move by different amounts, which is what gives a flat composition
 the sense of having depth.
 
+### The handover is a pan, not a crossfade
+
+A crossfade always has a moment where both beats are semi-visible, and a review of
+an earlier render picked that exact frame out: two headings at half strength, one
+behind the other. Even with the opacities summing to exactly 1 it reads as a
+mistake, because the eye sees two things in the same place.
+
+So there is no crossfade at all. Both beats stay fully opaque and the frame pans:
+the outgoing one travels a full frame width to the left while the incoming one
+arrives from the right. At any instant you see the tail of one and the head of the
+other, side by side and moving the same way, which is what a camera moving past a
+boundary looks like. Their separation is the frame width at every instant, so no
+text can ever sit on top of other text.
+
+The same idea applies inside a beat: the scene's own wallpaper slides at 40% of
+the distance and its content at 100%, so the handover has two planes rather than
+reading as one sheet of paper moving.
+
+There was also a double scale. Each beat used to scale from 0.965 to 1 while the
+camera was scaling the whole frame at a different rate, so every handover zoomed
+twice. That was the "weird zoom" in the transitions; it is gone.
+
 ### The wallpaper actually moves
 
 This was the real failure: the promo for a moving wallpaper contained still
@@ -84,6 +106,35 @@ Two causes, both silent:
 
 Both are guarded now: `render.mjs` refuses to render if any wallpaper frame fails
 to load, and `tools/check_frames.py` reports whether the video actually moves.
+
+### The hero image is composed for the hero
+
+The hero was a wallpaper forced into a wide band with `object-fit: cover`, which
+sliced the top of the character's head off and pushed her against the right edge.
+`object-position` can only choose which arbitrary point of the source survives; it
+cannot move the subject somewhere better, and it cannot darken one side for the
+type while leaving the other bright.
+
+`tools/make-hero-image.py` composes an image for the slot instead: subject in the
+right third, clear of the headline, with a smooth left-to-right ramp to near-black
+so the text has a surface. The ramp is a `geq` alpha curve, not a `drawbox` — a box
+left a visible vertical seam down the middle of the artwork.
+
+### The promo video plays itself, and stops when told to
+
+It starts when the block reaches the viewport and pauses when it leaves, so a
+visitor sees it from the beginning rather than arriving twenty seconds in.
+
+A deliberate pause is respected. If the visitor presses pause, scrolling away and
+back does not restart it — a page that overrides that is a page that fights its
+user. `tools/check-page.mjs` tests exactly this, because the regression is
+invisible otherwise: the video plays either way and only the visitor's intent is
+lost.
+
+There is no play cover and no resolution badge. The cover existed to work around a
+video that did not start on its own; with autoplay working it was a button that
+hid the thing it was advertising. The badge labelled a technical detail the viewer
+does not choose between.
 
 ### Verifying a render
 

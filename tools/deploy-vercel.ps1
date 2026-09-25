@@ -113,11 +113,15 @@ if ($brand -notmatch 'ftyp') {
 }
 Ok "promo video looks complete ($brand)"
 
-# Any leftover .part files mean a render is in flight or was interrupted.
-$parts = Get-ChildItem $site -Recurse -File -Filter '*.part' -ErrorAction SilentlyContinue
+# Any leftover .part file means a render is in flight or was interrupted. The
+# renderer writes "<name>.part.mp4", so the pattern has to include the extension -
+# a filter of '*.part' matched nothing and the guard silently passed.
+$parts = Get-ChildItem $site -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like '*.part*' }
 if ($parts) {
-    Bad "found $($parts.Count) incomplete .part file(s) - a render is still running:"
-    $parts | ForEach-Object { Bad ("  " + $_.Name + "  " + [math]::Round($_.Length/1MB,1) + " MB") }
+    Bad "found $($parts.Count) incomplete file(s) - a render is still running:"
+    $parts | ForEach-Object { Bad ("  " + $_.FullName.Replace($site, '') + "  " + [math]::Round($_.Length/1MB,1) + " MB") }
+    Bad "Wait for the render to finish, then re-run."
     exit 9
 }
 

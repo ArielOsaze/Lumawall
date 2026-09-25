@@ -44,9 +44,10 @@ export const BEATS = [
 // How long the camera takes to travel from one beat to the next.
 const TRAVEL = 1.6;
 
-// How far a beat slides during the handover, in pixels. Large enough to read as
-// movement, small enough that the type is never pushed off its mark.
-const SLIDE = 190;
+// How far a beat slides during the handover, in pixels. This is the full frame
+// width, because the handover is a pan rather than a dissolve: the outgoing beat
+// has to leave the frame completely before the incoming one has fully arrived.
+const SLIDE = 1920;
 
 export default function Timeline() {
   const [frame, setFrame] = useState(0);
@@ -92,20 +93,19 @@ export default function Timeline() {
         //
         // One shared progress value drives both, so the outgoing beat is always
         // exactly as faded out as the incoming one is faded in.
-        // Fade in: the same curve the previous beat uses to fade out, so the two
-        // are exact complements. The first beat is already present when the video
-        // starts, which also keeps frame 0 from being black.
+        // Arrival and departure are both full-width movements. There is no
+        // opacity crossfade at all: the beats stay solid and the camera carries
+        // them past each other.
         const kIn = i === 0 ? 1 : easeInOut(seg(time, from, from + TRAVEL));
-        // Fade out: toward the next beat.
         const kOut = next ? easeInOut(seg(time, next.from, next.from + TRAVEL)) : 0;
 
         // Outside its own window a beat is either not here yet or already gone.
         if (time < from - 0.05) return null;
         if (next && time > next.from + TRAVEL + 0.05) return null;
 
-        // Exactly complementary: at any instant this beat and its neighbour sum
-        // to 1, so two beats are never both readable.
-        const opacity = clamp01(kIn * (1 - kOut));
+        // Solid throughout. A beat is only invisible when it is off the frame,
+        // which the slide below guarantees.
+        const opacity = 1;
 
         // A directional push, not a zoom.
         //

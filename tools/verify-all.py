@@ -17,6 +17,8 @@ CHECKS = [
      ['python', 'tools/check_promo_imports.py']),
     ('copy has no machine-writing tells',
      ['python', 'tools/check-copy.py']),
+    ('app text has no machine-writing tells',
+     ['python', 'tools/check-app-text.py']),
     ('transitions never double-expose',
      ['python', 'tools/check-transition-curve.py']),
     ('every promo beat shows a wallpaper',

@@ -120,13 +120,15 @@ export default function SceneMonitors({ t, global }) {
                 <WallpaperStage clip={m.clip} t={global} offset={m.delay} mode="monitor" width={430} />
                 <div
                   style={{
-                    marginTop: 15,
+                    marginTop: 18,
                     textAlign: 'center',
                     fontFamily: FONT,
-                    fontSize: 14.5,
+                    // Readable at 1080p on a phone. It was 14.5px, which a review
+                    // called close to illegible.
+                    fontSize: 19,
                     fontWeight: 600,
                     letterSpacing: '.12em',
-                    color: '#c3cbd3',
+                    color: '#dde3e8',
                     textShadow: '0 2px 10px rgba(0,0,0,.75)',
                   }}
                 >

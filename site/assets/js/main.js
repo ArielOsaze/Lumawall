@@ -75,13 +75,30 @@
       if (p && p.catch) p.catch(function () {});
     };
 
+    // Whether the visitor stopped it on purpose. If they did, scrolling away and
+    // back must not restart it: they pressed pause because they wanted it
+    // stopped, and a page that overrides that is a page that fights its user.
+    var userPaused = false;
+    promo.addEventListener('pause', function () {
+      // A pause that did not come from the observer is the visitor's.
+      if (!pausingForViewport) userPaused = true;
+    });
+    var pausingForViewport = false;
+
     // Start when the block is on screen rather than at page load, so the visitor
     // sees the video from the beginning instead of arriving 20 seconds in.
     if ('IntersectionObserver' in window) {
       var vio = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-          if (entry.isIntersecting) startPromo();
-          else if (!promo.paused) promo.pause();
+          if (entry.isIntersecting) {
+            // Resuming after a scroll is fine; resuming after a deliberate pause
+            // is not.
+            if (!userPaused) startPromo();
+          } else if (!promo.paused) {
+            pausingForViewport = true;
+            promo.pause();
+            pausingForViewport = false;
+          }
         });
       }, { threshold: 0.35 });
       vio.observe(promo);

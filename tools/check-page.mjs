@@ -87,16 +87,36 @@ const send = (method, params = {}, sessionId) => {
   return new Promise((res, rej) => { pending.set(i, { res, rej }); sock.send(JSON.stringify(p)); });
 };
 
+// Wait for a page target that has actually navigated to the site, not just any
+// page target: Chrome opens about:blank first, and attaching to that produced an
+// empty DOM and a screenful of false failures.
 let target = null;
-for (let i = 0; i < 60 && !target; i++) {
+for (let i = 0; i < 90 && !target; i++) {
   const { targetInfos } = await send('Target.getTargets');
-  target = targetInfos.find((t) => t.type === 'page' && t.url.includes(String(PORT)));
+  target = targetInfos.find(
+    (t) => t.type === 'page' && t.url.includes('127.0.0.1:' + PORT)
+  );
   if (!target) await new Promise((r) => setTimeout(r, 400));
+}
+if (!target) {
+  console.log('  the browser never navigated to the site');
+  chrome.kill(); srv.close();
+  process.exit(1);
 }
 const { sessionId } = await send('Target.attachToTarget', { targetId: target.targetId, flatten: true });
 await send('Page.enable', {}, sessionId);
 await send('Runtime.enable', {}, sessionId);
-await new Promise((r) => setTimeout(r, 3000));
+
+// And wait for the DOM to be there before measuring anything.
+for (let i = 0; i < 40; i++) {
+  const ready = await send('Runtime.evaluate', {
+    expression: 'document.readyState === "complete" && document.querySelectorAll("section").length > 0',
+    returnByValue: true,
+  }, sessionId);
+  if (ready.result.value) break;
+  await new Promise((r) => setTimeout(r, 300));
+}
+await new Promise((r) => setTimeout(r, 1200));
 
 const evalJs = async (expr) =>
   (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }, sessionId)).result.value;
@@ -172,6 +192,38 @@ check('the video has advanced past 0', videoState.exists && videoState.time > 0.
 check('the video is muted (required for autoplay)', videoState.exists && videoState.muted === true);
 check('no play cover is covering the video', videoState.exists && videoState.cover_present === false);
 check('no badge is over the video', videoState.exists && videoState.badge_present === false);
+
+// ── 2b. a deliberate pause is respected ──────────────────────────────────────
+const pauseBehaviour = await evalJs(`(async () => {
+  const v = document.getElementById('promo');
+  if (!v) return { skipped: true };
+  v.scrollIntoView({ block: 'center' });
+  await new Promise(r => setTimeout(r, 1200));
+
+  // The visitor presses pause.
+  v.pause();
+  await new Promise(r => setTimeout(r, 200));
+  const pausedAfterClick = v.paused;
+
+  // Then scrolls away and comes back.
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  await new Promise(r => setTimeout(r, 900));
+  v.scrollIntoView({ block: 'center' });
+  await new Promise(r => setTimeout(r, 1500));
+
+  return { skipped: false, pausedAfterClick, pausedAfterReturn: v.paused };
+})()`);
+
+check('a deliberate pause survives scrolling away and back',
+  pauseBehaviour.skipped || (pauseBehaviour.pausedAfterClick && pauseBehaviour.pausedAfterReturn),
+  JSON.stringify(pauseBehaviour));
+
+// Put it back for the remaining checks.
+await evalJs(`(async () => {
+  const v = document.getElementById('promo');
+  if (v) { v.muted = true; try { await v.play(); } catch {} }
+  return true;
+})()`);
 
 // ── 3. the hero image is not badly cropped ───────────────────────────────────
 const hero = await evalJs(`(() => {

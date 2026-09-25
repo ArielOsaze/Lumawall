@@ -81,7 +81,7 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0,
           marginTop: 12,
           fontFamily: FONT,
           fontSize: 15,
-          color: '#7a838c',
+          color: '#b6bec6',
           opacity: seg(t, delay + 0.4, delay + 0.9),
         }}
       >
@@ -190,8 +190,12 @@ export default function SceneProblem({ t, global }) {
           style={{
             marginTop: 6,
             fontFamily: FONT,
-            fontSize: 23,
-            color: '#c3c8d0',
+            // Readable over a wallpaper rather than on flat colour: a busy image
+            // reduces apparent contrast at the same measured ratio, and a review
+            // of the render called this line too dim.
+            fontSize: 25,
+            color: '#d8dde3',
+            textShadow: '0 2px 14px rgba(0,0,0,.7)',
             opacity: seg(t, 3.0, 3.75),
             transform: `translateY(${(1 - easeOut(seg(t, 3.0, 3.75))) * 20}px)`,
           }}
