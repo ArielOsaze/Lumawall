@@ -34,10 +34,12 @@ export const FPS = 30;
 export const BEATS = [
   { id: 'intro',    from: 0.0,  to: 7.4,  C: SceneIntro },
   { id: 'problem',  from: 6.4,  to: 14.6, C: SceneProblem },
-  { id: 'catalog',  from: 13.6, to: 22.4, C: SceneCatalog },
-  { id: 'monitors', from: 21.4, to: 30.4, C: SceneMonitors },
-  { id: 'pause',    from: 29.4, to: 38.6, C: ScenePause },
-  { id: 'perf',     from: 37.6, to: 45.6, C: ScenePerf },
+  { id: 'catalog',  from: 13.6, to: 22.2, C: SceneCatalog },
+  // Half a second longer than its neighbours: three monitors with labels need a
+  // moment to read, and it follows the busiest beat in the piece.
+  { id: 'monitors', from: 21.2, to: 30.6, C: SceneMonitors },
+  { id: 'pause',    from: 29.6, to: 38.4, C: ScenePause },
+  { id: 'perf',     from: 37.4, to: 45.6, C: ScenePerf },
   { id: 'outro',    from: 44.6, to: 52.0, C: SceneOutro },
 ];
 

@@ -115,7 +115,7 @@ export default function ScenePerf({ t, global }) {
               color: '#fff',
             }}
           >
-            <SplitText text="Diukur, bukan diperkirakan." t={t} delay={0.1} stagger={0.026} y={36} />
+            <SplitText text="Angkanya dari pengukuran langsung." t={t} delay={0.1} stagger={0.026} y={36} />
           </div>
         </div>
 

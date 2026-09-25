@@ -84,6 +84,23 @@ There was also a double scale. Each beat used to scale from 0.965 to 1 while the
 camera was scaling the whole frame at a different rate, so every handover zoomed
 twice. That was the "weird zoom" in the transitions; it is gone.
 
+The monitors beat runs half a second longer than its neighbours. Three monitors
+with labels need a moment to read, and it follows the busiest beat in the piece.
+
+### Pacing
+
+| beat | window | why |
+|---|---|---|
+| intro | 0.0-7.4 | the logo, over a wallpaper already moving |
+| problem | 6.4-14.6 | the CPU comparison, bars growing from zero |
+| catalog | 13.6-22.2 | the library, the busiest frame in the piece |
+| monitors | 21.2-30.6 | three screens; the longest beat |
+| pause | 29.6-38.4 | the wallpaper stops, the meter falls |
+| perf | 37.4-45.6 | the measured numbers |
+| outro | 44.6-52.0 | the call to action |
+
+Consecutive beats overlap by about a second, which is the pan.
+
 ### The wallpaper actually moves
 
 This was the real failure: the promo for a moving wallpaper contained still
