@@ -1,3 +1,23 @@
+# RETIRED — the git integration owns this project now.
+#
+# Vercel is connected to GitHub, so every `git push` deploys the site. That path and
+# a CLI deploy have contradictory root-directory requirements, and git won:
+#
+#   owning path      rootDirectory   deploy runs from
+#   ---------------  --------------  ----------------
+#   git auto-deploy  "site"          the repo root
+#   CLI deploy       ""              the site subfolder
+#
+# rootDirectory is "site" (see tools/set-vercel-root.py). Running this script now
+# would fail with `The specified Root Directory "site" does not exist`, because the
+# CLI resolves the value against the current directory and looks for site/site.
+#
+#   deploy:  git push
+#   check:   powershell -File tools/verify-live-site.ps1
+#
+# Kept because the checks below are still the right shape if the project is ever
+# switched back to CLI ownership (git link removed, rootDirectory cleared).
+
 # Deploys the LumaWall site to Vercel, refusing to run if the logged-in account
 # is not the one that owns the LumaWall project.
 #
