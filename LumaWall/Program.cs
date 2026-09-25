@@ -424,6 +424,8 @@ namespace LumaWall
         [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
         [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hwnd);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
+        [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
         /// <summary>Public wrapper: other classes must not P/Invoke user32 themselves.</summary>
         public static bool IsWindowAlive(IntPtr hwnd) { return hwnd != IntPtr.Zero && IsWindow(hwnd); }
@@ -572,80 +574,97 @@ namespace LumaWall
             return progman;
         }
 
-        public static bool IsAnotherAppFullscreen()
-        {
-            return FindCoveredMonitors().Count > 0;
-        }
-
         /// <summary>
-        /// Device names of every monitor the foreground window completely covers.
+        /// Device names of every monitor covered by an application window.
         ///
-        /// Per-monitor matters: a game on the second display must pause only that
-        /// display's wallpaper, not the one on the primary screen. The old global
-        /// check paused every monitor at once, so a fullscreen window anywhere
-        /// froze the wallpapers everywhere.
+        /// Enumerating all windows, not just the foreground one, is the whole
+        /// point. Windows has exactly ONE foreground window, so a detector that
+        /// only looks at GetForegroundWindow() misses every fullscreen app on a
+        /// display that is not focused - which is the normal situation for a
+        /// multi-monitor setup. The result was wallpaper that kept decoding
+        /// behind a fullscreen game.
         ///
-        /// The window is tested against each monitor's own bounds rather than
-        /// against the single screen Windows picks for it, so a window spanning
-        /// several displays pauses exactly the ones it covers.
+        /// The scan is per monitor rather than per window so a window spanning
+        /// two displays pauses exactly those two.
         /// </summary>
         public static List<string> FindCoveredMonitors()
         {
-            var covered = new List<string>();
-            IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return covered;
-            uint pid;
-            GetWindowThreadProcessId(hwnd, out pid);
-            if (pid == (uint)Process.GetCurrentProcess().Id) return covered;
-            if (IsShellDesktopWindow(hwnd) || IsOverlayWindow(hwnd)) return covered;
-            RECT rect;
-            if (!GetWindowRect(hwnd, out rect)) return covered;
-
-            foreach (var screen in Forms.Screen.AllScreens)
-            {
-                var b = screen.Bounds;
-                int overlapW = Math.Min(rect.Right, b.Right) - Math.Max(rect.Left, b.Left);
-                int overlapH = Math.Min(rect.Bottom, b.Bottom) - Math.Max(rect.Top, b.Top);
-                // 2% tolerance: maximized windows are inset by the invisible resize
-                // border, and DPI rounding can shave a pixel or two more.
-                if (overlapW >= b.Width * 0.98 && overlapH >= b.Height * 0.98)
-                    covered.Add(screen.DeviceName);
-            }
-            return covered;
+            return ScanCoveringWindows(requireZoomed: false);
         }
 
-        /// <summary>Monitors covered by a zoomed (maximized) foreground window.</summary>
+        /// <summary>Monitors covered by a maximized (zoomed) application window.</summary>
         public static List<string> FindMaximizedMonitors()
         {
-            var covered = new List<string>();
-            IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return covered;
-            uint pid;
-            GetWindowThreadProcessId(hwnd, out pid);
-            if (pid == (uint)Process.GetCurrentProcess().Id) return covered;
-            if (IsShellDesktopWindow(hwnd) || IsOverlayWindow(hwnd)) return covered;
-            if (!IsZoomed(hwnd)) return covered;
-            RECT rect;
-            if (!GetWindowRect(hwnd, out rect)) return covered;
+            return ScanCoveringWindows(requireZoomed: true);
+        }
 
-            foreach (var screen in Forms.Screen.AllScreens)
+        /// <summary>
+        /// Walks every visible top-level window and collects the monitors each
+        /// one completely covers.
+        /// </summary>
+        private static List<string> ScanCoveringWindows(bool requireZoomed)
+        {
+            var covered = new List<string>();
+            uint ownPid = (uint)Process.GetCurrentProcess().Id;
+
+            EnumWindows(delegate(IntPtr hwnd, IntPtr param)
             {
-                var b = screen.Bounds;
-                int overlapW = Math.Min(rect.Right, b.Right) - Math.Max(rect.Left, b.Left);
-                int overlapH = Math.Min(rect.Bottom, b.Bottom) - Math.Max(rect.Top, b.Top);
-                if (overlapW >= b.Width * 0.98 && overlapH >= b.Height * 0.98)
-                    covered.Add(screen.DeviceName);
-            }
+                if (!IsWindowVisible(hwnd)) return true;
+                if (IsIconic(hwnd)) return true;
+                if (requireZoomed && !IsZoomed(hwnd)) return true;
+
+                uint pid;
+                GetWindowThreadProcessId(hwnd, out pid);
+                if (pid == ownPid) return true;
+                if (IsShellDesktopWindow(hwnd) || IsOverlayWindow(hwnd)) return true;
+                if (IsNonAppWindow(hwnd)) return true;
+
+                RECT rect;
+                if (!GetWindowRect(hwnd, out rect)) return true;
+                if (rect.Right <= rect.Left || rect.Bottom <= rect.Top) return true;
+
+                foreach (var screen in Forms.Screen.AllScreens)
+                {
+                    if (covered.Contains(screen.DeviceName)) continue;
+                    var b = screen.Bounds;
+                    int overlapW = Math.Min(rect.Right, b.Right) - Math.Max(rect.Left, b.Left);
+                    int overlapH = Math.Min(rect.Bottom, b.Bottom) - Math.Max(rect.Top, b.Top);
+                    // 2% tolerance: maximized windows are inset by the invisible
+                    // resize border, and DPI rounding can shave a pixel or two.
+                    if (overlapW >= b.Width * 0.98 && overlapH >= b.Height * 0.98)
+                        covered.Add(screen.DeviceName);
+                }
+                return true;
+            }, IntPtr.Zero);
+
             return covered;
         }
 
-        public static bool IsAnotherAppMaximized()
+        /// <summary>
+        /// Windows that must never count as "an app covering the screen".
+        ///
+        /// Tool windows (no taskbar button), click-through windows, and
+        /// no-activate windows are background furniture: input method hosts,
+        /// overlays, and helper panels. Pausing the wallpaper for any of them
+        /// would make it flicker while the user is doing nothing.
+        /// </summary>
+        private static bool IsNonAppWindow(IntPtr hwnd)
         {
-            IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return false;
-            uint pid;
-            GetWindowThreadProcessId(hwnd, out pid);
-            return pid != (uint)Process.GetCurrentProcess().Id && !IsShellDesktopWindow(hwnd) && !IsOverlayWindow(hwnd) && IsZoomed(hwnd);
+            long ex = GetWindowLongPtr64(hwnd, GWL_EXSTYLE).ToInt64();
+            if ((ex & WS_EX_TOOLWINDOW) != 0) return true;
+            if ((ex & WS_EX_NOACTIVATE) != 0) return true;
+            if ((ex & WS_EX_TRANSPARENT) != 0) return true;
+
+            // A window with no title and no size is not something the user sees
+            // as an application.
+            if (ClassName(hwnd).Length == 0) return true;
+            return false;
+        }
+
+        /// <summary>Legacy helpers kept for the shell tray checks.</summary>
+        public static bool IsAnotherAppFullscreen()
+        {
+            return FindCoveredMonitors().Count > 0;
         }
 
         /// <summary>
