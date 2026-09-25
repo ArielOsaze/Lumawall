@@ -107,9 +107,63 @@ $url = ([regex]::Match($output, 'https://[a-zA-Z0-9\.\-]+\.vercel\.app')).Value
 Step "Result"
 if ($url) {
     Ok ("deployed: " + $url)
-    Write-Host ""
-    Write-Host "   Verify:  Invoke-WebRequest $url -UseBasicParsing | Select StatusCode" -ForegroundColor Yellow
 } else {
     Bad "could not read the deployment URL from the output above"
     exit 5
 }
+
+# ── 5. make sure the PUBLIC domain serves the new deployment ─────────────────
+#
+# Why this step exists: `vercel deploy --prod` reported success, the deployment
+# URL answered 200, and the site was still a 404 on its real domain. The
+# production alias had not been moved, so visitors saw "The page could not be
+# found" while every check the script made passed.
+#
+# A deploy is only finished when the domain a visitor types actually serves it.
+Step "Verifying the public domain"
+
+$domains = @('lumawall.xinet.id')
+foreach ($d in $domains) {
+    $code = 0
+    for ($try = 1; $try -le 6; $try++) {
+        try {
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            $resp = Invoke-WebRequest "https://$d" -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 0 -ErrorAction SilentlyContinue
+            $ErrorActionPreference = $prev
+            if ($resp) { $code = [int]$resp.StatusCode }
+        } catch {
+            if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
+        }
+        if ($code -eq 200) { break }
+        Start-Sleep -Seconds 4
+    }
+
+    if ($code -eq 200) {
+        Ok "$d -> 200"
+    } else {
+        Bad "$d -> $code"
+        Write-Host ""
+        Write-Host "   The deployment is live but the domain is not serving it." -ForegroundColor Yellow
+        Write-Host "   Pointing the domain at this deployment:" -ForegroundColor Yellow
+        $aliasOut = Invoke-Vercel @('alias', 'set', $url, $d)
+        Write-Host $aliasOut
+
+        Start-Sleep -Seconds 6
+        $code2 = 0
+        try {
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            $resp2 = Invoke-WebRequest "https://$d" -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 0 -ErrorAction SilentlyContinue
+            $ErrorActionPreference = $prev
+            if ($resp2) { $code2 = [int]$resp2.StatusCode }
+        } catch {
+            if ($_.Exception.Response) { $code2 = [int]$_.Exception.Response.StatusCode }
+        }
+        if ($code2 -eq 200) { Ok "$d -> 200 after re-aliasing" }
+        else { Bad "$d still returns $code2 - check the domain in the Vercel dashboard"; exit 6 }
+    }
+}
+
+Write-Host ""
+Ok "done - the site is live"
