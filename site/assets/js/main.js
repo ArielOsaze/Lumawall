@@ -63,56 +63,43 @@
   // autoplay is refused the controls are already there, so the visitor can start
   // it themselves; the poster frame means the block never looks broken.
   var promo = document.getElementById('promo');
-  var cover = document.querySelector('.video-cover');
-
-  var hideCover = function () {
-    if (cover) cover.classList.add('is-hidden');
-  };
-
-  if (cover) {
-    // Clicking the cover starts the video and hands control to the native
-    // controls, so the visitor can then pause, seek and go fullscreen.
-    cover.addEventListener('click', function () {
-      var p = promo.play();
-      if (p && p.catch) p.catch(function () { /* refused; the cover stays */ });
-    });
-  }
 
   if (promo) {
     promo.muted = true;
     promo.playsInline = true;
 
-    // `playing`, not `play`. The `play` event fires as soon as play() is called,
-    // even if the browser then refuses autoplay, which hid the cover while the
-    // video sat at 0:00. `playing` fires only when frames are actually advancing,
-    // so the cover is present exactly when the video is not running.
-    promo.addEventListener('playing', hideCover);
-
-    // If the visitor pauses, bring the cover back so the block never reads as a
-    // broken still.
-    promo.addEventListener('pause', function () {
-      if (cover && !promo.ended) cover.classList.remove('is-hidden');
-    });
-
-    var tryPlay = function () {
+    var startPromo = function () {
       var p = promo.play();
-      if (p && p.catch) p.catch(function () { /* refused; the controls remain */ });
+      // A refusal is not an error: the controls are visible, so the visitor can
+      // start it themselves.
+      if (p && p.catch) p.catch(function () {});
     };
 
-    // Start when the video is near the viewport rather than on load, so the
-    // first seconds are not spent playing to an empty section.
+    // Start when the block is on screen rather than at page load, so the visitor
+    // sees the video from the beginning instead of arriving 20 seconds in.
     if ('IntersectionObserver' in window) {
       var vio = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          tryPlay();
-          vio.unobserve(entry.target);
+          if (entry.isIntersecting) startPromo();
+          else if (!promo.paused) promo.pause();
         });
-      }, { rootMargin: '200px' });
+      }, { threshold: 0.35 });
       vio.observe(promo);
     } else {
-      tryPlay();
+      startPromo();
     }
+
+    // Some browsers only allow playback after the first interaction. Retry once
+    // on the first scroll or click, whichever comes first, then stop listening.
+    var retry = function () {
+      if (promo.paused) startPromo();
+      window.removeEventListener('scroll', retry);
+      window.removeEventListener('click', retry);
+      window.removeEventListener('touchstart', retry);
+    };
+    window.addEventListener('scroll', retry, { passive: true, once: false });
+    window.addEventListener('click', retry, { once: false });
+    window.addEventListener('touchstart', retry, { passive: true, once: false });
   }
 
   // ── performance bars animate to their value when seen ──────────────────

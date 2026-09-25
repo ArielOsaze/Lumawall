@@ -34,7 +34,7 @@ export default function SceneCatalog({ t, global }) {
         style={{
           position: 'absolute',
           inset: '-6%',
-          opacity: 0.32,
+          opacity: 0.40,
           transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
         }}
       >

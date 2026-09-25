@@ -44,6 +44,10 @@ export const BEATS = [
 // How long the camera takes to travel from one beat to the next.
 const TRAVEL = 1.6;
 
+// How far a beat slides during the handover, in pixels. Large enough to read as
+// movement, small enough that the type is never pushed off its mark.
+const SLIDE = 190;
+
 export default function Timeline() {
   const [frame, setFrame] = useState(0);
   const time = frame / FPS;
@@ -76,24 +80,52 @@ export default function Timeline() {
       {BEATS.map(({ id, from, to, C }, i) => {
         const next = BEATS[i + 1];
 
-        // Arrive: the beat is fully present TRAVEL seconds after it starts.
-        const arrive = easeOut(seg(time, from, from + TRAVEL));
-        // Leave: it starts moving away TRAVEL seconds before the next beat is
-        // fully present, so the two overlap and the camera carries the change.
-        const leave = next ? easeInOut(seg(time, next.from, next.from + TRAVEL)) : 0;
+        // ── the handover curve ───────────────────────────────────────────────
+        //
+        // Two beats are on screen at once during a handover, so their opacities
+        // have to sum to about 1 at every instant. The previous version used
+        // `arrive` for the incoming beat and `leave` for the outgoing one
+        // independently, and because both eased differently the two stayed fully
+        // visible at the same time for roughly half a second. On screen that is
+        // two headings and two sets of figures overlapping, which a review read
+        // as a glitch.
+        //
+        // One shared progress value drives both, so the outgoing beat is always
+        // exactly as faded out as the incoming one is faded in.
+        // Fade in: the same curve the previous beat uses to fade out, so the two
+        // are exact complements. The first beat is already present when the video
+        // starts, which also keeps frame 0 from being black.
+        const kIn = i === 0 ? 1 : easeInOut(seg(time, from, from + TRAVEL));
+        // Fade out: toward the next beat.
+        const kOut = next ? easeInOut(seg(time, next.from, next.from + TRAVEL)) : 0;
 
-        // Before its window the beat has not been reached; once the next one is
-        // established it is behind the camera.
+        // Outside its own window a beat is either not here yet or already gone.
         if (time < from - 0.05) return null;
         if (next && time > next.from + TRAVEL + 0.05) return null;
 
-        // Opacity only dips far enough to hide the handover, never to black.
-        const opacity = clamp01(arrive * (1 - leave));
+        // Exactly complementary: at any instant this beat and its neighbour sum
+        // to 1, so two beats are never both readable.
+        const opacity = clamp01(kIn * (1 - kOut));
 
-        // The incoming beat rises and settles; the outgoing one drifts back.
-        const rise = (1 - arrive) * 60;
-        const sink = leave * -46;
-        const scale = 0.965 + 0.035 * arrive;
+        // A directional push, not a zoom.
+        //
+        // The previous version scaled each incoming beat from 0.965 to 1 while
+        // the camera was also scaling the whole frame, so every handover zoomed
+        // twice at different rates. On screen that reads as a mistake, and it was
+        // the "weird zoom" in the transitions.
+        //
+        // Now the incoming beat slides in from the right and the outgoing one
+        // continues to the left: both move the same way, matching the camera's
+        // own left-to-right drift, so the handover reads as the camera panning
+        // past a boundary rather than a picture replacing another.
+        const enterX = (1 - kIn) * SLIDE;
+        const exitX = -kOut * SLIDE;
+
+        // Two planes, not one. The scene's own wallpaper moves at 40% of the
+        // slide and its content at 100%, so the handover has depth: the near
+        // layer outruns the far one, which is what a camera moving past a
+        // boundary actually does. A single flat slide read as one sheet of paper.
+        const drift = enterX + exitX;
 
         return (
           <div
@@ -102,13 +134,23 @@ export default function Timeline() {
               position: 'absolute',
               inset: 0,
               opacity,
-              transform: `translate3d(0, ${rise + sink}px, 0) scale(${scale})`,
+              // The far plane: the scene drifts, but less than its content.
+              transform: `translate3d(${drift * 0.4}px, 0, 0)`,
               willChange: 'transform, opacity',
             }}
           >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                // The near plane: content travels the full distance.
+                transform: `translate3d(${drift * 0.6}px, 0, 0)`,
+              }}
+            >
             <SceneBoundary id={id}>
               <C t={time - from} start={from} end={to} global={time} />
             </SceneBoundary>
+            </div>
           </div>
         );
       })}

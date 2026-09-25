@@ -196,7 +196,7 @@ export default function SceneProblem({ t, global }) {
             transform: `translateY(${(1 - easeOut(seg(t, 3.0, 3.75))) * 20}px)`,
           }}
         >
-          Selisihnya bukan sedikit — ini bedanya CPU dan chip grafis.
+          Selisihnya jauh. Yang mengerjakan bukan bagian yang sama.
         </div>
       </div>
     </div>

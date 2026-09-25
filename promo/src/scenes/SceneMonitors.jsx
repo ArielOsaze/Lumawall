@@ -30,7 +30,7 @@ export default function SceneMonitors({ t, global }) {
         style={{
           position: 'absolute',
           inset: '-6%',
-          opacity: 0.3,
+          opacity: 0.42,
           transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
         }}
       >
@@ -41,7 +41,7 @@ export default function SceneMonitors({ t, global }) {
           position: 'absolute',
           inset: 0,
           background:
-            'radial-gradient(80% 70% at 50% 50%, rgba(7,7,10,.70) 0%, rgba(7,7,10,.88) 100%)',
+            'radial-gradient(80% 70% at 50% 50%, rgba(7,7,10,.58) 0%, rgba(7,7,10,.80) 100%)',
         }}
       />
       <Aurora t={t} accent="#3ad0e0" intensity={0.13} />
@@ -99,7 +99,7 @@ export default function SceneMonitors({ t, global }) {
               transform: `translateY(${(1 - easeOut(seg(t, 0.9, 1.6))) * 16}px)`,
             }}
           >
-            Tiap monitor diatur sendiri — termasuk profil yang bisa disimpan.
+            Tiap monitor punya pengaturannya sendiri, dan susunannya bisa disimpan.
           </div>
         </div>
 

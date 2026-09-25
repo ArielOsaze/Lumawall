@@ -230,6 +230,20 @@ const leftovers = await evalJs(`(() => {
 })()`);
 
 if (leftovers.length) fail('removed effects came back: ' + leftovers.join(', '));
+
+// The download button must not carry a version number. It dates the page and
+// makes an up-to-date build look stale.
+const versionedButtons = await evalJs(`(() => {
+  const out = [];
+  document.querySelectorAll('a[download]').forEach(a => {
+    const t = (a.textContent || '').trim();
+    if (/\d+\.\d+/.test(t)) out.push(t.slice(0, 40));
+  });
+  return out;
+})()`);
+if (versionedButtons.length) {
+  fail('download button(s) carry a version number: ' + versionedButtons.join(' | '));
+}
 if (after.hidden.length) fail(after.hidden.length + ' element(s) stayed invisible');
 if (!after.downloads.length) fail('no download links');
 

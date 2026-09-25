@@ -102,7 +102,7 @@ mkdirSync(dirname(OUT), { recursive: true });
 // final path held a growing fragment: a deploy during that window published a
 // 48-byte file that still returned 200 with Content-Type: video/mp4, so every
 // automated check passed while the video was empty.
-const TMP_OUT = OUT + '.part';
+const TMP_OUT = OUT.replace(/\.mp4$/i, '') + '.part.mp4';
 
 const ff = spawn('ffmpeg', [
   '-y',
@@ -121,6 +121,11 @@ const ff = spawn('ffmpeg', [
 
 let ffErr = '';
 ff.stderr.on('data', (d) => { ffErr += d.toString(); });
+
+// Without this, ffmpeg exiting mid-render raises an unhandled 'error' on the
+// stdin pipe and the process dies with a stack trace, hiding ffmpeg's own
+// message - which is the part that says what actually went wrong.
+ff.stdin.on('error', () => {});
 
 const ffDone = new Promise((res) => ff.on('close', (code) => res(code)));
 

@@ -47,7 +47,7 @@ export default function SceneIntro({ t, global }) {
           position: 'absolute',
           inset: 0,
           background:
-            'radial-gradient(62% 48% at 50% 46%, rgba(7,7,10,.78) 0%, rgba(7,7,10,.52) 52%, rgba(7,7,10,.30) 100%)',
+            'radial-gradient(58% 46% at 50% 47%, rgba(7,7,10,.70) 0%, rgba(7,7,10,.40) 54%, rgba(7,7,10,.20) 100%)',
         }}
       />
       <div
@@ -55,7 +55,7 @@ export default function SceneIntro({ t, global }) {
           position: 'absolute',
           inset: 0,
           background:
-            'linear-gradient(180deg, rgba(7,7,10,.55) 0%, rgba(7,7,10,.18) 35%, rgba(7,7,10,.22) 70%, rgba(7,7,10,.62) 100%)',
+            'linear-gradient(180deg, rgba(7,7,10,.44) 0%, rgba(7,7,10,.12) 34%, rgba(7,7,10,.16) 68%, rgba(7,7,10,.50) 100%)',
         }}
       />
       <Aurora t={t} intensity={0.14} />
@@ -117,7 +117,7 @@ export default function SceneIntro({ t, global }) {
             transform: `translateY(${(1 - subIn) * 18}px)`,
           }}
         >
-          Video berjalan di desktop, didecode GPU, dan berhenti sendiri saat kamu main game.
+          Video berjalan di desktop, diproses chip grafis, dan berhenti saat kamu main game.
         </div>
       </div>
     </div>

@@ -165,13 +165,30 @@ p { text-wrap: pretty; }
   flex: none;
 }
 
-.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary {
+  /* The primary action must win against whatever is behind it. The hero puts it
+     over artwork, so it carries a brighter fill, a light edge and a deeper
+     shadow than a flat button would need. */
+  background: linear-gradient(180deg, #ff5068 0%, #e8283f 100%);
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, .16) inset,
+    0 12px 32px -10px rgba(255, 59, 87, .75),
+    0 2px 8px rgba(0, 0, 0, .5);
+}
 .btn-primary:hover { background: #ff5468; }
 
 .btn-ghost {
-  background: transparent;
-  border-color: var(--line);
+  /* Visible as the second choice, not invisible. A 1px border at low alpha
+     vanished on dark displays, so the edge and the text are both lifted. */
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .22);
   color: var(--ink);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .34);
 }
 .btn-ghost:hover { border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .03); }
 
@@ -224,7 +241,14 @@ p { text-wrap: pretty; }
 .hero-bg img {
   width: 100%; height: 100%;
   object-fit: cover;
-  opacity: .24;
+  /* Which part of the source survives the crop. The source is a portrait
+     wallpaper; covering a wide, short band with default centring sliced the top
+     of the character's head off and pushed her against the right edge. The
+     focal point sits in the right third, clear of the type. */
+  /* The image is composed for this slot: subject right, dark ramp on the left
+     for the type. No object-position guesswork. */
+  object-position: 62% 46%;
+  opacity: .82;
 }
 
 /* The scrim keeps the headline readable over any wallpaper. A plain vertical
@@ -233,12 +257,30 @@ p { text-wrap: pretty; }
 .hero-scrim {
   position: absolute;
   inset: 0;
+  /* Lighter than before, because the image carries its own left-hand ramp. The
+     bottom fade still runs into the page background so the section has no edge. */
   background:
-    linear-gradient(180deg, rgba(8,10,12,.5) 0%, rgba(8,10,12,.85) 55%, var(--base) 100%),
-    linear-gradient(90deg, var(--base) 0%, rgba(8,10,12,.55) 58%, rgba(8,10,12,.25) 100%);
+    linear-gradient(180deg, rgba(8,10,12,.16) 0%, rgba(8,10,12,.42) 64%, var(--base) 100%),
+    linear-gradient(90deg, rgba(8,10,12,.62) 0%, rgba(8,10,12,.22) 46%, rgba(8,10,12,0) 100%);
 }
 
 .hero-in { position: relative; z-index: 1; }
+
+/* The hero image is composed at 2:1. On a wider band than that it gets cropped
+   from the sides, and on a narrower one from the top and bottom, so the anchor
+   has to move with the shape. Ultrawide keeps the character in frame; a phone
+   needs her near the top, where the band still has height. */
+@media (min-aspect-ratio: 21/9) {
+  .hero-bg img { object-position: 62% 40%; }
+}
+@media (max-width: 700px) {
+  .hero-bg img {
+    object-position: 78% 22%;
+    opacity: .46;
+  }
+  .hero { padding-block: 3.5rem 4rem; }
+  .hero h1 { font-size: clamp(1.9rem, 8.4vw, 2.6rem); }
+}
 
 .hero h1 { max-width: 22ch; }
 .hero h1 .accent { color: var(--accent); }
@@ -248,8 +290,8 @@ p { text-wrap: pretty; }
   /* Over the wallpaper rather than flat colour: a busy image reduces apparent
      legibility at the same measured contrast, so this is brighter than the
      shared muted tone and carries a faint shadow for separation. */
-  color: #b9c0c7;
-  text-shadow: 0 1px 12px rgba(6, 6, 9, .55);
+  color: #ccd2d8;
+  text-shadow: 0 1px 14px rgba(6, 6, 9, .7);
 }
 
 .hero-cta {
@@ -438,6 +480,20 @@ p { text-wrap: pretty; }
   .video-cover-title { font-size: 1rem; }
   .video-cover-sub { font-size: .8125rem; }
 }
+
+/* The next step for a reader whose question is not in the list. */
+.faq-more {
+  margin-top: 1.5rem;
+  font-size: .9375rem;
+  color: var(--ink-subtle);
+}
+.faq-more a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .2s;
+}
+.faq-more a:hover { color: var(--accent); }
 
 /* ─────────────── strip ─────────────── */
 .strip { border-block: 1px solid var(--line-soft); background: var(--surface); }
@@ -696,7 +752,33 @@ p { text-wrap: pretty; }
 }
 
 /* ─────────────── final cta ─────────────── */
-.cta-final { text-align: center; }
+/* The final call to action, with a wallpaper behind it. The image is dimmed
+   enough that the type stays readable but bright enough that the section does
+   not read as an empty black band. */
+.cta-final {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.cta-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .22;
+  pointer-events: none;
+  user-select: none;
+}
+.cta-final::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(72% 76% at 50% 46%, rgba(8,10,12,.62) 0%, rgba(8,10,12,.86) 70%, rgba(8,10,12,.95) 100%);
+}
+.cta-final .wrap { position: relative; z-index: 1; }
 .cta-final .lead { margin-inline: auto; }
 .cta-mark { width: 4rem; height: 4rem; margin: 0 auto 1.5rem; border-radius: 14px; }
 .cta-final .btn { margin-top: 2rem; }

@@ -96,7 +96,7 @@ export default function ScenePause({ t, global }) {
               color: '#fff',
             }}
           >
-            <SplitText text="Berhenti sendiri" t={t} delay={0.15} stagger={0.028} y={36} />
+            <SplitText text="Berhenti" t={t} delay={0.15} stagger={0.028} y={36} />
             <br />
             <SplitText text="saat tak terlihat." t={t} delay={0.85} stagger={0.032} y={36} />
           </div>
