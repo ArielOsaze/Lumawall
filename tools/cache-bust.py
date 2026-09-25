@@ -71,52 +71,64 @@ def main():
 
     for rel in WATCHED:
         src = os.path.join(SITE, rel)
+        folder, name = os.path.split(rel)
+        stem, ext = os.path.splitext(name)
+        folder_path = os.path.join(SITE, folder)
+
+        # Which versioned name does the html currently reference for this asset?
+        # It may be an OLD hash, which is exactly the state a re-render produces: the
+        # file on disk is new, the html still points at the previous version, and the
+        # old versioned file still exists. Treating "a versioned name exists" as "up
+        # to date" skipped the update and shipped a page pointing at the old video -
+        # the same failure this whole mechanism exists to prevent.
+        ref_re = re.compile(re.escape(stem) + r'\.([0-9a-f]{%d})' % HASH_LEN + re.escape(ext))
+        refs = ref_re.findall(html)
+        referenced = ref_re.search(html)
+        referenced_name = referenced.group(0) if referenced else None
+
         if not os.path.exists(src):
-            # A reference may point at the versioned name already; find it.
-            folder, name = os.path.split(rel)
-            stem, ext = os.path.splitext(name)
-            pattern = re.compile(re.escape(stem) + r'\.([0-9a-f]{%d})' % HASH_LEN + re.escape(ext) + '$')
-            candidates = [f for f in os.listdir(os.path.join(SITE, folder))
-                          if pattern.match(f)] if os.path.isdir(os.path.join(SITE, folder)) else []
-            if candidates:
-                print('  %-38s already versioned (%s)' % (rel, candidates[0]))
-                continue
+            # No base file. Either the html is already correct, or the asset is gone.
+            if referenced_name:
+                on_disk = os.path.join(folder_path, referenced_name)
+                if os.path.exists(on_disk):
+                    print('  %-38s up to date (%s)' % (rel, referenced_name))
+                    continue
+                print('  %-38s BROKEN - html points at %s, which does not exist'
+                      % (rel, referenced_name))
+                return 1
             print('  %-38s MISSING' % rel)
             continue
 
         want = versioned(rel, src)
         want_path = os.path.join(SITE, want)
 
-        # Is the html already pointing at the right versioned name?
-        if os.path.basename(want) in html:
+        if referenced_name == os.path.basename(want):
             print('  %-38s up to date' % rel)
             continue
 
         if check_only:
-            print('  %-38s STALE - needs %s' % (rel, os.path.basename(want)))
+            print('  %-38s STALE - html has %s, file needs %s'
+                  % (rel, referenced_name or '(unversioned)', os.path.basename(want)))
             continue
 
         # Copy (not move) so a reference elsewhere cannot break, then point the html
         # at the versioned copy.
         shutil.copy2(src, want_path)
-        html = html.replace(rel, want.replace(os.sep, '/'))
+        if referenced_name:
+            html = html.replace(referenced_name, want.replace(os.sep, '/'))
+        else:
+            html = html.replace(rel, want.replace(os.sep, '/'))
         moved.append((rel, want))
 
         # Any earlier versioned copy of this file is now dead weight: nothing in the
         # html references it, so it would sit in the deploy forever. A re-render
         # produces a new hash each time, and without this the assets folder
         # accumulates every past version.
-        folder, name = os.path.split(rel)
-        stem, ext = os.path.splitext(name)
-        stale_re = re.compile(re.escape(stem) + r'\.[0-9a-f]{%d}' % HASH_LEN + re.escape(ext) + '$')
-        folder_path = os.path.join(SITE, folder)
         if os.path.isdir(folder_path):
             for f in os.listdir(folder_path):
-                if stale_re.match(f) and f != os.path.basename(want):
-                    # Only remove it if the html does not mention it.
-                    if f not in html:
-                        os.remove(os.path.join(folder_path, f))
-                        print('    removed the superseded %s' % f)
+                if ref_re.fullmatch(f) and f != os.path.basename(want) and f not in html:
+                    os.remove(os.path.join(folder_path, f))
+                    print('    removed the superseded %s' % f)
 
     if check_only:
         stale = [l for l in moved]

@@ -385,7 +385,11 @@ console.log(`  size: ${(size / 1048576).toFixed(2)} MB`);
 console.log('');
 console.log('  versioning the asset URLs...');
 const { spawnSync } = await import('node:child_process');
-const cb = spawnSync('python', ['tools/cache-bust.py'], { cwd: root, encoding: 'utf8' });
+// Resolve the script against the repo root, not the cwd: render.mjs is launched
+// from promo/, so a relative 'tools/cache-bust.py' does not exist and the call
+// failed silently in the first version of this step.
+const cb = spawnSync('python', [join(root, 'tools', 'cache-bust.py')],
+                     { cwd: root, encoding: 'utf8' });
 if (cb.status !== 0) {
   console.error('  cache-bust failed - the deployed page would reference an unversioned file');
   console.error((cb.stdout || '') + (cb.stderr || ''));
