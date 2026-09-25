@@ -24,9 +24,10 @@ const exe = [
   'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
 ].find(existsSync);
 
+const port = 9500 + Math.floor(Math.random() * 400);
 const profile = mkdtempSync(join(tmpdir(), 'lw-journey-'));
 const chrome = spawn(exe, [
-  '--headless=new', '--remote-debugging-port=9474',
+  '--headless=new', `--remote-debugging-port=${port}`,
   `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
   '--hide-scrollbars', '--window-size=1440,900',
   URL,
@@ -34,7 +35,7 @@ const chrome = spawn(exe, [
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 await sleep(5000);
-const list = await (await fetch('http://127.0.0.1:9474/json/list')).json();
+const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
 const page = list.find(t => t.type === 'page' && !t.url.startsWith('devtools'));
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 let id = 0; const pending = new Map();
@@ -81,11 +82,17 @@ await step('1. di atas halaman', 'window.scrollTo(0,0)', 1200);
 await step('2. scroll ke video', `document.getElementById('video').scrollIntoView({block:'center'})`, 5000);
 await step('3. scroll menjauh', 'window.scrollTo(0,0)', 2500);
 const back = await step('4. scroll kembali', `document.getElementById('video').scrollIntoView({block:'center'})`, 5000);
+// Confirm the clock is moving, not just that paused reads false.
+const t1 = (await state())?.t ?? null;
+await sleep(1300);
+const t2 = (await state())?.t ?? null;
+const advancing = t1 !== null && t2 !== null && t2 > t1;
+console.log('  jam video maju setelah kembali   : ' + (advancing ? ('ya (' + t1 + ' -> ' + t2 + ')') : 'TIDAK'));
 
 console.log();
 const played = results[1].paused === false;
 const stopped = results[2].paused === true;
-const resumed = back.paused === false && back.t > results[2].t;
+const resumed = back.paused === false && advancing;
 console.log('  video main saat terlihat       : %s', played ? 'ya' : 'TIDAK');
 console.log('  berhenti saat keluar layar     : %s', stopped ? 'ya' : 'TIDAK');
 console.log('  main lagi saat kembali         : %s', resumed ? 'ya' : 'TIDAK');
