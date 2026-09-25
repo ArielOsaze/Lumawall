@@ -13,14 +13,17 @@ import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
 const TOTAL = 52;
 const FONT = '"Plus Jakarta Sans", sans-serif';
 
-function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0, depth }) {
+function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 }) {
   const k = easeOutExpo(seg(t, delay, delay + 1.5));
   const width = (to / max) * 100 * k;
   const bad = color === '#ff3b57';
-  const p = parallax(t + delay, TOTAL, depth, 34);
 
+  // No per-bar parallax. The two bars carried different depths (1.0 and 0.7), so the
+  // camera's drift moved them apart by a few dozen pixels - and a comparison whose
+  // two halves slide relative to each other misreads the thing it is comparing. The
+  // bars have to stay on a common axis.
   return (
-    <div style={{ flex: 1, transform: `translate3d(${p.x}px, ${p.y}px, 0)` }}>
+    <div style={{ flex: 1 }}>
       <div
         style={{
           display: 'flex',
@@ -157,7 +160,6 @@ export default function SceneProblem({ t, global }) {
             color="#ff3b57"
             label="Tanpa LumaWall"
             sub="Software decode, semuanya di core CPU"
-            depth={1.0}
           />
           <Bar
             t={t}
@@ -167,7 +169,6 @@ export default function SceneProblem({ t, global }) {
             color="#35e07a"
             label="Dengan LumaWall"
             sub="Hardware decode, ditangani blok GPU"
-            depth={0.7}
           />
         </div>
 

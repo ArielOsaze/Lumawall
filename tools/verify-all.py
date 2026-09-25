@@ -21,6 +21,8 @@ CHECKS = [
      ['python', 'tools/check-app-text.py']),
     ('no button can show the Aero blue hover',
      ['python', 'tools/verify-no-aero-hover.py']),
+    ('the hover that is there is visible on screen',
+     ['python', 'tools/verify-hover.py']),
     ('the whip blur matches the motion',
      ['python', 'tools/check-whip-blur.py']),
     ('transitions never double-expose',

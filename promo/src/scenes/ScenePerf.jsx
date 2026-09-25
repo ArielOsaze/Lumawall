@@ -12,10 +12,15 @@ import { seg, easeOut, parallax } from '../anim.js';
 const TOTAL = 52;
 const FONT = '"Plus Jakarta Sans", sans-serif';
 
-function Stat({ t, label, to, decimals, suffix, color, delay, sub, depth }) {
+function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
   const k = easeOut(seg(t, delay, delay + 0.7));
-  const p = parallax(t + delay, TOTAL, depth, 30);
 
+  // No parallax on these. Each card used to carry its own depth (1.0, 0.8, 0.6),
+  // which meant the camera's leftward drift moved them by different amounts: the
+  // CPU card travelled 132 px while the RAM card travelled 106, so the row came
+  // apart and the first card was pushed off the left edge entirely - it was never
+  // once fully visible in the finished render. These are measured figures; they
+  // have to stay where they can be read.
   return (
     <div
       style={{
@@ -25,7 +30,7 @@ function Stat({ t, label, to, decimals, suffix, color, delay, sub, depth }) {
         border: '1px solid rgba(255,255,255,.09)',
         background: 'rgba(255,255,255,.028)',
         opacity: k,
-        transform: `translate3d(${p.x}px, ${p.y + (1 - k) * 26}px, 0)`,
+        transform: `translate3d(0, ${(1 - k) * 26}px, 0)`,
       }}
     >
       <div
@@ -111,11 +116,11 @@ export default function ScenePerf({ t, global }) {
 
         <div style={{ display: 'flex', gap: 20 }}>
           <Stat t={t} label="CPU" to={0.9} decimals={1} suffix="%" color="#35e07a" delay={0.7}
-                sub="Dari 12 core, tiga wallpaper 1080p" depth={1.0} />
+                sub="Dari 12 core, tiga wallpaper 1080p" />
           <Stat t={t} label="RAM" to={153} decimals={0} suffix=" MB" color="#3ad0e0" delay={0.85}
-                sub="Seluruh proses, tiga monitor" depth={0.8} />
+                sub="Seluruh proses, tiga monitor" />
           <Stat t={t} label="Resume" to={141} decimals={0} suffix=" ms" color="#ff3b57" delay={1.0}
-                sub="Dari game ditutup sampai jalan lagi" depth={0.6} />
+                sub="Dari game ditutup sampai jalan lagi" />
         </div>
 
         <div
