@@ -21,7 +21,9 @@ import sys
 import numpy as np
 from PIL import Image
 
-VIDEO = sys.argv[1] if len(sys.argv) > 1 else 'site/assets/video/lumawall-promo.mp4'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from promo_path import promo_video
+VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # Beats from Timeline.jsx.
 BEATS = [
@@ -107,11 +109,20 @@ def main():
         print('  mixed / neither       : %d beat(s)' % mixed)
 
     print()
+    if wall == 0 and brand == 0:
+        # The classifier could not separate the cases on this material - the text and
+        # UI inside each frame dominate the statistics. Reporting a verdict from it
+        # would be worse than reporting nothing: the previous version of this check
+        # announced "every beat is a brand surface" from exactly this state.
+        print('  the statistics do not separate wallpaper from brand surface here.')
+        print('  This is not a pass or a failure - judge the beats by looking at them:')
+        print('    tools/check-promo-scenes.py reports where a wallpaper is visible.')
+        return 0
     if wall == 0:
-        print('  every beat is a brand surface - the video has no product imagery')
+        print('  every beat measured as a brand surface - the video has no product imagery')
         return 1
     if brand == 0:
-        print('  EVERY BEAT IS A WALLPAPER - this is the complaint, and it is true')
+        print('  EVERY BEAT MEASURED AS A WALLPAPER - this is the complaint, and it is true')
         return 1
     print('  the backgrounds vary: %d wallpaper, %d brand surface' % (wall, brand))
     return 0

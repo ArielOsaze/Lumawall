@@ -19,7 +19,9 @@ import sys
 import numpy as np
 from PIL import Image
 
-VIDEO = sys.argv[1] if len(sys.argv) > 1 else 'site/assets/video/lumawall-promo.mp4'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from promo_path import promo_video
+VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # One sample in the middle of each beat, from Timeline.jsx.
 #   intro 0-6.4  problem 6.4-13.6  catalog 13.6-21.4  monitors 21.4-29.4

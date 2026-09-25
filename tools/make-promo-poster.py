@@ -19,7 +19,9 @@ import sys
 
 from PIL import Image
 
-VIDEO = 'site/assets/video/lumawall-promo.mp4'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from promo_path import promo_video
+VIDEO = promo_video() or 'site/assets/video/lumawall-promo.mp4'
 OUT = 'site/assets/shots/poster-promo.png'
 
 # The beats, from Timeline.jsx:

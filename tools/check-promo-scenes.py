@@ -8,9 +8,12 @@ Run:  python tools/check-promo-scenes.py site/assets/video/lumawall-promo.mp4
 """
 
 import subprocess
+import os
 import sys
 
-VIDEO = sys.argv[1] if len(sys.argv) > 1 else 'site/assets/video/lumawall-promo.mp4'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from promo_path import promo_video
+VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # Beat windows, taken from Timeline.jsx.
 BEATS = [

@@ -21,6 +21,7 @@ Usage:
 """
 
 import argparse
+import os
 import subprocess
 import sys
 
@@ -52,12 +53,20 @@ def score(buf):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('video')
+    ap.add_argument('video', nargs='?', default=None)
     ap.add_argument('--fps', type=float, default=4, help='sampling rate for the scan')
     ap.add_argument('--expect', type=float, default=None, help='expected duration in seconds')
     ap.add_argument('--brightness', type=float, default=12.0)
     ap.add_argument('--edges', type=float, default=1.2)
     args = ap.parse_args()
+    if not args.video:
+        # The promo's filename carries a content hash now, so the path is resolved
+        # rather than passed in.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from promo_path import promo_video
+        args.video = promo_video()
+        if not args.video:
+            raise SystemExit('no promo video found in site/assets/video')
 
     raw = load_gray(args.video, args.fps)
     size = W * H
