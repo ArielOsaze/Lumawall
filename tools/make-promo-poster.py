@@ -1,15 +1,14 @@
-"""make-promo-poster.py — builds the promo video's poster frame.
+"""make-promo-poster.py — the video's poster frame, taken from the video itself.
 
-Why not a wallpaper: the video block sits in the centre of the page, and a
-full-frame wallpaper puts its subject (a character) off to one side, leaving the
-middle empty. A poster should have its weight in the middle, where the play
-control and the title sit on top of it.
+The old poster was a three-panel collage of wallpaper stills with no product in it.
+A reviewer's verdict was blunt and correct: "too generic, no branding, no hint of
+the product - it functions as a decorative background rather than a promotional
+tool". The video block autoplays, so the poster is what a visitor sees before the
+first frame decodes, and it is what they see for the whole time they are on the page
+if autoplay is blocked. It has to say what the product is.
 
-The poster is composed from the real wallpaper clips the app ships, so it shows
-the product's actual content. Each panel is checked for the artist's watermark
-that appears in some frames of some clips, and a clean frame is chosen
-automatically - republishing someone's signature as our poster would be both a
-credit problem and a visible blemish.
+The right source is the video. Taking the frame from the finished render also means
+the still and the video can never disagree about the product's appearance.
 
 Run:  python tools/make-promo-poster.py
 """
@@ -18,94 +17,74 @@ import os
 import subprocess
 import sys
 
+from PIL import Image
+
+VIDEO = 'site/assets/video/lumawall-promo.mp4'
 OUT = 'site/assets/shots/poster-promo.png'
-W, H = 1920, 1080
 
-# Candidate stills per clip. Several frames are offered per clip so a watermarked
-# one can be skipped.
-CANDIDATES = {
-    'raiden': ['f020', 'f034', 'f048'],
-    'astra':  ['f020', 'f034', 'f048'],
-    'albedo': ['f020', 'f034', 'f048'],
-}
-
-# Where a watermark would sit if present: the bottom-right of each source frame.
-# Measured as local contrast against the surrounding pixels - a watermark is a
-# small bright mark on otherwise smooth art.
-def watermark_score(path):
-    r = subprocess.run(
-        ['ffmpeg', '-v', 'error', '-i', path,
-         '-vf', 'crop=260:160:iw-280:ih-180,scale=65:40,format=gray',
-         '-f', 'rawvideo', '-'],
-        capture_output=True,
-    )
-    raw = r.stdout
-    if not raw:
-        return 999.0
-    n = len(raw)
-    mean = sum(raw) / n
-    # Count how many pixels are far brighter than the local average: a signature
-    # is a small cluster of such pixels.
-    bright = sum(1 for b in raw if b > mean + 46)
-    return bright / n * 100
-
-
-def pick_clean(clip):
-    best, best_score = None, None
-    for stem in CANDIDATES[clip]:
-        path = 'promo/frames/%s/%s.webp' % (clip, stem)
-        if not os.path.exists(path):
-            continue
-        score = watermark_score(path)
-        if best_score is None or score < best_score:
-            best, best_score = path, score
-    return best, best_score
-
-
-picks = []
-for clip in CANDIDATES:
-    path, score = pick_clean(clip)
-    if not path:
-        raise SystemExit('no frames for %s - run: python tools/extract-clips.py' % clip)
-    print('  %-8s %s  (watermark score %.2f)' % (clip, path.split('/')[-1], score))
-    picks.append(path)
-
-inputs = []
-for p in picks:
-    inputs += ['-i', p]
-
-filter_complex = (
-    '[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[p0];'
-    '[1:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[p1];'
-    '[2:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[p2];'
-    '[p0][p1][p2]hstack=inputs=3[stack];'
-    '[stack]scale=%d:%d,'
-    'eq=brightness=-0.06:contrast=1.08:saturation=0.94,'
-    'drawbox=x=0:y=0:w=%d:h=%d:color=black@0.30:t=fill,'
-    'vignette=PI/4,'
-    'format=rgb24[out]'
-) % (
-    W // 3, H, W // 3, H,
-    W // 3, H, W // 3, H,
-    W // 3, H, W // 3, H,
-    W, H,
-    W, H,
-)
-
-cmd = [
-    'ffmpeg', '-v', 'error', '-y',
-    *inputs,
-    '-filter_complex', filter_complex,
-    '-map', '[out]',
-    '-frames:v', '1',
-    OUT,
+# The beats, from Timeline.jsx:
+#   intro 0.0-6.4   problem 6.4-13.6   catalog 13.6-21.4   monitors 21.4-29.4
+#   pause 29.4-38.2   perf 38.2-45.4   outro 45.4-52
+# A poster has to show the product working, so the app and monitor beats are the
+# candidates. The monitor beat is the product's whole point: several screens, each
+# with its own wallpaper.
+CANDIDATES = [
+    (25.0, 'monitors', 'three screens, three wallpapers'),
+    (26.5, 'monitors', 'later in the beat, camera settled'),
+    (27.5, 'monitors', 'near the end of the beat'),
+    (17.0, 'catalog',  'the app UI with its wallpaper grid'),
+    (33.0, 'pause',    'the app with the pause state visible'),
 ]
 
-print('  building the poster from clean wallpaper stills...')
-r = subprocess.run(cmd, capture_output=True, text=True)
-if r.returncode != 0:
-    print('  ffmpeg failed:')
-    print('   ', r.stderr.strip()[:600])
-    sys.exit(1)
 
-print('  %s  (%d bytes, %dx%d)' % (OUT, os.path.getsize(OUT), W, H))
+def grab(t):
+    tmp = os.path.join('build', '_poster_frame.png')
+    subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', VIDEO,
+                    '-frames:v', '1', '-y', tmp], capture_output=True)
+    return Image.open(tmp).convert('RGB') if os.path.exists(tmp) else None
+
+
+def main():
+    if not os.path.exists(VIDEO):
+        print('  no video at %s' % VIDEO)
+        return 1
+
+    print('  candidate frames from the finished render:')
+    frames = []
+    for t, beat, why in CANDIDATES:
+        im = grab(t)
+        if im is None:
+            print('    t=%-5s could not read' % t)
+            continue
+        small = im.resize((160, 90))
+        px = list(small.getdata())
+        mean = sum(sum(c) for c in px) / (len(px) * 3)
+        # How much of the frame is not near-black? A poster that is mostly black
+        # reads as an empty box in a link preview.
+        lit = sum(1 for c in px if sum(c) > 90) / len(px)
+        frames.append((t, beat, why, im, mean, lit))
+        print('    t=%-5s %-9s brightness %5.1f  lit %3.0f%%  %s'
+              % (t, beat, mean, lit * 100, why))
+
+    if not frames:
+        print('  no frames could be read')
+        return 1
+
+    # Prefer the monitor beat: it shows the product doing the thing the page claims,
+    # and it is bright enough to work as a thumbnail. Fall back to the brightest
+    # frame if that beat is not readable.
+    pick = next((f for f in frames if f[1] == 'monitors' and 25 < f[4] < 140), None)
+    if pick is None:
+        pick = max(frames, key=lambda f: f[5])
+    t, beat, why, im, mean, lit = pick
+
+    im.save(OUT)
+    print()
+    print('  poster written: %s' % OUT)
+    print('    from t=%.1fs, the %s beat - %s' % (t, beat, why))
+    print('    %dx%d, %d bytes' % (im.width, im.height, os.path.getsize(OUT)))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

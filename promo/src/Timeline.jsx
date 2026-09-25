@@ -232,9 +232,34 @@ export default function Timeline() {
                   transform: `translate3d(${(-tx * 0.14).toFixed(1)}px, ${(-ty * 0.14).toFixed(1)}px, 0)`,
                 }}
               >
-                <SceneBoundary id={id}>
-                  <C t={time - from} start={from} end={to} global={time} />
-                </SceneBoundary>
+                {/* The scene is laid out against the FRAME, not against the
+                    bleed box. Percentage insets resolve against the containing
+                    block, so the box above is 1920 x 1.32 = 2534 wide, and a
+                    scene that pads by 130 px expecting a 1920-wide frame ends
+                    up with its first element starting at -177. That is what
+                    pushed the Perf scene's CPU card off the left edge, and the
+                    same arithmetic clipped every other scene's left margin.
+
+                    This wrapper pulls the layout box back to the frame's own
+                    size, centred in the bleed, so scenes can be written against
+                    1920 x 1080 and stay there whatever the bleed is. */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    // The offset is a share OF THE BOX, not of the frame: the
+                    // wrapper has to sit exactly one bleed inside the box, and
+                    // the box is (1 + 2*BLEED) times the frame. Using BLEED
+                    // directly put it 98 px right of centre.
+                    left: `${(BLEED / (1 + 2 * BLEED)) * 100}%`,
+                    top: `${(BLEED / (1 + 2 * BLEED)) * 100}%`,
+                    width: `${100 / (1 + 2 * BLEED)}%`,
+                    height: `${100 / (1 + 2 * BLEED)}%`,
+                  }}
+                >
+                  <SceneBoundary id={id}>
+                    <C t={time - from} start={from} end={to} global={time} />
+                  </SceneBoundary>
+                </div>
               </div>
             </div>
           );
