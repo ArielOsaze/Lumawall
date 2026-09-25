@@ -3418,21 +3418,277 @@ namespace LumaWall
             return null;
         }
 
+        /// <summary>
+        /// Enables or disables "start with Windows".
+        ///
+        /// Two mechanisms are needed because the app ships both as a classic
+        /// installer and as an MSIX package:
+        ///
+        ///   * MSIX: writes to HKCU\...\Run are virtualised into the package's
+        ///     private hive. The value is stored, the toggle looks like it
+        ///     worked, and Windows never runs the app - the feature is silently
+        ///     broken. A packaged app must ask the StartupTask API instead, which
+        ///     also makes it appear in Settings > Apps > Startup.
+        ///
+        ///   * Classic install: there is no package identity, so the StartupTask
+        ///     API is unavailable and the Run key is the correct mechanism.
+        /// </summary>
         private static void SetStartup(bool enabled)
+        {
+            if (TrySetPackagedStartup(enabled)) return;
+            SetRegistryStartup(enabled);
+        }
+
+        // ── package identity ──────────────────────────────────────────────
+        private const int ERROR_INSUFFICIENT_BUFFER = 122;
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder packageFullName);
+
+        /// <summary>
+        /// True when the process runs with MSIX package identity.
+        ///
+        /// The call returns ERROR_INSUFFICIENT_BUFFER (and the required size)
+        /// exactly when a package identity exists; an unpackaged process reports
+        /// APPMODEL_ERROR_NO_PACKAGE instead.
+        /// </summary>
+        private static bool IsPackaged()
+        {
+            try
+            {
+                int length = 0;
+                return GetCurrentPackageFullName(ref length, null) == ERROR_INSUFFICIENT_BUFFER;
+            }
+            catch { return false; }
+        }
+
+        // ── WinRT activation through its ABI ──────────────────────────────
+        // The SDK projection cannot be consumed by this toolchain (see the class
+        // comment), so the API is reached through combase and raw vtable slots.
+        // The first parameter is an HSTRING handle, not a character pointer:
+        // marshalling a string here produces E_INVALIDARG before the class is
+        // even examined. Build the HSTRING with WindowsCreateString instead.
+        [DllImport("combase.dll")]
+        private static extern int RoGetActivationFactory(IntPtr activatableClassId, ref Guid iid, out IntPtr factory);
+
+        [DllImport("combase.dll", CharSet = CharSet.Unicode)]
+        private static extern int WindowsCreateString(string source, int length, out IntPtr hstring);
+
+        [DllImport("combase.dll")]
+        private static extern int WindowsDeleteString(IntPtr hstring);
+
+        // IIDs read from the Windows SDK header (windows.applicationmodel.h).
+        private static readonly Guid IID_IStartupTaskStatics = new Guid("ee5b60bd-a148-41a7-b26e-e8b88a1e62f8");
+        private static readonly Guid IID_IStartupTask = new Guid("f75c23c8-b5f2-4f6c-88dd-36cb1d599d17");
+
+        // vtable slots. IInspectable occupies 0..5 (IUnknown 0..2, then GetIids,
+        // GetRuntimeClassName, GetTrustLevel), so the first real method is 6.
+        private const int Slot_GetAsync = 7;              // IStartupTaskStatics
+        private const int Slot_RequestEnableAsync = 6;    // IStartupTask
+        private const int Slot_Disable = 7;               // IStartupTask
+        private const int Slot_get_State = 8;             // IStartupTask
+        private const int Slot_GetResults = 5;            // IAsyncOperation<T>
+        private const int Slot_get_Status = 6;            // IAsyncOperation<T>
+
+        /// <summary>
+        /// Activates a WinRT runtime class and returns its activation factory.
+        ///
+        /// The class name has to be passed as a real HSTRING; marshalling a C#
+        /// string into that parameter yields E_INVALIDARG.
+        /// </summary>
+        private static int ActivateFactory(string className, Guid iid, out IntPtr factory)
+        {
+            factory = IntPtr.Zero;
+            IntPtr classId = IntPtr.Zero;
+            try
+            {
+                if (WindowsCreateString(className, className.Length, out classId) != 0) return -1;
+                return RoGetActivationFactory(classId, ref iid, out factory);
+            }
+            finally
+            {
+                if (classId != IntPtr.Zero) WindowsDeleteString(classId);
+            }
+        }
+
+        private const int AsyncStatusCompleted = 1;
+
+        // StartupTaskState values.
+        private const int StartupDisabled = 0;
+        private const int StartupEnabled = 1;
+        private const int StartupDisabledByUser = 2;
+        private const int StartupDisabledByPolicy = 3;
+        private const int StartupEnabledByPolicy = 4;
+
+        private delegate int GetAsyncDelegate(IntPtr self, IntPtr taskId, out IntPtr operation);
+        private delegate int RequestEnableAsyncDelegate(IntPtr self, out IntPtr operation);
+        private delegate int DisableDelegate(IntPtr self);
+        private delegate int GetStateDelegate(IntPtr self, out int state);
+        private delegate int GetResultsDelegate(IntPtr self, out IntPtr result);
+
+        /// <summary>Invokes a vtable slot as a typed delegate.</summary>
+        private static T Vtable<T>(IntPtr obj, int slot) where T : class
+        {
+            IntPtr vtable = Marshal.ReadIntPtr(obj);
+            IntPtr fn = Marshal.ReadIntPtr(vtable, slot * IntPtr.Size);
+            return (T)(object)Marshal.GetDelegateForFunctionPointer(fn, typeof(T));
+        }
+
+        /// <summary>
+        /// Enables/disables the manifest's startupTask. Returns false when the
+        /// app is not packaged, so the caller can fall back to the registry.
+        /// </summary>
+        private static bool TrySetPackagedStartup(bool enabled)
+        {
+            if (!IsPackaged()) return false;
+
+            IntPtr factory = IntPtr.Zero, taskId = IntPtr.Zero, task = IntPtr.Zero;
+            try
+            {
+                Guid iid = IID_IStartupTaskStatics;
+                int hr = ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory);
+                if (hr != 0 || factory == IntPtr.Zero)
+                {
+                    AppLog.Write("StartupTask activation failed (hr=0x" + hr.ToString("X8") + "); using the Run key");
+                    return false;
+                }
+
+                if (WindowsCreateString("LumaWallStartup", 15, out taskId) != 0) return false;
+
+                IntPtr operation = IntPtr.Zero;
+                hr = Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation);
+                if (hr != 0 || operation == IntPtr.Zero)
+                {
+                    AppLog.Write("StartupTask.GetAsync failed (hr=0x" + hr.ToString("X8") + ")");
+                    return false;
+                }
+
+                hr = Resolve(operation, out task);
+                if (hr != 0 || task == IntPtr.Zero)
+                {
+                    AppLog.Write("StartupTask lookup returned nothing (hr=0x" + hr.ToString("X8") + ")");
+                    return false;
+                }
+
+                if (enabled)
+                {
+                    IntPtr op2 = IntPtr.Zero;
+                    hr = Vtable<RequestEnableAsyncDelegate>(task, Slot_RequestEnableAsync)(task, out op2);
+                    if (hr != 0 || op2 == IntPtr.Zero)
+                    {
+                        AppLog.Write("StartupTask.RequestEnableAsync failed (hr=0x" + hr.ToString("X8") + ")");
+                        return false;
+                    }
+                    IntPtr statePtr;
+                    hr = Resolve(op2, out statePtr);
+                    int state = hr == 0 ? statePtr.ToInt32() : -1;
+                    AppLog.Write("MSIX startup task requested; state=" + state);
+                    if (state == StartupDisabledByUser)
+                        AppLog.Write("Startup is disabled by the user in Windows settings and must be re-enabled there");
+                }
+                else
+                {
+                    hr = Vtable<DisableDelegate>(task, Slot_Disable)(task);
+                    AppLog.Write("MSIX startup task disabled (hr=0x" + hr.ToString("X8") + ")");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("StartupTask call failed (" + ex.Message + "); using the Run key");
+                return false;
+            }
+            finally
+            {
+                if (task != IntPtr.Zero) Marshal.Release(task);
+                if (factory != IntPtr.Zero) Marshal.Release(factory);
+                if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
+            }
+        }
+
+        /// <summary>
+        /// Waits for a WinRT IAsyncOperation and returns its result.
+        ///
+        /// GetResults blocks until the operation completes, but returns
+        /// E_ILLEGAL_METHOD_CALL while it is still running, so a bounded retry
+        /// loop keeps this safe from a synchronous caller without needing the
+        /// async completion handler machinery.
+        /// </summary>
+        private static int Resolve(IntPtr operation, out IntPtr result)
+        {
+            result = IntPtr.Zero;
+            for (int attempt = 0; attempt < 200; attempt++)   // up to ~10 s
+            {
+                try
+                {
+                    int hr = Vtable<GetResultsDelegate>(operation, Slot_GetResults)(operation, out result);
+                    if (hr == 0) return 0;
+                    // E_ILLEGAL_METHOD_CALL = still running.
+                    if (hr != unchecked((int)0x8000000EL)) return hr;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Write("Waiting for a WinRT operation failed: " + ex.Message);
+                    return -1;
+                }
+                System.Threading.Thread.Sleep(50);
+            }
+            AppLog.Write("WinRT operation timed out");
+            return -1;
+        }
+
+        /// <summary>
+        /// Classic (non-packaged) autostart via HKCU\...\Run.
+        ///
+        /// The value carries --background so a Windows-triggered launch goes
+        /// straight to the tray with the wallpaper already running, instead of
+        /// opening the window over whatever the user is doing at login.
+        /// </summary>
+        private static void SetRegistryStartup(bool enabled)
         {
             try
             {
                 using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", true))
                 {
+                    if (key == null) return;
                     if (enabled) key.SetValue("LumaWall", "\"" + Process.GetCurrentProcess().MainModule.FileName + "\" --background");
                     else key.DeleteValue("LumaWall", false);
                 }
             }
-            catch { }
+            catch (Exception ex) { AppLog.Write("Could not update the Run key: " + ex.Message); }
         }
 
         private static bool IsStartupEnabled()
         {
+            // Under MSIX the authoritative source is the startup task, not the
+            // (virtualised) registry value: reading the registry there reports
+            // the opposite of what Windows will actually do.
+            if (IsPackaged())
+            {
+                IntPtr factory = IntPtr.Zero, taskId = IntPtr.Zero, task = IntPtr.Zero;
+                try
+                {
+                    Guid iid = IID_IStartupTaskStatics;
+                    IntPtr operation = IntPtr.Zero;
+                    if (ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory) == 0 && factory != IntPtr.Zero &&
+                        WindowsCreateString("LumaWallStartup", 15, out taskId) == 0 &&
+                        Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation) == 0 &&
+                        Resolve(operation, out task) == 0 && task != IntPtr.Zero)
+                    {
+                        int state;
+                        if (Vtable<GetStateDelegate>(task, Slot_get_State)(task, out state) == 0)
+                            return state == StartupEnabled || state == StartupEnabledByPolicy;
+                    }
+                }
+                catch (Exception ex) { AppLog.Write("Could not read the startup task state: " + ex.Message); }
+                finally
+                {
+                    if (task != IntPtr.Zero) Marshal.Release(task);
+                    if (factory != IntPtr.Zero) Marshal.Release(factory);
+                    if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
+                }
+            }
+
             try
             {
                 using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", false))

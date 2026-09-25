@@ -117,7 +117,17 @@ namespace LumaWall
                         if (File.Exists(previous)) File.Delete(previous);
                         File.Move(LogPath, previous);
                     }
-                    File.AppendAllText(LogPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " [" + Process.GetCurrentProcess().Id + "] " + message + Environment.NewLine);
+                    // UTF-8 with an explicit encoder: the default overload picks
+                    // UTF-8 without a BOM, and wallpaper file names routinely
+                    // contain typographic characters (Albedo's -> U+2019) which
+                    // then render as mojibake in the log and make a real problem
+                    // impossible to diagnose from it.
+                    string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " [" + Process.GetCurrentProcess().Id + "] " + message + Environment.NewLine;
+                    using (var stream = new FileStream(LogPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                    using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                    {
+                        writer.Write(line);
+                    }
                 }
             }
             catch { }

@@ -96,3 +96,12 @@ LumaWall/*.bak
 LumaWall/fps-test-*.mp4
 tools/render-DISPLAY*.png
 tools/FullscreenCover.exe
+
+# ── signing material ──
+# The .pfx holds a private key. Only the public .cer belongs in the repository,
+# and even that is a development certificate - the Store re-signs the package
+# with the publisher's own certificate during submission.
+msix/*.pfx
+msix/*.pvk
+msix/*.snk
+*.pfx
