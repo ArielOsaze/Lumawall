@@ -97,6 +97,13 @@ console.log('  served :', URL);
 // ── ffmpeg ──────────────────────────────────────────────────────────────────
 mkdirSync(dirname(OUT), { recursive: true });
 
+// Encode to a temporary file, then move it into place once ffmpeg has exited
+// successfully. Writing straight to OUT meant that for the whole render the
+// final path held a growing fragment: a deploy during that window published a
+// 48-byte file that still returned 200 with Content-Type: video/mp4, so every
+// automated check passed while the video was empty.
+const TMP_OUT = OUT + '.part';
+
 const ff = spawn('ffmpeg', [
   '-y',
   '-f', 'image2pipe',
@@ -109,7 +116,7 @@ const ff = spawn('ffmpeg', [
   '-pix_fmt', 'yuv420p',
   '-movflags', '+faststart',
   '-r', String(FPS),
-  OUT,
+  TMP_OUT,
 ], { stdio: ['pipe', 'ignore', 'pipe'] });
 
 let ffErr = '';
@@ -248,6 +255,55 @@ await send('Emulation.setDeviceMetricsOverride', {
   width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false,
 }, sessionId);
 
+// Preload every wallpaper frame before capturing anything.
+//
+// The wallpaper clips are image sequences, and a <img> that has not decoded yet
+// renders as nothing. During a render, the frame index changes faster than the
+// images load, so without this the wallpaper would be blank in most frames — and
+// it would look like a bug in the video rather than in the renderer.
+{
+  const r = await send('Runtime.evaluate', {
+    expression: `(async () => {
+      const dirs = ['raiden','astra','albedo','i14'];
+      const urls = [];
+      for (const d of dirs) {
+        for (let i = 0; i < 60; i++) {
+          urls.push('./frames/' + d + '/f' + String(i).padStart(3, '0') + '.webp');
+        }
+      }
+      const results = await Promise.all(urls.map(u => new Promise(res => {
+        const img = new Image();
+        img.onload = () => res(true);
+        img.onerror = () => res(false);
+        img.src = u;
+      })));
+      const failed = urls.filter((u, i) => !results[i]);
+      return {
+        ok: urls.length - failed.length,
+        total: urls.length,
+        missing: failed.slice(0, 4),
+      };
+    })()`,
+    awaitPromise: true,
+    returnByValue: true,
+  }, sessionId);
+
+  const pre = r?.result?.value;
+  console.log('  frames :', pre.ok + '/' + pre.total, 'preloaded');
+
+  // Every wallpaper frame must load. If one is missing the component shows
+  // nothing, the wallpaper sits frozen, and the renderer still reports success —
+  // which is exactly how a promo for a moving wallpaper ended up containing a
+  // still one. Fail loudly instead.
+  if (pre.ok !== pre.total) {
+    console.error('');
+    console.error('  MISSING WALLPAPER FRAMES:', pre.missing.join(', '));
+    console.error('  The video would contain a frozen wallpaper. Run:');
+    console.error('    python tools/extract-clips.py');
+    process.exit(2);
+  }
+}
+
 console.log('  page   : ready');
 console.log('');
 
@@ -298,10 +354,14 @@ try { rmSync(profile, { recursive: true, force: true }); } catch { /* ignore */ 
 
 if (code !== 0) {
   console.error('\nffmpeg failed:\n' + ffErr.split('\n').slice(-18).join('\n'));
+  try { rmSync(TMP_OUT, { force: true }); } catch { /* ignore */ }
   process.exit(code || 1);
 }
 
-const { statSync } = await import('node:fs');
+// ffmpeg exited cleanly, so the temporary file is a complete video. Move it into
+// place; until this moment OUT either holds the previous good render or nothing.
+const { statSync, renameSync } = await import('node:fs');
+renameSync(TMP_OUT, OUT);
 const size = statSync(OUT).size;
 console.log('');
 console.log(`  done: ${OUT}`);

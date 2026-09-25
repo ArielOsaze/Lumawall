@@ -1,8 +1,15 @@
 /* LumaWall site behaviour.
-   Dependency-free: nav state, scroll reveal, kinetic text, count-up numbers,
-   and honest download handling. Everything degrades gracefully if this file
-   never loads — with JS off the page still reads, the numbers show their final
-   values, and every download link works. */
+   Small and dependency-free: nav state, one scroll reveal, video autoplay, and
+   honest download handling.
+
+   What was removed and why: this file used to split headlines into characters,
+   count numbers up from zero, and run a light sweep across labels. Each effect
+   is defensible alone, but together they made the page feel busy and cheap.
+   There is now exactly one animation — the same blur-and-rise reveal the rest
+   of the Xinet sites use — and it is driven entirely by CSS.
+
+   Everything degrades gracefully: with JavaScript off the page still reads,
+   every section is visible, and every download link works. */
 
 (function () {
   'use strict';
@@ -14,57 +21,15 @@
   var nav = document.getElementById('nav');
   var onScroll = function () {
     if (!nav) return;
-    nav.classList.toggle('scrolled', window.scrollY > 12);
+    nav.classList.toggle('scrolled', window.scrollY > 8);
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // ── split every headline into per-character spans ───────────────────────
-  // The reveal is what makes a headline feel written rather than switched on.
-  // Characters are wrapped in inline-block spans, so a headline with a gradient
-  // must paint that gradient per character (a parent background-clip does not
-  // reach through a transformed child).
-  function splitElement(el) {
-    if (el.dataset.split === 'done') return [];
-    var text = el.textContent;
-    var gradient = el.classList.contains('grad');
-
-    el.textContent = '';
-    el.dataset.split = 'done';
-    // The gradient needs to know how many characters the line has, so each
-    // character's slice of the background can be sized to the whole line.
-    el.style.setProperty('--ch-total', String(text.replace(/ /g, '').length));
-
-    var spans = [];
-    for (var i = 0; i < text.length; i++) {
-      var ch = text[i];
-      if (ch === ' ') {
-        el.appendChild(document.createTextNode(' '));
-        continue;
-      }
-      var span = document.createElement('span');
-      span.className = 'ch' + (gradient ? ' ch-grad' : '');
-      span.textContent = ch;
-      span.style.setProperty('--i', String(spans.length));
-      el.appendChild(span);
-      spans.push(span);
-    }
-    return spans;
-  }
-
-  if (!reduceMotion) {
-    document.querySelectorAll('[data-split]').forEach(function (el) {
-      splitElement(el);
-    });
-  }
-
-  // ── reveal sections as they enter the viewport ──────────────────────────
-  // The video block is deliberately excluded: it is the section most likely to
-  // be captured by a crawler or a screenshot tool, and a poster that is still
-  // faded out looks like a broken player.
-  var targets = document.querySelectorAll(
-    '.sec-head, .card, .shot, .dl-card, .note, .perf-row, .faq, .req, .table-wrap, .cta-mark, [data-split]'
-  );
+  // ── one reveal, applied to sections as they enter the viewport ───────────
+  // The hidden state lives in the .reveal class, which is added here — never in
+  // the base stylesheet. If this script never runs, nothing is hidden.
+  var revealTargets = document.querySelectorAll('[data-reveal]');
 
   if ('IntersectionObserver' in window && !reduceMotion) {
     var io = new IntersectionObserver(function (entries) {
@@ -73,63 +38,86 @@
         entry.target.classList.add('in');
         io.unobserve(entry.target);
       });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.1 });
 
-    targets.forEach(function (el, i) {
+    revealTargets.forEach(function (el) {
       el.classList.add('reveal');
-      // Stagger items inside the same grid so they cascade instead of popping
-      // in all at once. Capped so long lists do not feel slow.
-      el.style.transitionDelay = Math.min(i % 6, 5) * 55 + 'ms';
       io.observe(el);
+    });
+
+    // Anything already on screen reveals now rather than waiting for a scroll
+    // event that may never come. Without this, an element sitting just below the
+    // observer's -12% bottom margin (the hero's stat row, at most window sizes)
+    // stayed at opacity 0 until the visitor happened to scroll — and looked
+    // simply broken.
+    var fold = window.innerHeight * 0.92;
+    revealTargets.forEach(function (el) {
+      if (el.classList.contains('in')) return;
+      var r = el.getBoundingClientRect();
+      if (r.top < fold && r.bottom > 0) el.classList.add('in');
     });
   }
 
-  // ── count-up numbers ────────────────────────────────────────────────────
-  // A figure that counts to its value is read; a figure that appears is skimmed.
-  // The final value is always in the HTML, so with JS off nothing is lost.
-  function countUp(el) {
-    if (el.dataset.counted === 'done') return;
-    el.dataset.counted = 'done';
+  // ── the promo video plays on its own ────────────────────────────────────
+  // Muted and inline, which is what browsers allow without a gesture. If
+  // autoplay is refused the controls are already there, so the visitor can start
+  // it themselves; the poster frame means the block never looks broken.
+  var promo = document.getElementById('promo');
+  var cover = document.querySelector('.video-cover');
 
-    var target = parseFloat(el.dataset.count);
-    if (!isFinite(target)) return;
+  var hideCover = function () {
+    if (cover) cover.classList.add('is-hidden');
+  };
 
-    var decimals = parseInt(el.dataset.decimals || '0', 10);
-    var prefix = el.dataset.prefix || '';
-    var suffix = el.dataset.suffix || '';
-    var dur = parseInt(el.dataset.dur || '1400', 10);
-
-    if (reduceMotion) {
-      el.textContent = prefix + target.toFixed(decimals) + suffix;
-      return;
-    }
-
-    var start = null;
-    function step(now) {
-      if (start === null) start = now;
-      var t = Math.min(1, (now - start) / dur);
-      // easeOutExpo: fast then settling, which reads as counting.
-      var e = t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
-      el.textContent = prefix + (target * e).toFixed(decimals) + suffix;
-      if (t < 1) requestAnimationFrame(step);
-      else el.textContent = prefix + target.toFixed(decimals) + suffix;
-    }
-    requestAnimationFrame(step);
+  if (cover) {
+    // Clicking the cover starts the video and hands control to the native
+    // controls, so the visitor can then pause, seek and go fullscreen.
+    cover.addEventListener('click', function () {
+      var p = promo.play();
+      if (p && p.catch) p.catch(function () { /* refused; the cover stays */ });
+    });
   }
 
-  var counters = document.querySelectorAll('[data-count]');
-  if ('IntersectionObserver' in window && counters.length) {
-    var countObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        countUp(entry.target);
-        countObserver.unobserve(entry.target);
-      });
-    }, { threshold: 0.5 });
-    counters.forEach(function (el) { countObserver.observe(el); });
+  if (promo) {
+    promo.muted = true;
+    promo.playsInline = true;
+
+    // `playing`, not `play`. The `play` event fires as soon as play() is called,
+    // even if the browser then refuses autoplay, which hid the cover while the
+    // video sat at 0:00. `playing` fires only when frames are actually advancing,
+    // so the cover is present exactly when the video is not running.
+    promo.addEventListener('playing', hideCover);
+
+    // If the visitor pauses, bring the cover back so the block never reads as a
+    // broken still.
+    promo.addEventListener('pause', function () {
+      if (cover && !promo.ended) cover.classList.remove('is-hidden');
+    });
+
+    var tryPlay = function () {
+      var p = promo.play();
+      if (p && p.catch) p.catch(function () { /* refused; the controls remain */ });
+    };
+
+    // Start when the video is near the viewport rather than on load, so the
+    // first seconds are not spent playing to an empty section.
+    if ('IntersectionObserver' in window) {
+      var vio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          tryPlay();
+          vio.unobserve(entry.target);
+        });
+      }, { rootMargin: '200px' });
+      vio.observe(promo);
+    } else {
+      tryPlay();
+    }
   }
 
   // ── performance bars animate to their value when seen ──────────────────
+  // A bar that grows to its value is read; a bar that is simply there is
+  // skimmed. The value is in the markup, so with JS off the bar is correct.
   var bars = document.querySelectorAll('.bar-fill');
   if ('IntersectionObserver' in window && bars.length && !reduceMotion) {
     var barObserver = new IntersectionObserver(function (entries) {

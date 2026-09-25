@@ -1,35 +1,50 @@
-// SceneMonitors — one wallpaper per display, shown by moving real wallpaper art
-// into three monitor shapes.
+// SceneMonitors — three monitors, each playing a different wallpaper.
 //
-// The old version drew three rectangles with labels. Here the wallpaper images
-// physically fly into the monitor frames one after another, each slightly behind
-// the last, so the feature is shown happening rather than stated.
+// The wallpapers are genuinely moving: the frames come from the real clips the
+// app ships, driven by the render clock so they play smoothly and reproducibly.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
-import { seg, easeOut, easeOutBack } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, easeOutQuint, parallax } from '../anim.js';
+
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
 
 const MONITORS = [
-  { src: './shots/wallpaper-i14.png',     label: 'DISPLAY 1', delay: 0.85 },
-  { src: './shots/wallpaper-raiden.png',  label: 'DISPLAY 2', delay: 1.15 },
-  { src: './shots/wallpaper-acheron.png', label: 'DISPLAY 3', delay: 1.45 },
+  { clip: 'raiden', label: 'DISPLAY 1', delay: 0.7, depth: 0.55 },
+  { clip: 'astra',  label: 'DISPLAY 2', delay: 1.0, depth: 0.8 },
+  { clip: 'albedo', label: 'DISPLAY 3', delay: 1.3, depth: 1.05 },
 ];
 
-export default function SceneMonitors({ t, dur }) {
-  // A slow camera push for the whole scene. Without it the middle of the video
-  // sits still once the three monitors have arrived, which is what made the
-  // earlier cut feel dry.
-  const push = 1 + 0.035 * seg(t, 0, dur);
+export default function SceneMonitors({ t, global }) {
+  const head = parallax(global, TOTAL, 0.95, 26);
+  const bg = parallax(global, TOTAL, 0.26, 44);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-      }}
-    >
-      <Aurora t={t} accent="#3ad0e0" intensity={0.19} />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {/* The three monitors are the subject; this is a fourth wallpaper far
+          behind them, so the beat is not floating on black. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-6%',
+          opacity: 0.3,
+          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
+        }}
+      >
+        <WallpaperStage clip="i14" t={global} offset={5} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(80% 70% at 50% 50%, rgba(7,7,10,.70) 0%, rgba(7,7,10,.88) 100%)',
+        }}
+      />
+      <Aurora t={t} accent="#3ad0e0" intensity={0.13} />
 
       <div
         style={{
@@ -39,16 +54,21 @@ export default function SceneMonitors({ t, dur }) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 44,
-          transform: `scale(${push})`,
+          gap: 42,
         }}
       >
-        <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            textAlign: 'center',
+            transform: `translate3d(${head.x}px, ${head.y}px, 0)`,
+          }}
+        >
           <div
             style={{
-              fontFamily: '"Cascadia Mono", Consolas, monospace',
-              fontSize: 15,
-              letterSpacing: '.34em',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '.22em',
               textTransform: 'uppercase',
               color: '#3ad0e0',
               marginBottom: 16,
@@ -59,11 +79,11 @@ export default function SceneMonitors({ t, dur }) {
           </div>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 58,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: '-.02em',
+              fontFamily: FONT,
+              fontSize: 60,
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: '-.035em',
               color: '#fff',
             }}
           >
@@ -72,11 +92,11 @@ export default function SceneMonitors({ t, dur }) {
           <div
             style={{
               marginTop: 16,
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 23,
-              color: '#a8adb6',
-              opacity: seg(t, 1.0, 1.7),
-              transform: `translateY(${(1 - easeOut(seg(t, 1.0, 1.7))) * 16}px)`,
+              fontFamily: FONT,
+              fontSize: 22,
+              color: '#a8aeb8',
+              opacity: seg(t, 0.9, 1.6),
+              transform: `translateY(${(1 - easeOut(seg(t, 0.9, 1.6))) * 16}px)`,
             }}
           >
             Tiap monitor diatur sendiri — termasuk profil yang bisa disimpan.
@@ -85,69 +105,29 @@ export default function SceneMonitors({ t, dur }) {
 
         <div style={{ display: 'flex', gap: 34, marginTop: 6 }}>
           {MONITORS.map((m) => {
-            const k = easeOutBack(seg(t, m.delay, m.delay + 0.8), 1.05);
-            const ki = easeOut(seg(t, m.delay + 0.2, m.delay + 1.2));
+            const k = easeOutQuint(seg(t, m.delay, m.delay + 0.9));
+            const p = parallax(global, TOTAL, m.depth, 30);
             return (
               <div
                 key={m.label}
                 style={{
                   position: 'relative',
                   opacity: seg(t, m.delay, m.delay + 0.4),
-                  transform: `translateY(${(1 - k) * 70}px) scale(${0.86 + 0.14 * k})`,
+                  transform: `translate3d(${p.x}px, ${p.y + (1 - k) * 70}px, 0)
+                              scale(${(0.88 + 0.12 * k) * p.scale})`,
                 }}
               >
+                <WallpaperStage clip={m.clip} t={global} offset={m.delay} mode="monitor" width={430} />
                 <div
                   style={{
-                    width: 440,
-                    height: 248,
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    border: '2px solid #24262c',
-                    background: '#000',
-                    boxShadow: '0 30px 60px -24px rgba(0,0,0,.9)',
-                  }}
-                >
-                  <img
-                    src={m.src}
-                    alt=""
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      display: 'block',
-                      opacity: ki,
-                      transform: `scale(${1.18 - 0.18 * ki})`,
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    width: 76,
-                    height: 15,
-                    margin: '0 auto',
-                    background: 'linear-gradient(180deg,#2a2d34,#191b20)',
-                    borderRadius: '0 0 5px 5px',
-                  }}
-                />
-                <div
-                  style={{
-                    width: 168,
-                    height: 8,
-                    margin: '0 auto',
-                    background: 'linear-gradient(180deg,#22242a,#15161a)',
-                    borderRadius: 5,
-                  }}
-                />
-
-                <div
-                  style={{
-                    marginTop: 13,
+                    marginTop: 15,
                     textAlign: 'center',
-                    fontFamily: '"Cascadia Mono", Consolas, monospace',
-                    fontSize: 13,
-                    letterSpacing: '.16em',
-                    color: '#7d838d',
+                    fontFamily: FONT,
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    letterSpacing: '.12em',
+                    color: '#c3cbd3',
+                    textShadow: '0 2px 10px rgba(0,0,0,.75)',
                   }}
                 >
                   {m.label}

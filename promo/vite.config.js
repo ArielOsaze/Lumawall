@@ -2,20 +2,45 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { cpSync, existsSync, rmSync, readdirSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = resolve(here, '..', 'site');
+const frames = resolve(here, 'frames');
+const assets = resolve(site, 'assets');
 
 // The promo shows the real product assets: the shipped app icon, the UI captures
-// taken from the running application, and clean wallpaper renders. Those files
-// live in the site folder, and serving that folder directly (instead of copying
-// them in) means the video can never show a stale version of an asset.
+// taken from the running application, and the wallpaper clips. Serving the site's
+// asset folder directly (instead of copying it in) means the video can never show
+// a stale version of an asset.
 //
-// publicDir points at site/assets, so `./logo/app-logo.png` resolves to
-// site/assets/logo/app-logo.png - the exact file the website and the MSIX use.
+// The wallpaper frame sequences are the exception: they live in promo/frames
+// because they are 13 MB of intermediate render data that has no business on the
+// public site. A build hook copies them into the output so the renderer can load
+// them, and they never touch site/.
+function stageFrames() {
+  return {
+    name: 'stage-wallpaper-frames',
+    apply: 'build',
+    // `writeBundle` runs AFTER Vite has written the output. `buildStart` runs
+    // before it, and `emptyOutDir` then deletes whatever was copied there — the
+    // frames silently vanished and the renderer found 0/240 of them.
+    writeBundle() {
+      const out = resolve(here, 'dist', 'frames');
+      if (!existsSync(frames)) {
+        throw new Error('promo/frames is missing. Run: python tools/extract-clips.py');
+      }
+      rmSync(out, { recursive: true, force: true });
+      cpSync(frames, out, { recursive: true });
+      const n = existsSync(out) ? readdirSync(out).length : 0;
+      if (n === 0) throw new Error('staging wallpaper frames produced nothing');
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
-  publicDir: resolve(site, 'assets'),
+  plugins: [react(), stageFrames()],
+  publicDir: assets,
   server: {
     fs: { allow: [here, site] },
   },

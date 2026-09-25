@@ -1,17 +1,22 @@
-// ScenePerf — the measured numbers, counted up.
+// ScenePerf — the measured numbers, with a wallpaper playing behind them.
 //
-// The old version showed the performance screenshot as a static card. Here three
-// real measured figures count up one after another, so the claims are backed by
-// something moving on screen.
+// The statistics are the claim; the wallpaper behind them is the evidence that
+// the app is doing something while those numbers are true.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
 import CountUp from '../CountUp.jsx';
-import { seg, easeOut } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, parallax } from '../anim.js';
 
-function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
+
+function Stat({ t, label, to, decimals, suffix, color, delay, sub, depth }) {
   const k = easeOut(seg(t, delay, delay + 0.7));
+  const p = parallax(t + delay, TOTAL, depth, 30);
+
   return (
     <div
       style={{
@@ -21,15 +26,16 @@ function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
         border: '1px solid rgba(255,255,255,.09)',
         background: 'rgba(255,255,255,.028)',
         opacity: k,
-        transform: `translateY(${(1 - k) * 26}px)`,
+        transform: `translate3d(${p.x}px, ${p.y + (1 - k) * 26}px, 0)`,
       }}
     >
       <div
         style={{
-          fontFamily: '"Cascadia Mono", Consolas, monospace',
+          fontFamily: FONT,
           fontSize: 12,
-          letterSpacing: '.2em',
-          color: '#7d838d',
+          fontWeight: 700,
+          letterSpacing: '.16em',
+          color: '#7a838c',
           textTransform: 'uppercase',
           marginBottom: 12,
         }}
@@ -38,42 +44,40 @@ function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
       </div>
       <div
         style={{
-          fontFamily: '"Cascadia Mono", Consolas, monospace',
-          fontSize: 40,
-          fontWeight: 700,
+          fontFamily: FONT,
+          fontSize: 42,
+          fontWeight: 800,
+          letterSpacing: '-.03em',
           color,
           lineHeight: 1,
-          textShadow: `0 0 26px ${color}44`,
         }}
       >
         <CountUp to={to} t={t} delay={delay} dur={1.3} decimals={decimals} suffix={suffix} />
       </div>
-      <div
-        style={{
-          marginTop: 10,
-          fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-          fontSize: 14.5,
-          color: '#8b9099',
-        }}
-      >
-        {sub}
-      </div>
+      <div style={{ marginTop: 10, fontFamily: FONT, fontSize: 15, color: '#8b9099' }}>{sub}</div>
     </div>
   );
 }
 
-export default function ScenePerf({ t, dur }) {
-  // A slow push so the numbers keep moving even after they have counted up.
-  const push = 1 + 0.03 * seg(t, 0, dur);
+export default function ScenePerf({ t, global }) {
+  const head = parallax(global, TOTAL, 0.95, 26);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-      }}
-    >
-      <Aurora t={t} accent="#3ad0e0" intensity={0.18} />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {/* A wallpaper playing behind the numbers, heavily dimmed, so even the
+          statistics beat shows the product working. */}
+      <div style={{ position: 'absolute', inset: '-5%', opacity: 0.46 }}>
+        <WallpaperStage clip="astra" t={global} offset={4} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(180deg, rgba(7,7,10,.76) 0%, rgba(7,7,10,.84) 50%, rgba(7,7,10,.78) 100%)',
+        }}
+      />
+      <Aurora t={t} accent="#3ad0e0" intensity={0.15} />
 
       <div
         style={{
@@ -83,16 +87,16 @@ export default function ScenePerf({ t, dur }) {
           flexDirection: 'column',
           justifyContent: 'center',
           padding: '0 130px',
-          gap: 40,
-          transform: `scale(${push})`,
+          gap: 38,
         }}
       >
-        <div>
+        <div style={{ transform: `translate3d(${head.x}px, ${head.y}px, 0)` }}>
           <div
             style={{
-              fontFamily: '"Cascadia Mono", Consolas, monospace',
-              fontSize: 15,
-              letterSpacing: '.34em',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '.22em',
               textTransform: 'uppercase',
               color: '#3ad0e0',
               marginBottom: 16,
@@ -103,11 +107,11 @@ export default function ScenePerf({ t, dur }) {
           </div>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 56,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: '-.02em',
+              fontFamily: FONT,
+              fontSize: 58,
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: '-.035em',
               color: '#fff',
             }}
           >
@@ -117,23 +121,23 @@ export default function ScenePerf({ t, dur }) {
 
         <div style={{ display: 'flex', gap: 20 }}>
           <Stat t={t} label="CPU" to={0.6} decimals={1} suffix="%" color="#35e07a" delay={0.7}
-                sub="Tiga wallpaper 1080p bersamaan" />
+                sub="Tiga wallpaper 1080p bersamaan" depth={1.0} />
           <Stat t={t} label="RAM" to={169} decimals={0} suffix=" MB" color="#3ad0e0" delay={0.85}
-                sub="Seluruh proses, tiga monitor" />
-          <Stat t={t} label="Resume" to={141} decimals={0} suffix=" ms" color="#e2454a" delay={1.0}
-                sub="Dari game ditutup ke animasi jalan" />
+                sub="Seluruh proses, tiga monitor" depth={0.8} />
+          <Stat t={t} label="Resume" to={141} decimals={0} suffix=" ms" color="#ff3b57" delay={1.0}
+                sub="Dari game ditutup sampai jalan lagi" depth={0.6} />
         </div>
 
         <div
           style={{
-            marginTop: 6,
+            marginTop: 4,
             padding: '18px 22px',
             borderRadius: 12,
             border: '1px solid rgba(255,255,255,.08)',
             background: 'rgba(255,255,255,.02)',
-            fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
+            fontFamily: FONT,
             fontSize: 19,
-            color: '#a8adb6',
+            color: '#a8aeb8',
             opacity: seg(t, 1.5, 2.2),
             transform: `translateY(${(1 - easeOut(seg(t, 1.5, 2.2))) * 18}px)`,
           }}

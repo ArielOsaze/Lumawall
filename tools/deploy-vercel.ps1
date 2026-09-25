@@ -85,8 +85,40 @@ Step "Payload"
 $files = Get-ChildItem $site -Recurse -File
 $totalMb = [math]::Round(($files | Measure-Object Length -Sum).Sum / 1MB, 1)
 Write-Host ("   " + $files.Count + " files, " + $totalMb + " MB")
+
 foreach ($need in @('index.html', 'assets\video\lumawall-promo.mp4', 'assets\css\style.css', 'assets\js\main.js')) {
     if (Test-Path (Join-Path $site $need)) { Ok $need } else { Bad "MISSING $need"; exit 4 }
+}
+
+# The video must be a real, complete file - not a fragment being written right
+# now. A render once published a 48-byte mp4 that returned 200 with
+# Content-Type: video/mp4, so existence and content type were both fine while the
+# video was empty. The check is a size floor plus the mp4 box structure.
+$videoPath = Join-Path $site 'assets\video\lumawall-promo.mp4'
+$video = Get-Item $videoPath
+$videoMb = [math]::Round($video.Length / 1MB, 2)
+Write-Host ("   promo video: " + $videoMb + " MB")
+
+if ($video.Length -lt 1MB) {
+    Bad "the promo video is only $($video.Length) bytes - it is incomplete."
+    Bad "A render may still be writing it. Wait for the render to finish, then re-run."
+    exit 7
+}
+
+$head = [System.IO.File]::ReadAllBytes($videoPath)[0..11]
+$brand = [System.Text.Encoding]::ASCII.GetString($head[4..11])
+if ($brand -notmatch 'ftyp') {
+    Bad "the promo video does not start with an mp4 header (found '$brand')."
+    exit 8
+}
+Ok "promo video looks complete ($brand)"
+
+# Any leftover .part files mean a render is in flight or was interrupted.
+$parts = Get-ChildItem $site -Recurse -File -Filter '*.part' -ErrorAction SilentlyContinue
+if ($parts) {
+    Bad "found $($parts.Count) incomplete .part file(s) - a render is still running:"
+    $parts | ForEach-Object { Bad ("  " + $_.Name + "  " + [math]::Round($_.Length/1MB,1) + " MB") }
+    exit 9
 }
 
 # ── 4. deploy ────────────────────────────────────────────────────────────────

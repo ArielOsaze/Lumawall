@@ -1,24 +1,27 @@
-// SceneProblem — the CPU comparison, told as a race.
+// SceneProblem — the CPU comparison, told as a race rather than a static chart.
 //
-// The old version put two static numbers on screen. Here both bars grow from zero
-// at the same moment, so the viewer watches one shoot up while the other barely
-// moves. Same data, but the comparison is felt rather than read.
-//
-// Every value is a pure function of `t`.
+// The two bars grow from zero at the same moment, so the viewer watches one shoot
+// up while the other barely moves. Same data as before, but the comparison is
+// felt rather than read.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
 import CountUp from '../CountUp.jsx';
-import { seg, easeOut, easeOutExpo } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
 
-function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 }) {
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
+
+function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0, depth }) {
   const k = easeOutExpo(seg(t, delay, delay + 1.5));
   const width = (to / max) * 100 * k;
-  const bad = color === '#e2454a';
+  const bad = color === '#ff3b57';
+  const p = parallax(t + delay, TOTAL, depth, 34);
 
   return (
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, transform: `translate3d(${p.x}px, ${p.y}px, 0)` }}>
       <div
         style={{
           display: 'flex',
@@ -29,9 +32,10 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
       >
         <span
           style={{
-            fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-            fontSize: 22,
-            color: '#cfd2d8',
+            fontFamily: FONT,
+            fontSize: 21,
+            fontWeight: 600,
+            color: '#c3c8d0',
             opacity: seg(t, delay - 0.2, delay + 0.3),
           }}
         >
@@ -39,12 +43,12 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
         </span>
         <span
           style={{
-            fontFamily: '"Cascadia Mono", Consolas, monospace',
-            fontSize: 44,
-            fontWeight: 700,
+            fontFamily: FONT,
+            fontSize: 48,
+            fontWeight: 800,
+            letterSpacing: '-.03em',
             color,
             lineHeight: 1,
-            textShadow: `0 0 28px ${color}66`,
           }}
         >
           <CountUp to={to} t={t} delay={delay} dur={1.5} decimals={decimals} suffix={suffix} />
@@ -53,8 +57,8 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
 
       <div
         style={{
-          height: 22,
-          borderRadius: 11,
+          height: 20,
+          borderRadius: 10,
           background: 'rgba(255,255,255,.05)',
           border: '1px solid rgba(255,255,255,.08)',
           overflow: 'hidden',
@@ -64,11 +68,10 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
           style={{
             height: '100%',
             width: `${width}%`,
-            borderRadius: 11,
+            borderRadius: 10,
             background: bad
-              ? 'linear-gradient(90deg,#7a1f22,#e2454a)'
-              : 'linear-gradient(90deg,#1f7a4d,#35e07a)',
-            boxShadow: `0 0 22px -4px ${color}`,
+              ? 'linear-gradient(90deg,#5c1a20,#ff3b57)'
+              : 'linear-gradient(90deg,#155e3b,#35e07a)',
           }}
         />
       </div>
@@ -76,9 +79,9 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
       <div
         style={{
           marginTop: 12,
-          fontFamily: '"Cascadia Mono", Consolas, monospace',
-          fontSize: 14,
-          color: '#7d838d',
+          fontFamily: FONT,
+          fontSize: 15,
+          color: '#7a838c',
           opacity: seg(t, delay + 0.4, delay + 0.9),
         }}
       >
@@ -88,16 +91,34 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
   );
 }
 
-export default function SceneProblem({ t, dur }) {
+export default function SceneProblem({ t, global }) {
+  const head = parallax(global, TOTAL, 0.9, 30);
+  const bg = parallax(global, TOTAL, 0.3, 44);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-      }}
-    >
-      <Aurora t={t} accent="#e2454a" accent2="#e2454a" intensity={0.22} />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {/* A wallpaper behind the comparison, so the beat is set in the product's
+          world rather than on a black slide. Heavily dimmed: the bars are the
+          subject and must stay dominant. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-6%',
+          opacity: 0.34,
+          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
+        }}
+      >
+        <WallpaperStage clip="albedo" t={global} offset={1} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(180deg, rgba(7,7,10,.80) 0%, rgba(7,7,10,.62) 45%, rgba(7,7,10,.84) 100%)',
+        }}
+      />
+      <Aurora t={t} accent="#ff3b57" accent2="#ff3b57" intensity={0.16} />
 
       <div
         style={{
@@ -107,17 +128,18 @@ export default function SceneProblem({ t, dur }) {
           flexDirection: 'column',
           justifyContent: 'center',
           padding: '0 150px',
-          gap: 46,
+          gap: 44,
         }}
       >
-        <div>
+        <div style={{ transform: `translate3d(${head.x}px, ${head.y}px, 0)` }}>
           <div
             style={{
-              fontFamily: '"Cascadia Mono", Consolas, monospace',
-              fontSize: 15,
-              letterSpacing: '.34em',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '.22em',
               textTransform: 'uppercase',
-              color: '#e2454a',
+              color: '#ff3b57',
               marginBottom: 16,
               opacity: seg(t, 0, 0.5),
             }}
@@ -126,11 +148,11 @@ export default function SceneProblem({ t, dur }) {
           </div>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 62,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: '-.02em',
+              fontFamily: FONT,
+              fontSize: 66,
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: '-.035em',
               color: '#fff',
             }}
           >
@@ -140,15 +162,16 @@ export default function SceneProblem({ t, dur }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 68, marginTop: 6 }}>
+        <div style={{ display: 'flex', gap: 64, marginTop: 4 }}>
           <Bar
             t={t}
             delay={1.35}
             to={168}
             max={168}
-            color="#e2454a"
+            color="#ff3b57"
             label="Tanpa LumaWall"
             sub="Software decode — semua di core CPU"
+            depth={1.0}
           />
           <Bar
             t={t}
@@ -159,20 +182,21 @@ export default function SceneProblem({ t, dur }) {
             label="Dengan LumaWall"
             sub="Hardware decode — ditangani blok GPU"
             decimals={1}
+            depth={0.7}
           />
         </div>
 
         <div
           style={{
-            marginTop: 8,
-            fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-            fontSize: 24,
-            color: '#c8ccd4',
+            marginTop: 6,
+            fontFamily: FONT,
+            fontSize: 23,
+            color: '#c3c8d0',
             opacity: seg(t, 3.0, 3.75),
             transform: `translateY(${(1 - easeOut(seg(t, 3.0, 3.75))) * 20}px)`,
           }}
         >
-          Selisihnya bukan sedikit — ini bedanya CPU vs chip grafis.
+          Selisihnya bukan sedikit — ini bedanya CPU dan chip grafis.
         </div>
       </div>
     </div>

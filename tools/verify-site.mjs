@@ -110,7 +110,16 @@ await send('Emulation.setEmulatedMedia', {
   features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
 }, sessionId);
 await send('Page.reload', {}, sessionId);
-await new Promise((r) => setTimeout(r, 2800));
+
+// Wait for the condition, not a fixed delay: on a busy machine the webfont can
+// take longer than any constant we pick, and the body font then reads as the
+// fallback ("Times New Roman") and looks like a real failure.
+await send('Runtime.evaluate', {
+  expression: '(async () => { await document.fonts.ready; return true; })()',
+  returnByValue: true,
+  awaitPromise: true,
+}, sessionId);
+await new Promise((r) => setTimeout(r, 900));
 
 const evalJs = async (expr) =>
   (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }, sessionId)).result.value;
@@ -118,34 +127,43 @@ const evalJs = async (expr) =>
 // ── 1. the hero must be readable ────────────────────────────────────────────
 const hero = await evalJs(`(() => {
   const h1 = document.querySelector('h1');
-  const ch = h1 && h1.querySelector('.ch');
-  const cs = ch ? getComputedStyle(ch) : null;
   return {
+    title: document.title,
     h1_text: h1 ? h1.textContent.replace(/\\s+/g, ' ').trim() : null,
-    h1_chars: h1 ? h1.querySelectorAll('.ch').length : 0,
-    first_char_opacity: cs ? cs.opacity : 'no-char',
-    first_char_transform: cs ? cs.transform : 'no-char',
-    grad_chars: document.querySelectorAll('.ch-grad').length,
-    grad_bg: (() => { const g = document.querySelector('.ch-grad'); return g ? getComputedStyle(g).backgroundImage.slice(0, 48) : 'none'; })(),
+    // Is the headline actually visible, or stuck at opacity 0?
+    h1_opacity: h1 ? getComputedStyle(h1).opacity : null,
+    font: getComputedStyle(document.body).fontFamily,
+    reveals: document.querySelectorAll('[data-reveal]').length,
+    video: !!document.getElementById('promo'),
   };
 })()`);
 
-console.log('  hero headline');
-console.log('    text           :', hero.h1_text);
-console.log('    split chars    :', hero.h1_chars);
-console.log('    gradient chars :', hero.grad_chars);
-console.log('    first char     : opacity', hero.first_char_opacity, '| transform', hero.first_char_transform);
+console.log('  title      :', hero.title);
+console.log('  headline   :', hero.h1_text);
+console.log('  opacity    :', hero.h1_opacity);
+console.log('  font       :', hero.font);
+console.log('  reveals    :', hero.reveals);
 console.log('');
 
 // ── 2. scroll the whole page so every observer fires ───────────────────────
+//
+// The scroll must be slow enough for the IntersectionObserver to fire and for the
+// 1.8s reveal to finish. An earlier version jumped 420px every 70ms, which
+// outran both: the observer never saw some sections, and the headline was still
+// mid-animation when it was measured (opacity 0.6, reported as a failure).
 await evalJs(`(async () => {
-  const step = 420;
+  const step = 300;
+  // behavior:'instant' overrides the stylesheet's scroll-behavior:smooth.
+  // With smooth scrolling these calls animate, so calling one every 120ms
+  // interrupts the previous one and the page never settles at the intermediate
+  // offsets the observer needs to see.
   for (let y = 0; y <= document.body.scrollHeight; y += step) {
-    window.scrollTo(0, y);
-    await new Promise(r => setTimeout(r, 70));
+    window.scrollTo({ top: y, behavior: 'instant' });
+    await new Promise(r => setTimeout(r, 120));
   }
-  window.scrollTo(0, 0);
-  await new Promise(r => setTimeout(r, 1400));
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  // Long enough for the longest reveal (1.8s) plus a margin.
+  await new Promise(r => setTimeout(r, 2600));
   return true;
 })()`);
 
@@ -161,20 +179,14 @@ const after = await evalJs(`(() => {
     reveal_total: document.querySelectorAll('.reveal').length,
     reveal_in: document.querySelectorAll('.reveal.in').length,
     hidden,
-    counters_total: document.querySelectorAll('[data-count]').length,
-    counters_done: document.querySelectorAll('[data-count][data-counted="done"]').length,
-    hero_stats: Array.from(document.querySelectorAll('.hero-stats b')).map(b => b.textContent.trim()),
-    h2_chars: document.querySelectorAll('h2 .ch').length,
-    shiny: document.querySelectorAll('.shiny').length,
+    hero_stats: Array.from(document.querySelectorAll('.hero-meta b')).map(b => b.textContent.trim()),
+    downloads: Array.from(document.querySelectorAll('a[download]')).map(a => a.getAttribute('href')),
   };
 })()`);
 
 console.log('  after scrolling the page');
 console.log('    reveal elements :', after.reveal_in + '/' + after.reveal_total, 'visible');
-console.log('    counters        :', after.counters_done + '/' + after.counters_total, 'completed');
 console.log('    hero stats      :', after.hero_stats.join('  |  '));
-console.log('    h2 chars        :', after.h2_chars);
-console.log('    shiny labels    :', after.shiny);
 if (after.hidden.length) {
   console.log('');
   console.log('    STILL HIDDEN:');
@@ -195,13 +207,31 @@ console.log('  screenshot:', outShot);
 let pass = true;
 const fail = (m) => { console.log('  FAIL ' + m); pass = false; };
 
-if (!hero.h1_chars || hero.h1_chars < 10) fail('the h1 was not split into characters');
-if (parseFloat(hero.first_char_opacity) < 0.9) fail('the first headline character is still invisible (opacity ' + hero.first_char_opacity + ')');
-if (!hero.grad_chars) fail('no gradient characters found');
-if (hero.grad_bg === 'none') fail('the gradient characters have no background image');
-if (after.counters_done < after.counters_total) fail('some counters never ran');
-if (after.hidden.length) fail(after.hidden.length + ' reveal element(s) stayed invisible');
-if (!after.h2_chars) fail('no h2 headings were split');
+if (!hero.h1_text || hero.h1_text.length < 20) fail('the h1 is missing');
+if (parseFloat(hero.h1_opacity) < 0.9) fail('the headline is not visible (opacity ' + hero.h1_opacity + ')');
+if (!/Plus Jakarta Sans/.test(hero.font)) fail('the body font is not Plus Jakarta Sans: ' + hero.font);
+if (hero.reveals < 10) fail('too few reveal targets (' + hero.reveals + ')');
+if (!hero.video) fail('the promo video is missing');
+
+// The removed effects must not creep back: they are what made the page look
+// generated rather than designed.
+const leftovers = await evalJs(`(() => {
+  const out = [];
+  if (document.querySelector('.ch')) out.push('split-text characters');
+  if (document.querySelector('[data-count]')) out.push('count-up numbers');
+  if (document.querySelector('.shiny')) out.push('shiny sweep');
+  if (document.querySelector('.grad')) out.push('gradient text');
+  const mono = Array.from(document.querySelectorAll('body *')).some(el => {
+    const f = getComputedStyle(el).fontFamily || '';
+    return /monospace|Consolas|Cascadia|Courier/i.test(f);
+  });
+  if (mono) out.push('monospace font');
+  return out;
+})()`);
+
+if (leftovers.length) fail('removed effects came back: ' + leftovers.join(', '));
+if (after.hidden.length) fail(after.hidden.length + ' element(s) stayed invisible');
+if (!after.downloads.length) fail('no download links');
 
 console.log('');
 console.log(pass ? '  PASS' : '  FAILED');

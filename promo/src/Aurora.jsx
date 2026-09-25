@@ -27,12 +27,15 @@ export default function Aurora({
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {/* A tint, not a fill. This used to be an opaque gradient, which hid the
+          wallpaper any scene placed behind it: the promo for a moving wallpaper
+          rendered as a black title card. */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           background:
-            'radial-gradient(120% 90% at 20% 0%, #1a0d12 0%, #0b0a0d 45%, #07070a 100%)',
+            'radial-gradient(120% 90% at 20% 0%, rgba(26,13,18,.55) 0%, rgba(11,10,13,.30) 45%, rgba(7,7,10,.10) 100%)',
         }}
       />
 

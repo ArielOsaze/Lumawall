@@ -101,6 +101,28 @@ def main():
         return 1
 
     print('  no empty frames')
+
+    # Motion: is anything actually moving? A promo for a moving wallpaper once
+    # rendered with a frozen one and passed every other check, because the frames
+    # had content - it just never changed.
+    print()
+    print('  motion (whole frame):')
+    still = 0
+    changes = []
+    for i in range(1, count):
+        a = raw[(i - 1) * size:i * size]
+        b = raw[i * size:(i + 1) * size]
+        d = sum(abs(a[j] - b[j]) for j in range(0, size, 7)) / (size // 7)
+        changes.append(d)
+        if d < 0.05:
+            still += 1
+    if changes:
+        avg = sum(changes) / len(changes)
+        print('    average change between sampled frames: %.2f' % avg)
+        print('    frames with no change at all        : %d/%d' % (still, len(changes)))
+        if still > len(changes) * 0.5:
+            print('    WARNING: more than half the frames are identical -')
+            print('             the video may contain long static holds.')
     if args.expect is not None and abs(duration - args.expect) > 0.5:
         print('  duration mismatch: expected %.2fs, got %.2fs' % (args.expect, duration))
         print('  FAIL')

@@ -1,44 +1,54 @@
 // SceneCatalog — the real app UI, in motion.
 //
-// The old version placed a screenshot on screen and cross-faded it. Here the
-// screenshot sits in a frame that tilts in, the wallpaper grid scrolls inside it,
-// and a cursor travels across it and clicks — so the viewer sees the product being
-// used rather than a picture of the product.
-//
-// The screenshot is the genuine capture from the running application.
+// The screenshot sits in a frame that pushes in on its own depth plane, the grid
+// scrolls inside it, and a cursor travels across it and clicks — so the viewer
+// sees the product being used rather than a picture of the product.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
-import { seg, easeOut, easeInOut } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, easeOutQuint, parallax } from '../anim.js';
 
-export default function SceneCatalog({ t, dur }) {
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
 
-  // Frame entrance.
-  const enter = easeOut(seg(t, 0.35, 1.5));
+export default function SceneCatalog({ t, global }) {
+  const enter = easeOutQuint(seg(t, 0.3, 1.5));
+  const bg = parallax(global, TOTAL, 0.28, 44);
+  const shot = parallax(global, TOTAL, 0.55, 38);
+  const head = parallax(global, TOTAL, 0.95, 26);
 
-  // The screenshot slides up inside the frame, as if the grid were scrolling, and
-  // the frame itself pushes in very slowly. Two independent motions keep the
-  // section alive for its full length instead of settling into a still image.
-  const scrollY = -easeInOut(seg(t, 1.0, dur - 0.4)) * 96;
-  const push = 1 + 0.045 * seg(t, 0.9, dur);
+  // The screenshot slides up inside its frame, as if the grid were scrolling.
+  const scrollY = -easeOutQuint(seg(t, 0.9, 8.2)) * 110;
 
   // Cursor: travels in, hovers a card, clicks it.
-  const travel = easeOut(seg(t, 0.9, 1.9));
-  const cx = 250 + travel * 340;
-  const cy = 470 + Math.sin(t * 1.1) * 26 - travel * 60;
-  const clickAt = 2.05;
-  const clicking = t > clickAt && t < clickAt + 0.22;
-  const ripple = seg(t, clickAt, clickAt + 0.75);
+  const travel = easeOutQuint(seg(t, 0.8, 1.9));
+  const cx = 250 + travel * 330;
+  const cy = 470 + Math.sin(t * 1.1) * 24 - travel * 56;
+  const ripple = seg(t, 2.05, 2.8);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-      }}
-    >
-      <Aurora t={t} intensity={0.2} />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-6%',
+          opacity: 0.32,
+          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
+        }}
+      >
+        <WallpaperStage clip="raiden" t={global} offset={3} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(100deg, rgba(7,7,10,.88) 0%, rgba(7,7,10,.70) 45%, rgba(7,7,10,.55) 100%)',
+        }}
+      />
+      <Aurora t={t} intensity={0.14} />
 
       <div
         style={{
@@ -47,18 +57,24 @@ export default function SceneCatalog({ t, dur }) {
           display: 'flex',
           alignItems: 'center',
           padding: '0 110px',
-          gap: 62,
+          gap: 60,
         }}
       >
-        {/* Left: the message */}
-        <div style={{ width: 560, flexShrink: 0 }}>
+        <div
+          style={{
+            width: 545,
+            flexShrink: 0,
+            transform: `translate3d(${head.x}px, ${head.y}px, 0)`,
+          }}
+        >
           <div
             style={{
-              fontFamily: '"Cascadia Mono", Consolas, monospace',
-              fontSize: 15,
-              letterSpacing: '.34em',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '.22em',
               textTransform: 'uppercase',
-              color: '#e2454a',
+              color: '#ff3b57',
               marginBottom: 16,
               opacity: seg(t, 0, 0.5),
             }}
@@ -67,11 +83,11 @@ export default function SceneCatalog({ t, dur }) {
           </div>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 56,
-              fontWeight: 700,
-              lineHeight: 1.12,
-              letterSpacing: '-.02em',
+              fontFamily: FONT,
+              fontSize: 58,
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: '-.035em',
               color: '#fff',
             }}
           >
@@ -82,19 +98,18 @@ export default function SceneCatalog({ t, dur }) {
           <div
             style={{
               marginTop: 24,
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 23,
-              lineHeight: 1.5,
-              color: '#a8adb6',
-              maxWidth: 500,
+              fontFamily: FONT,
+              fontSize: 22,
+              lineHeight: 1.55,
+              color: '#a8aeb8',
+              maxWidth: 490,
               opacity: seg(t, 1.35, 2.1),
               transform: `translateY(${(1 - easeOut(seg(t, 1.35, 2.1))) * 18}px)`,
             }}
           >
-            Cari, filter, unduh, lalu terapkan — semuanya di dalam aplikasi. Tanpa
-            buka browser, tanpa cari file manual.
+            Cari, filter, unduh, lalu terapkan — semuanya di dalam aplikasi. Tanpa buka
+            browser, tanpa cari file manual.
           </div>
-
           <div style={{ display: 'flex', gap: 10, marginTop: 26, flexWrap: 'wrap' }}>
             {['Anime Loop', 'Dynamic', 'Landscape', '4K'].map((c, i) => {
               const k = seg(t, 1.6 + i * 0.09, 2.1 + i * 0.09);
@@ -103,9 +118,10 @@ export default function SceneCatalog({ t, dur }) {
                 <span
                   key={c}
                   style={{
-                    fontFamily: '"Cascadia Mono", Consolas, monospace',
-                    fontSize: 13,
-                    color: '#cfd2d8',
+                    fontFamily: FONT,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#c3c8d0',
                     border: '1px solid rgba(255,255,255,.11)',
                     background: 'rgba(255,255,255,.03)',
                     borderRadius: 999,
@@ -121,7 +137,6 @@ export default function SceneCatalog({ t, dur }) {
           </div>
         </div>
 
-        {/* Right: the real UI, in motion */}
         <div
           style={{
             position: 'relative',
@@ -130,12 +145,11 @@ export default function SceneCatalog({ t, dur }) {
             borderRadius: 16,
             overflow: 'hidden',
             border: '1px solid rgba(255,255,255,.11)',
-            boxShadow: '0 40px 90px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.03)',
+            boxShadow: '0 40px 90px -30px rgba(0,0,0,.9)',
             background: '#0c0c10',
             opacity: enter,
-            transform: `translateY(${(1 - enter) * 46}px) rotateX(${(1 - enter) * 9}deg) scale(${(0.95 + 0.05 * enter) * push})`,
-            transformOrigin: 'center bottom',
-            perspective: 1200,
+            transform: `translate3d(${shot.x}px, ${shot.y + (1 - enter) * 46}px, 0)
+                        scale(${(0.95 + 0.05 * enter) * shot.scale})`,
           }}
         >
           <img
@@ -150,7 +164,6 @@ export default function SceneCatalog({ t, dur }) {
             }}
           />
 
-          {/* Cursor */}
           <div
             style={{
               position: 'absolute',
@@ -158,8 +171,8 @@ export default function SceneCatalog({ t, dur }) {
               top: cy,
               width: 22,
               height: 22,
-              opacity: t > 0.9 ? 1 : 0,
-              transform: `scale(${clicking ? 0.86 : 1})`,
+              opacity: t > 0.85 ? 1 : 0,
+              transform: `scale(${t > 2.05 && t < 2.27 ? 0.86 : 1})`,
               filter: 'drop-shadow(0 2px 6px rgba(0,0,0,.7))',
             }}
           >
@@ -168,7 +181,6 @@ export default function SceneCatalog({ t, dur }) {
             </svg>
           </div>
 
-          {/* Click ripple */}
           {ripple > 0 && ripple < 1 && (
             <div
               style={{
@@ -180,7 +192,7 @@ export default function SceneCatalog({ t, dur }) {
                 marginLeft: -(18 + ripple * 78) / 2,
                 marginTop: -(18 + ripple * 78) / 2,
                 borderRadius: '50%',
-                border: `2px solid rgba(226,69,74,${(1 - ripple) * 0.85})`,
+                border: `2px solid rgba(255,59,87,${(1 - ripple) * 0.85})`,
               }}
             />
           )}

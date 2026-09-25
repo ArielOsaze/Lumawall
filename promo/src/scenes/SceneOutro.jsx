@@ -1,30 +1,50 @@
-// SceneOutro — the call to action, with the real logo and a button that reacts.
+// SceneOutro — the call to action, over a wallpaper that is playing.
 //
-// The old outro showed a plain red rectangle labelled "Download". Here the logo
-// returns, the download button pulses with a light sweep, and a cursor moves onto
-// it and clicks - the same "see it happen" approach used in the other scenes.
+// The logo returns, the button carries a light sweep, and a cursor moves onto it
+// and clicks — the same "see it happen" approach used in the other beats. The
+// wallpaper behind keeps moving so the closing frame is alive, not a title card.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import Logo from '../Logo.jsx';
 import SplitText from '../SplitText.jsx';
-import { seg, easeOut, loop } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, parallax } from '../anim.js';
 
-export default function SceneOutro({ t, dur }) {
-  // Button hover from 1.6s, click at 2.5s, then a confirmation appears.
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
+
+export default function SceneOutro({ t, global }) {
+  const bg = parallax(global, TOTAL, 0.4, 44);
+
   const hover = easeOut(seg(t, 1.6, 2.1));
   const clicked = t > 2.5;
   const done = seg(t, 2.7, 3.3);
+  const sweep = (t / 2.6) % 1;
 
   const cx = 960 + (1 - hover) * 300;
   const cy = 690 + (1 - hover) * 120;
 
-  // The light sweep runs continuously across the button face.
-  const sweep = loop(t, 2.6);
-
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <Aurora t={t} intensity={0.32} />
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-6%',
+          transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
+        }}
+      >
+        <WallpaperStage clip="albedo" t={global} offset={6} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(85% 70% at 50% 45%, rgba(7,7,10,.68) 0%, rgba(7,7,10,.92) 60%, rgba(7,7,10,.97) 100%)',
+        }}
+      />
+      <Aurora t={t} intensity={0.26} />
 
       <div
         style={{
@@ -34,47 +54,39 @@ export default function SceneOutro({ t, dur }) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 26,
+          gap: 24,
         }}
       >
-        <Logo t={t} size={150} delay={0.1} spin />
+        <Logo t={t} size={140} delay={0.1} spin />
 
-        <div style={{ textAlign: 'center', marginTop: 6 }}>
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 76,
-              fontWeight: 700,
-              letterSpacing: '-.028em',
+              fontFamily: FONT,
+              fontSize: 78,
+              fontWeight: 800,
+              letterSpacing: '-.035em',
               lineHeight: 1,
+              color: '#fff',
             }}
           >
-            <SplitText
-              text="Gratis. Tanpa iklan."
-              t={t}
-              delay={0.45}
-              stagger={0.032}
-              y={46}
-              gradient="linear-gradient(180deg,#ffffff 0%,#cfd2d8 62%,#9aa0aa 100%)"
-            />
+            <SplitText text="Gratis. Tanpa iklan." t={t} delay={0.45} stagger={0.032} y={46} />
           </div>
-
           <div
             style={{
               marginTop: 18,
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 23,
-              color: '#a8adb6',
+              fontFamily: FONT,
+              fontSize: 22,
+              color: '#a8aeb8',
               opacity: seg(t, 1.15, 1.85),
               transform: `translateY(${(1 - easeOut(seg(t, 1.15, 1.85))) * 16}px)`,
             }}
           >
-            Windows 10 / 11 · 5.000+ wallpaper · pause per-monitor
+            Windows 10 / 11 · 5.000+ wallpaper · pause per monitor
           </div>
         </div>
 
-        {/* The button */}
-        <div style={{ position: 'relative', marginTop: 14 }}>
+        <div style={{ position: 'relative', marginTop: 12 }}>
           <div
             style={{
               position: 'relative',
@@ -83,12 +95,13 @@ export default function SceneOutro({ t, dur }) {
               borderRadius: 13,
               background: clicked
                 ? 'linear-gradient(180deg,#35e07a,#22a85c)'
-                : 'linear-gradient(180deg,#ef5055,#c8353a)',
+                : 'linear-gradient(180deg,#ff4a63,#d92b45)',
               boxShadow: clicked
                 ? '0 16px 44px -12px rgba(53,224,122,.65)'
-                : '0 16px 44px -12px rgba(226,69,74,.62)',
+                : '0 16px 44px -12px rgba(255,59,87,.6)',
               opacity: easeOut(seg(t, 1.4, 2.1)),
-              transform: `translateY(${(1 - easeOut(seg(t, 1.4, 2.1))) * 26}px) scale(${1 + hover * 0.025})`,
+              transform: `translateY(${(1 - easeOut(seg(t, 1.4, 2.1))) * 26}px)
+                          scale(${1 + hover * 0.025})`,
             }}
           >
             <div
@@ -98,26 +111,25 @@ export default function SceneOutro({ t, dur }) {
                 bottom: 0,
                 left: `${-30 + sweep * 130}%`,
                 width: '28%',
-                background:
-                  'linear-gradient(100deg, transparent, rgba(255,255,255,.42), transparent)',
                 pointerEvents: 'none',
+                background:
+                  'linear-gradient(100deg, transparent, rgba(255,255,255,.4), transparent)',
               }}
             />
             <span
               style={{
                 position: 'relative',
-                fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
+                fontFamily: FONT,
                 fontSize: 25,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: '#fff',
-                letterSpacing: '.01em',
+                letterSpacing: '-.01em',
               }}
             >
-              {clicked ? 'Unduh dimulai' : 'Unduh sekarang'}
+              {clicked ? 'Unduhan dimulai' : 'Unduh sekarang'}
             </span>
           </div>
 
-          {/* Cursor */}
           <div
             style={{
               position: 'absolute',
@@ -136,12 +148,12 @@ export default function SceneOutro({ t, dur }) {
           </div>
         </div>
 
-        {/* Confirmation */}
         <div
           style={{
-            fontFamily: '"Cascadia Mono", Consolas, monospace',
+            fontFamily: FONT,
             fontSize: 15,
-            letterSpacing: '.16em',
+            fontWeight: 600,
+            letterSpacing: '.14em',
             color: '#35e07a',
             opacity: done,
             textTransform: 'uppercase',

@@ -1,45 +1,59 @@
-// ScenePause — the auto-pause feature, animated as a before/after.
+// ScenePause — the auto-pause feature, shown on a wallpaper that is playing.
 //
-// The old version showed a label and a still. Here a window physically grows to
-// cover the screen, the wallpaper underneath freezes and desaturates, a GPU meter
-// drops to zero, then the window closes and everything springs back. The point of
-// the feature - "it stops costing you anything when you are not looking at it" -
-// is shown rather than asserted.
+// A window grows to cover the screen, the wallpaper underneath freezes and
+// desaturates, a GPU meter drops to zero, then the window closes and the
+// wallpaper resumes. The point of the feature — "it stops costing you anything
+// when you are not looking at it" — is shown rather than asserted.
 
 import React from 'react';
 import Aurora from '../Aurora.jsx';
 import SplitText from '../SplitText.jsx';
-import { seg, easeOut, easeOutExpo, loop } from '../anim.js';
+import WallpaperStage from '../WallpaperStage.jsx';
+import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
 
-export default function ScenePause({ t, dur }) {
+const TOTAL = 52;
+const FONT = '"Plus Jakarta Sans", sans-serif';
 
-  // The window opens at 1.1s, covers by 1.75s, closes at 5.2s.
+export default function ScenePause({ t, global }) {
+  const head = parallax(global, TOTAL, 0.95, 26);
+  const stage = parallax(global, TOTAL, 0.6, 34);
+
+  // The window opens at 1.1s, covers by 1.75s, closes at 5.4s.
   const openK = easeOutExpo(seg(t, 1.1, 1.75));
-  const closeK = easeOutExpo(seg(t, 5.2, 5.8));
+  const closeK = easeOutExpo(seg(t, 5.4, 6.0));
   const cover = openK * (1 - closeK);
   const covered = cover > 0.985;
-  const coverW = cover * 100;
-  const coverH = cover * 100;
 
-  // The GPU figure follows the cover state, with a short settle so it reads as a
-  // measurement rather than a jump cut.
-  const dropK = easeOut(seg(t, 1.85, 2.5));
-  const riseK = easeOut(seg(t, 5.4, 6.0));
-  const gpu = 21 - 21 * dropK + 21 * riseK;
+  const gpu = 21 - 21 * easeOut(seg(t, 1.85, 2.5)) + 21 * easeOut(seg(t, 5.6, 6.2));
   const gpuGood = gpu < 10.5;
 
-  // The wallpaper keeps moving while visible and holds still while covered. Two
-  // sine waves at different periods keep the motion from reading as a loop.
-  const wiggle = covered ? 0 : Math.sin(t * 0.9) * 7 + Math.sin(t * 0.37) * 4;
+  // The wallpaper holds one frame while covered, which is what "paused" looks
+  // like: the same picture stays on screen instead of advancing.
+  const stageT = covered ? 3.4 : global;
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-      }}
-    >
-      <Aurora t={t} accent="#e2454a" accent2="#3ad0e0" intensity={0.21} />
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {/* The monitor on the right is the subject. This is a second wallpaper far
+          behind it so the beat is not floating on black. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-6%',
+          opacity: 0.42,
+          transform: `translate3d(${head.x * 0.5}px, ${head.y * 0.5}px, 0) scale(1.1)`,
+        }}
+      >
+        <WallpaperStage clip="astra" t={global} offset={2.5} mode="fill" width="100%" radius={0} />
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(78% 68% at 50% 50%, rgba(7,7,10,.58) 0%, rgba(7,7,10,.78) 100%)',
+        }}
+      />
+      <Aurora t={t} accent="#ff3b57" accent2="#3ad0e0" intensity={0.15} />
 
       <div
         style={{
@@ -48,17 +62,24 @@ export default function ScenePause({ t, dur }) {
           display: 'flex',
           alignItems: 'center',
           padding: '0 120px',
-          gap: 70,
+          gap: 68,
         }}
       >
-        <div style={{ width: 520, flexShrink: 0 }}>
+        <div
+          style={{
+            width: 505,
+            flexShrink: 0,
+            transform: `translate3d(${head.x}px, ${head.y}px, 0)`,
+          }}
+        >
           <div
             style={{
-              fontFamily: '"Cascadia Mono", Consolas, monospace',
-              fontSize: 15,
-              letterSpacing: '.34em',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '.22em',
               textTransform: 'uppercase',
-              color: '#e2454a',
+              color: '#ff3b57',
               marginBottom: 16,
               opacity: seg(t, 0, 0.5),
             }}
@@ -67,11 +88,11 @@ export default function ScenePause({ t, dur }) {
           </div>
           <div
             style={{
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-              fontSize: 54,
-              fontWeight: 700,
-              lineHeight: 1.12,
-              letterSpacing: '-.02em',
+              fontFamily: FONT,
+              fontSize: 56,
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: '-.035em',
               color: '#fff',
             }}
           >
@@ -82,19 +103,18 @@ export default function ScenePause({ t, dur }) {
           <div
             style={{
               marginTop: 24,
-              fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
+              fontFamily: FONT,
               fontSize: 22,
-              lineHeight: 1.5,
-              color: '#a8adb6',
-              maxWidth: 470,
+              lineHeight: 1.55,
+              color: '#a8aeb8',
+              maxWidth: 460,
               opacity: seg(t, 1.5, 2.2),
               transform: `translateY(${(1 - easeOut(seg(t, 1.5, 2.2))) * 16}px)`,
             }}
           >
-            Buka game fullscreen — wallpaper di layar itu berhenti, decode GPU turun
-            ke nol. Tutup game, jalan lagi seketika.
+            Buka game fullscreen — wallpaper di layar itu berhenti, decode GPU turun ke
+            nol. Tutup game, animasinya langsung jalan lagi.
           </div>
-
           <div
             style={{
               marginTop: 28,
@@ -106,10 +126,11 @@ export default function ScenePause({ t, dur }) {
           >
             <span
               style={{
-                fontFamily: '"Cascadia Mono", Consolas, monospace',
+                fontFamily: FONT,
                 fontSize: 13,
-                letterSpacing: '.18em',
-                color: '#7d838d',
+                fontWeight: 600,
+                letterSpacing: '.16em',
+                color: '#7a838c',
                 textTransform: 'uppercase',
               }}
             >
@@ -117,12 +138,12 @@ export default function ScenePause({ t, dur }) {
             </span>
             <span
               style={{
-                fontFamily: '"Cascadia Mono", Consolas, monospace',
-                fontSize: 40,
-                fontWeight: 700,
-                color: gpuGood ? '#35e07a' : '#e2454a',
+                fontFamily: FONT,
+                fontSize: 42,
+                fontWeight: 800,
+                letterSpacing: '-.03em',
+                color: gpuGood ? '#35e07a' : '#ff3b57',
                 lineHeight: 1,
-                textShadow: `0 0 26px ${gpuGood ? '#35e07a' : '#e2454a'}55`,
               }}
             >
               {Math.round(gpu)}%
@@ -130,145 +151,99 @@ export default function ScenePause({ t, dur }) {
           </div>
         </div>
 
-        {/* Right: the monitor, the wallpaper, and the covering window */}
         <div
           style={{
             position: 'relative',
             flex: 1,
             height: 640,
             opacity: easeOut(seg(t, 0.4, 1.4)),
-            transform: `translateX(${(1 - easeOut(seg(t, 0.4, 1.4))) * 50}px)`,
+            transform: `translate3d(${stage.x + (1 - easeOut(seg(t, 0.4, 1.4))) * 50}px, ${stage.y}px, 0)
+                        scale(${stage.scale})`,
           }}
         >
-          <div
+          <WallpaperStage
+            clip="i14"
+            t={stageT}
+            offset={2}
+            mode="fill"
+            width="100%"
+            radius={14}
             style={{
               position: 'absolute',
               inset: 0,
-              borderRadius: 14,
-              overflow: 'hidden',
               border: '2px solid #24262c',
-              background: '#000',
               boxShadow: '0 40px 80px -30px rgba(0,0,0,.9)',
+              filter: covered ? 'saturate(.3) brightness(.45)' : 'none',
             }}
-          >
-            <img
-              src="./shots/wallpaper-i14.png"
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transform: `translateX(${wiggle}px) scale(1.06)`,
-                filter: covered ? 'saturate(.25) brightness(.4)' : 'none',
-              }}
-            />
-
-            {/* The application window growing over it */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%,-50%)',
-                width: `${coverW}%`,
-                height: `${coverH}%`,
-                background: '#0d0f13',
-                borderRadius: coverW > 99 ? 0 : 12,
-                border: coverW > 99 ? 'none' : '1px solid rgba(255,255,255,.12)',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: coverW > 1 ? 1 : 0,
-              }}
-            >
-              {coverW > 40 && (
+            overlay={
+              <>
                 <div
                   style={{
-                    textAlign: 'center',
-                    fontFamily: '"Cascadia Mono", Consolas, monospace',
-                    opacity: Math.max(0, (coverW - 55) / 45),
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%,-50%)',
+                    width: `${cover * 100}%`,
+                    height: `${cover * 100}%`,
+                    background: '#0d0f13',
+                    borderRadius: cover > 0.99 ? 0 : 12,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: cover > 0.01 ? 1 : 0,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 15,
-                      letterSpacing: '.3em',
-                      color: '#7d838d',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Fullscreen app
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 10,
-                      fontSize: 27,
-                      color: '#cfd2d8',
-                      fontFamily: 'Bahnschrift, "Segoe UI", sans-serif',
-                    }}
-                  >
-                    Wallpaper dijeda
-                  </div>
+                  {cover > 0.4 && (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        fontFamily: FONT,
+                        opacity: Math.max(0, (cover - 0.55) / 0.45),
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          letterSpacing: '.24em',
+                          color: '#7a838c',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Aplikasi fullscreen
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 28, fontWeight: 700, color: '#e6e9ed' }}>
+                        Wallpaper dijeda
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* PAUSED badge */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 18,
-                right: 18,
-                fontFamily: '"Cascadia Mono", Consolas, monospace',
-                fontSize: 12,
-                letterSpacing: '.22em',
-                color: '#35e07a',
-                border: '1px solid rgba(53,224,122,.4)',
-                background: 'rgba(53,224,122,.10)',
-                borderRadius: 999,
-                padding: '6px 14px',
-                textTransform: 'uppercase',
-                opacity: covered ? 1 : 0,
-                transform: `scale(${covered ? 1 : 0.9})`,
-              }}
-            >
-              Paused
-            </div>
-
-            {/* A live indicator that is only visible while the wallpaper runs */}
-            {!covered && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 18,
-                  right: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontFamily: '"Cascadia Mono", Consolas, monospace',
-                  fontSize: 12,
-                  letterSpacing: '.22em',
-                  color: '#e2454a',
-                  textTransform: 'uppercase',
-                  opacity: seg(t, 0.6, 1.1) * (1 - seg(t, 1.75, 2.0)),
-                }}
-              >
-                <span
+                <div
                   style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: '#e2454a',
-                    opacity: 0.4 + 0.6 * (loop(t, 1.4) < 0.5 ? 1 : 0),
+                    position: 'absolute',
+                    top: 18,
+                    right: 18,
+                    fontFamily: FONT,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '.18em',
+                    color: '#35e07a',
+                    border: '1px solid rgba(53,224,122,.4)',
+                    background: 'rgba(53,224,122,.10)',
+                    borderRadius: 999,
+                    padding: '6px 14px',
+                    textTransform: 'uppercase',
+                    opacity: covered ? 1 : 0,
+                    transform: `scale(${covered ? 1 : 0.9})`,
                   }}
-                />
-                Running
-              </div>
-            )}
-          </div>
+                >
+                  Dijeda
+                </div>
+              </>
+            }
+          />
         </div>
       </div>
     </div>
