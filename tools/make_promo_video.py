@@ -1,14 +1,30 @@
-"""Renders the LumaWall promo video frame by frame, then encodes it with ffmpeg.
+"""SUPERSEDED - do not use. The promo is now built from React source.
 
-Why frames instead of ffmpeg filter graphs: the video needs real typography
-(Bahnschrift headings, Consolas labels), eased motion, and a Ken Burns treatment
-of the actual application screenshots. Expressing that as a chain of zoompan /
-drawtext filters is fragile - a single escaping mistake silently produces a
-black frame - whereas drawing each frame directly gives exact control and lets
-the whole thing be verified by inspecting individual frames.
+  The current pipeline is:
 
-Output: site/assets/video/lumawall-promo.mp4 (1920x1080, 30 fps, H.264)
-"""
+      cd promo && node render.mjs --duration 52 --crf 19           --out ../site/assets/video/lumawall-promo.mp4
+
+  See promo/README or docs/DESIGN-NOTES.md.
+
+  Why this file is still here: it is the reference for the original frame-by-frame
+  approach, and it documents the fonts and layout the promo used before the
+  redesign. Running it produces a video that does NOT match the site: Bahnschrift
+  and Cascadia Mono instead of Plus Jakarta Sans, static screenshots instead of
+  moving wallpapers, and no camera move.
+
+  ---------------------------------------------------------------------------
+
+  Renders the LumaWall promo video frame by frame, then encodes it with ffmpeg.
+
+  Why frames instead of ffmpeg filter graphs: the video needs real typography,
+  eased motion, and a Ken Burns treatment of the actual application screenshots.
+  Expressing that as a chain of zoompan / drawtext filters is fragile - a single
+  escaping mistake silently produces a black frame - whereas drawing each frame
+  directly gives exact control and lets the whole thing be verified by inspecting
+  individual frames.
+
+  Output: site/assets/video/lumawall-promo.mp4 (1920x1080, 30 fps, H.264)
+  """
 
 import math
 import os
