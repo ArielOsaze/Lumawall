@@ -114,3 +114,5 @@ msix/*.snk
 promo/node_modules/
 promo/dist/
 promo/package-lock.json
+
+.vercel

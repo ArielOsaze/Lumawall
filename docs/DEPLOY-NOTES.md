@@ -1,5 +1,15 @@
 # Deploy notes
 
+## Deploying the site
+
+```
+powershell -File tools/deploy-vercel.ps1
+```
+
+That script is the only supported path. It refuses the wrong Vercel account,
+deploys `site/` to production, then fetches the public domain and moves the alias
+itself if the domain is not serving the new deployment.
+
 ## Vercel: check the account first
 
 This machine has two Vercel logins:
@@ -13,20 +23,42 @@ This machine has two Vercel logins:
 run `vercel whoami` first. `tools/deploy-vercel.ps1` refuses to run against the
 AkunTuntas account, because deploying LumaWall there would be a silent mistake.
 
-## `deploy --prod` success does not mean the domain works
+## The 404 outage, and why the Git integration was disconnected
+
+`lumawall.xinet.id` went down with a 404 twice, in two different ways. Both
+looked like success from the CLI, so both are worth knowing.
+
+### Cause 1 — the production alias does not move by itself
 
 `vercel deploy --prod` reported success and the deployment URL returned 200, but
-`lumawall.xinet.id` returned **404** — the production alias had not been moved to
-the new deployment. Every check the script made passed while visitors saw
-"The page could not be found".
+the public domain was 404: the production alias stayed on an older deployment.
+`deploy-vercel.ps1` now checks the real domain as its final step and re-aliases
+if needed.
 
-Always fetch the real domain after deploying, and move the alias if it is stale:
+### Cause 2 — the Git integration built the wrong folder (the real one)
+
+The Vercel project was connected to the GitHub repo, so every `git push` triggered
+a build of the **repository root**. The site lives in `site/`, and the repo root
+has no `index.html` — the build failed or produced an empty deployment, and Vercel
+moved the production alias onto it.
+
+Setting `rootDirectory: site` fixed the Git build but broke the CLI: the CLI runs
+`cd site && vercel deploy`, so the upload already *is* the site folder, and
+`rootDirectory: site` made it look for `site/site` inside that upload —
 
 ```
-vercel alias set <deployment-url> lumawall.xinet.id
+The specified Root Directory "site" does not exist.
 ```
 
-`tools/deploy-vercel.ps1` now does this automatically as its final step.
+**The two settings cannot both be correct.** The Git build needs
+`rootDirectory=site`; the CLI needs it unset. The Git integration was therefore
+disconnected, and the CLI is the only deploy path:
+
+- `rootDirectory` is unset
+- the project is not linked to the repository
+
+If you ever re-connect the Git integration, set `rootDirectory` to `site` **and**
+stop using the CLI deploy — and check the public domain afterwards either way.
 
 ## Deployment protection
 
@@ -57,3 +89,7 @@ Verify after rendering:
 python tools/check_frames.py site/assets/video/lumawall-promo.mp4 --expect 52
 node tools/verify-live.mjs
 ```
+
+A scene that throws renders as black frames while the renderer still reports
+success — that happened once and cost 46 of 52 seconds. `SceneBoundary` and
+`window.__sceneErrors` exist to make it loud instead.
