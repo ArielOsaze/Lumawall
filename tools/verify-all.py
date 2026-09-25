@@ -29,6 +29,8 @@ CHECKS = [
      ['python', 'tools/check-transition-curve.py']),
     ('every promo beat shows a wallpaper',
      ['python', 'tools/check-promo-scenes.py', 'site/assets/video/lumawall-promo.mp4']),
+    ('every promo beat keeps its content in frame',
+     ['python', 'tools/check-frame-margins.py', 'site/assets/video/lumawall-promo.mp4']),
     ('no empty or frozen frames',
      ['python', 'tools/check_frames.py', 'site/assets/video/lumawall-promo.mp4', '--expect', '52']),
     ('hardware claims match the machine',

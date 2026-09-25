@@ -59,7 +59,25 @@ export default function SceneOutro({ t, global }) {
       >
         <Logo t={t} size={140} delay={0.1} spin />
 
-        <div style={{ textAlign: 'center', marginTop: 4 }}>
+        {/* The wordmark. The icon alone does not say what the product is called, so
+            the outro - which is also the video's poster frame - carries the name.
+            Without it the poster is a mark nobody can search for. */}
+        <div
+          style={{
+            fontFamily: FONT,
+            fontSize: 40,
+            fontWeight: 800,
+            letterSpacing: '-.03em',
+            color: '#fff',
+            marginTop: -6,
+            opacity: seg(t, 0.25, 0.85),
+            transform: `translateY(${(1 - easeOut(seg(t, 0.25, 0.85))) * 14}px)`,
+          }}
+        >
+          LumaWall
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: -6 }}>
           <div
             style={{
               fontFamily: FONT,

@@ -25,15 +25,17 @@ OUT = 'site/assets/shots/poster-promo.png'
 # The beats, from Timeline.jsx:
 #   intro 0.0-6.4   problem 6.4-13.6   catalog 13.6-21.4   monitors 21.4-29.4
 #   pause 29.4-38.2   perf 38.2-45.4   outro 45.4-52
-# A poster has to show the product working, so the app and monitor beats are the
-# candidates. The monitor beat is the product's whole point: several screens, each
-# with its own wallpaper.
+#
+# The outro's call-to-action frame is the right poster. It carries the mark, the
+# headline and the URL, so a visitor whose browser blocks autoplay sees what the
+# product is and where to get it. An in-video frame from the monitor or catalog beat
+# is prettier but has no branding at all - a review of exactly that choice scored it
+# 5/10 and pointed out that nothing on it said "LumaWall".
 CANDIDATES = [
-    (25.0, 'monitors', 'three screens, three wallpapers'),
-    (26.5, 'monitors', 'later in the beat, camera settled'),
-    (27.5, 'monitors', 'near the end of the beat'),
+    (47.0, 'outro',    'the call-to-action frame: mark, headline, download button'),
+    (46.2, 'outro',    'a moment earlier, before the button changes state'),
+    (25.0, 'monitors', 'three screens, three wallpapers - no branding'),
     (17.0, 'catalog',  'the app UI with its wallpaper grid'),
-    (33.0, 'pause',    'the app with the pause state visible'),
 ]
 
 
@@ -70,10 +72,11 @@ def main():
         print('  no frames could be read')
         return 1
 
-    # Prefer the monitor beat: it shows the product doing the thing the page claims,
-    # and it is bright enough to work as a thumbnail. Fall back to the brightest
-    # frame if that beat is not readable.
-    pick = next((f for f in frames if f[1] == 'monitors' and 25 < f[4] < 140), None)
+    # The outro frame wins because it carries the branding, and branding is the one
+    # thing a poster cannot do without. The rest are fallbacks.
+    pick = next((f for f in frames if f[1] == 'outro' and f[5] > 0.06), None)
+    if pick is None:
+        pick = next((f for f in frames if f[1] == 'monitors' and 25 < f[4] < 140), None)
     if pick is None:
         pick = max(frames, key=lambda f: f[5])
     t, beat, why, im, mean, lit = pick
