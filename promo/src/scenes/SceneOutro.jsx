@@ -94,8 +94,14 @@ export default function SceneOutro({ t, global }) {
             style={{
               marginTop: 18,
               fontFamily: FONT,
-              fontSize: 22,
-              color: '#a8aeb8',
+              // 22px at #a8aeb8 measured 1.49:1 against the wallpaper behind it -
+              // the check in tools/check-promo-text.py flagged this line. Grey on a
+              // busy image is the worst case: the eye has no edge to follow. White
+              // with a shadow, and a little larger.
+              fontSize: 26,
+              fontWeight: 500,
+              color: '#f2f5f8',
+              textShadow: '0 2px 12px rgba(0,0,0,.85), 0 0 30px rgba(0,0,0,.6)',
               opacity: seg(t, 1.15, 1.85),
               transform: `translateY(${(1 - easeOut(seg(t, 1.15, 1.85))) * 16}px)`,
             }}

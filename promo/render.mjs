@@ -371,3 +371,24 @@ const size = statSync(OUT).size;
 console.log('');
 console.log(`  done: ${OUT}`);
 console.log(`  size: ${(size / 1048576).toFixed(2)} MB`);
+
+// ── version the asset URLs ────────────────────────────────────────────────
+//
+// vercel.json serves /assets/video/ as `max-age=604800, immutable`, so a browser
+// that has fetched the promo once keeps its own copy for a week. The filename used
+// to be stable, which meant every re-render was invisible to anyone who had already
+// loaded the page - the user reported the same problems three times while watching
+// a video from hours earlier.
+//
+// Running this here rather than by hand is the point: a render that forgets to
+// version its output reproduces the bug silently.
+console.log('');
+console.log('  versioning the asset URLs...');
+const { spawnSync } = await import('node:child_process');
+const cb = spawnSync('python', ['tools/cache-bust.py'], { cwd: root, encoding: 'utf8' });
+if (cb.status !== 0) {
+  console.error('  cache-bust failed - the deployed page would reference an unversioned file');
+  console.error((cb.stdout || '') + (cb.stderr || ''));
+  process.exit(1);
+}
+console.log((cb.stdout || '').trimEnd());

@@ -123,13 +123,17 @@ export default function SceneMonitors({ t, global }) {
                     marginTop: 18,
                     textAlign: 'center',
                     fontFamily: FONT,
-                    // Readable at 1080p on a phone. It was 14.5px, which a review
-                    // called close to illegible.
-                    fontSize: 19,
-                    fontWeight: 600,
+                    // Readable at 1080p on a phone, and measured rather than judged:
+                    // tools/check-promo-text.py reported this label at 14px with a
+                    // contrast of 1.96 against the wallpaper behind it, which is a
+                    // failure at any size. It is now 24px (the point where the
+                    // threshold drops to 3.0) and carries a shadow that separates it
+                    // from whatever is behind.
+                    fontSize: 24,
+                    fontWeight: 700,
                     letterSpacing: '.12em',
-                    color: '#dde3e8',
-                    textShadow: '0 2px 10px rgba(0,0,0,.75)',
+                    color: '#ffffff',
+                    textShadow: '0 2px 12px rgba(0,0,0,.9), 0 0 30px rgba(0,0,0,.7)',
                   }}
                 >
                   {m.label}

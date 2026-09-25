@@ -34,11 +34,15 @@ POSTER = 'site/assets/shots/hero-bg.jpg'
 if not os.path.exists(SRC):
     sys.exit('missing %s' % SRC)
 
-# 1280x720 is plenty for a background that sits under a scrim, and it is a quarter
-# of the pixels of the source. The hero band is wide and short, so the source is
-# cropped to 16:9 and anchored so the figure stays right of centre where the text
-# is not.
-W, H = 1280, 720
+# The hero band is wide and short, so the source is cropped to 16:9 and anchored so
+# the figure stays right of centre where the text is not.
+#
+# This was 1280x720, and that was wrong: the hero renders at the viewport width, so
+# on a 1920-wide screen a 1280px clip is upscaled 1.5x and reads as soft. The user
+# described it as "videonya pecah", and they were right. The source is 1920x1080, so
+# there is no reason to throw that away - the file is larger, but it is the first
+# thing on the page and the one place where softness is obvious.
+W, H = 1920, 1080
 
 # How much of the loop to cross-fade into itself, in seconds. Without this the
 # loop point is a hard cut: the wallpaper does not end where it began.
@@ -101,11 +105,13 @@ cmd = [
     f'[main][head]xfade=transition=fade:duration={XFADE}:'
     f'offset={XFADE_OFFSET:.3f}[v]',
     '-map', '[v]',
-    # A background does not need a high bitrate, and every megabyte here is a
-    # megabyte the page has to load before anything else happens.
+    # A background does not need the highest bitrate, but it must not be visibly
+    # soft. crf 27 at 1280x720 was 1.4 Mbps and the upscale to a 1920-wide hero made
+    # it look broken. At full resolution, crf 22 keeps the artwork clean while the
+    # file stays a few megabytes.
     '-c:v', 'libx264',
     '-preset', 'slow',
-    '-crf', '27',
+    '-crf', '22',
     '-pix_fmt', 'yuv420p',
     '-movflags', '+faststart',
     '-an',

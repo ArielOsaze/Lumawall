@@ -143,6 +143,12 @@ export default function SceneCatalog({ t, global }) {
               left: 0,
               width: '100%',
               display: 'block',
+              // The app's own screenshot has light-grey labels sitting on bright
+              // artwork ("Selected wallpaper" over a purple glow), which measured
+              // 1.43:1 in the render - unreadable. Dimming the screenshot slightly
+              // and lifting its contrast fixes the label without changing the app's
+              // appearance enough to misrepresent it.
+              filter: 'brightness(0.88) contrast(1.12)',
             }}
           />
 
