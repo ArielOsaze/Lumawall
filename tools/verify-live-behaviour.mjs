@@ -134,8 +134,15 @@ check('the video plays on arrival', state.video_exists && state.video_paused ===
   't=' + state.video_time);
 check('the video advanced', state.video_exists && state.video_time > 0.3, 't=' + state.video_time);
 check('the video has no media error', state.video_exists && !state.video_error);
-check('the video URL is the promo', /lumawall-promo\.mp4/.test(state.video_src || ''));
-check('the hero image is the composed one', /hero-bg/.test(state.hero_src || ''), state.hero_src);
+// The filename carries a content hash now - lumawall-promo.c438ada022.mp4 - so match
+// the stem. An exact-name check failed on a correct deploy after the versioning
+// landed, which is a false red: the thing it cares about is that the promo is the
+// video being served, not which hash it has.
+check('the video URL is the promo', /lumawall-promo\.[0-9a-f]+\.mp4/.test(state.video_src || '')
+  || /lumawall-promo\.mp4/.test(state.video_src || ''),
+  state.video_src || '(no src)');
+check('the hero image is the composed one',
+  /hero-bg(\.[0-9a-f]+)?\.jpg/.test(state.hero_src || ''), state.hero_src || '(none)');
 check('the hero image is visible', state.hero_visible);
 check('no 1080p badge over the video', !state.badge);
 check('no play cover over the video', !state.cover);
