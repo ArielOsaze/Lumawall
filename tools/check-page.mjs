@@ -80,7 +80,6 @@ const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=9456',
   `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
   '--hide-scrollbars', '--window-size=1440,900',
-  '--autoplay-policy=no-user-gesture-required',
   `http://127.0.0.1:${PORT}/`,
 ], { stdio: 'ignore' });
 

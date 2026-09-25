@@ -59,64 +59,68 @@
   }
 
   // ── the promo video plays on its own ────────────────────────────────────
-  // Muted and inline, which is what browsers allow without a gesture. If
-  // autoplay is refused the controls are already there, so the visitor can start
-  // it themselves; the poster frame means the block never looks broken.
+  //
+  // One authority decides whether it should be playing: whether the block is on
+  // screen, and whether the visitor stopped it themselves. Every event that can
+  // change either answer calls the same function, so the state is derived rather
+  // than accumulated - the previous version kept two independent deciders (an
+  // observer and a scroll handler) whose order of firing decided the outcome, and
+  // the result was that the video sometimes stayed stopped for the whole visit.
   var promo = document.getElementById('promo');
 
   if (promo) {
     promo.muted = true;
     promo.playsInline = true;
 
+    // The visitor's pause, told apart from ours by a flag that is cleared inside
+    // the pause EVENT, not after the pause() call returns. The event is queued as a
+    // task, so clearing it straight after pause() left it false by the time the
+    // handler ran and every viewport pause was recorded as the visitor's.
+    var userPaused = false;
+    var wePaused = false;
+
+    promo.addEventListener('pause', function () {
+      if (wePaused) { wePaused = false; return; }
+      userPaused = true;
+    });
+    // Playing again clears both: a stale wePaused must never be able to swallow a
+    // later pause of the visitor's.
+    promo.addEventListener('play', function () { userPaused = false; wePaused = false; });
+
     var startPromo = function () {
       var p = promo.play();
-      // A refusal is not an error: the controls are visible, so the visitor can
-      // start it themselves.
+      // A refusal is not an error: the controls are there, and the next scroll or
+      // click calls this again - which is what satisfies the gesture requirement.
       if (p && p.catch) p.catch(function () {});
     };
 
-    // Whether the visitor stopped it on purpose. If they did, scrolling away and
-    // back must not restart it: they pressed pause because they wanted it
-    // stopped, and a page that overrides that is a page that fights its user.
-    var userPaused = false;
-    promo.addEventListener('pause', function () {
-      // A pause that did not come from the observer is the visitor's.
-      if (!pausingForViewport) userPaused = true;
-    });
-    var pausingForViewport = false;
+    var sync = function () {
+      var r = promo.getBoundingClientRect();
+      var onScreen = r.bottom > 0 && r.top < window.innerHeight && r.height > 0;
+      if (onScreen) {
+        if (!userPaused && promo.paused) startPromo();
+      } else if (!promo.paused) {
+        wePaused = true;      // only when a pause will actually be raised
+        promo.pause();
+      }
+    };
 
-    // Start when the block is on screen rather than at page load, so the visitor
-    // sees the video from the beginning instead of arriving 20 seconds in.
     if ('IntersectionObserver' in window) {
-      var vio = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            // Resuming after a scroll is fine; resuming after a deliberate pause
-            // is not.
-            if (!userPaused) startPromo();
-          } else if (!promo.paused) {
-            pausingForViewport = true;
-            promo.pause();
-            pausingForViewport = false;
-          }
-        });
-      }, { threshold: 0.35 });
-      vio.observe(promo);
-    } else {
-      startPromo();
+      new IntersectionObserver(function () { sync(); }, { threshold: 0.25 }).observe(promo);
     }
 
-    // Some browsers only allow playback after the first interaction. Retry once
-    // on the first scroll or click, whichever comes first, then stop listening.
-    var retry = function () {
-      if (promo.paused) startPromo();
-      window.removeEventListener('scroll', retry);
-      window.removeEventListener('click', retry);
-      window.removeEventListener('touchstart', retry);
-    };
-    window.addEventListener('scroll', retry, { passive: true, once: false });
-    window.addEventListener('click', retry, { once: false });
-    window.addEventListener('touchstart', retry, { passive: true, once: false });
+    // Called directly rather than through requestAnimationFrame: rAF is throttled -
+    // and in some conditions never fires at all - which made the outcome depend on
+    // whether a frame happened to be produced, so the video sometimes stayed
+    // stopped after scrolling back. sync() only reads a rectangle and compares
+    // booleans, so running it on every scroll event is cheap.
+    window.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync, { passive: true });
+    // A click can be the gesture that makes playback allowed, so re-decide on it.
+    window.addEventListener('click', sync);
+    window.addEventListener('touchstart', sync, { passive: true });
+
+    sync();
   }
 
   // ── performance bars animate to their value when seen ──────────────────

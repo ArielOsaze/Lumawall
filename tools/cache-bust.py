@@ -40,6 +40,15 @@ WATCHED = [
     'assets/js/main.js',
     'assets/shots/poster-promo.png',
     'assets/shots/hero-bg.jpg',
+    # The app screenshots are served with a 24-hour cache and their names never
+    # changed, so a re-captured screenshot was invisible for a day. That is the same
+    # failure as the video's, at a shorter interval - and it happened: the window
+    # controls in all four carried a hover highlight, and fixing them on disk would
+    # still have shown the old images.
+    'assets/shots/ui-discover.png',
+    'assets/shots/ui-library.png',
+    'assets/shots/ui-displays.png',
+    'assets/shots/ui-performance.png',
 ]
 
 HASH_LEN = 10
@@ -90,12 +99,31 @@ def main():
             # No base file. Either the html is already correct, or the asset is gone.
             if referenced_name:
                 on_disk = os.path.join(folder_path, referenced_name)
-                if os.path.exists(on_disk):
+                if not os.path.exists(on_disk):
+                    print('  %-38s BROKEN - html points at %s, which does not exist'
+                          % (rel, referenced_name))
+                    return 1
+                # The base file is gone because a previous run removed it after
+                # versioning. The versioned file is therefore the asset, and it may
+                # have been edited in place since - in which case its name carries a
+                # hash of its OLD content and the browser will keep the old copy.
+                # That is exactly how the video-autoplay fix would have shipped
+                # invisibly.
+                actual = digest(on_disk)
+                if actual != referenced.group(1):
+                    stem_clean = re.sub(r'\.[0-9a-f]{%d}$' % HASH_LEN, '', stem)
+                    fixed = '%s.%s%s' % (stem_clean, actual, ext)
+                    if check_only:
+                        print('  %-38s STALE - name says %s, content is %s'
+                              % (rel, referenced.group(1), actual))
+                        continue
+                    os.rename(on_disk, os.path.join(folder_path, fixed))
+                    html = html.replace(referenced_name, fixed)
+                    moved.append((rel, os.path.join(folder, fixed)))
+                    print('  %-38s renamed to %s (content changed)' % (rel, fixed))
+                else:
                     print('  %-38s up to date (%s)' % (rel, referenced_name))
-                    continue
-                print('  %-38s BROKEN - html points at %s, which does not exist'
-                      % (rel, referenced_name))
-                return 1
+                continue
             print('  %-38s MISSING' % rel)
             continue
 

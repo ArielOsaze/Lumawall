@@ -37,7 +37,25 @@ public static class W {
     [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
     [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll", CharSet = CharSet.Auto)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+
+    /// <summary>
+    /// Moves the pointer off the window before a screen capture.
+    ///
+    /// CopyFromScreen copies whatever is rendered, and a window control under the
+    /// pointer is rendered with Windows' hover highlight - a pale blue that is
+    /// nothing to do with this app. A capture taken with the pointer resting on
+    /// the minimize button therefore ships that highlight baked into the image,
+    /// and it stays there for as long as the screenshot is used.
+    /// </summary>
+    public static void ParkCursor(int winLeft, int winTop, int winW, int winH)
+    {
+        int sx = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width;
+        int sy = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
+        // Bottom-right corner: outside a centred window, and over no control.
+        SetCursorPos(sx - 2, sy - 2);
+    }
 
     /// <summary>Reliably brings a window to the foreground (AttachThreadInput trick).</summary>
     public static void ForceForeground(IntPtr hwnd)
