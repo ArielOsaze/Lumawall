@@ -23,10 +23,10 @@ This machine has two Vercel logins:
 run `vercel whoami` first. `tools/deploy-vercel.ps1` refuses to run against the
 AkunTuntas account, because deploying LumaWall there would be a silent mistake.
 
-## The 404 outage, and why the Git integration was disconnected
+## The 404 outage, and why rootDirectory must be `site`
 
-`lumawall.xinet.id` went down with a 404 twice, in two different ways. Both
-looked like success from the CLI, so both are worth knowing.
+`lumawall.xinet.id` went down with a 404 three times, in two different ways. All
+three looked like success from the CLI, so all three are worth knowing.
 
 ### Cause 1 — the production alias does not move by itself
 
@@ -35,30 +35,50 @@ the public domain was 404: the production alias stayed on an older deployment.
 `deploy-vercel.ps1` now checks the real domain as its final step and re-aliases
 if needed.
 
-### Cause 2 — the Git integration built the wrong folder (the real one)
+### Cause 2 — the Git integration built the repository root
 
-The Vercel project was connected to the GitHub repo, so every `git push` triggered
-a build of the **repository root**. The site lives in `site/`, and the repo root
-has no `index.html` — the build failed or produced an empty deployment, and Vercel
-moved the production alias onto it.
+The Vercel project is connected to the GitHub repo, so every `git push` triggers
+a build. With `rootDirectory` unset, that build starts at the **repository root**,
+which has no `index.html` — the site lives in `site/`. The build produces an empty
+deployment, Vercel promotes it to production, and the site 404s.
 
-Setting `rootDirectory: site` fixed the Git build but broke the CLI: the CLI runs
-`cd site && vercel deploy`, so the upload already *is* the site folder, and
-`rootDirectory: site` made it look for `site/site` inside that upload —
+This happened again after the bilingual launch: a `git push` produced an empty
+deployment and took the domain down, while the CLI deployment that had been
+verified minutes earlier was still fine. The site was restored by re-pointing the
+alias at that CLI deployment.
+
+**`rootDirectory` must be `site`.** That is the setting the Git build needs, and
+it is now set. Verified end to end: an empty commit pushed to `master` produced a
+`READY` production deployment that serves both languages correctly.
+
+### The consequence for the CLI
+
+With `rootDirectory: site`, the CLI cannot deploy from inside `site/` any more —
+it runs `cd site && vercel deploy`, so the upload already *is* the site folder,
+and `rootDirectory: site` makes Vercel look for `site/site` inside it:
 
 ```
 The specified Root Directory "site" does not exist.
 ```
 
-**The two settings cannot both be correct.** The Git build needs
-`rootDirectory=site`; the CLI needs it unset. The Git integration was therefore
-disconnected, and the CLI is the only deploy path:
+**So the two paths are now split, and both are supported:**
 
-- `rootDirectory` is unset
-- the project is not linked to the repository
+| what you want | how |
+|---|---|
+| normal deploy after a change | `git push` — the Git build handles it |
+| deploy without pushing | `powershell -File tools/deploy-vercel.ps1` |
 
-If you ever re-connect the Git integration, set `rootDirectory` to `site` **and**
-stop using the CLI deploy — and check the public domain afterwards either way.
+`deploy-vercel.ps1` clears `rootDirectory` before deploying and restores it
+afterwards, so the Git build keeps working. If it ever leaves `rootDirectory`
+unset — a crash between the two steps — the next `git push` will produce an empty
+deployment and take the site down. Check it with:
+
+```
+python tools/check-deploy-config.py
+```
+
+That script also verifies the alias points at a deployment that serves the real
+site, which is the failure the CLI cannot see.
 
 ## Deployment protection
 

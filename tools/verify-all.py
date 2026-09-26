@@ -67,6 +67,8 @@ CHECKS = [
      ['python', 'tools/check-i18n.py']),
     ('the memory work is intact and its gates are closed',
      ['python', 'tools/check-memory-plan.py']),
+    ('the deploy config will not take the site down',
+     ['python', 'tools/check-deploy-config.py']),
     ('every promo string is translated and fits',
      ['python', 'tools/check-promo-copy.py']),
     ('page behaviour: autoplay, crop, reveals, copy',
