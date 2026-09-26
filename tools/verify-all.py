@@ -65,8 +65,11 @@ CHECKS = [
      ['python', 'tools/check-seo.py']),
     ('both language versions exist and are complete',
      ['python', 'tools/check-i18n.py']),
-    ('the memory work is intact and its gates are closed',
+    ('the memory work is intact and the trim traps are absent',
      ['python', 'tools/check-memory-plan.py']),
+    ('the wallpapers are actually rendering',
+     ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+      'tools/check-wallpaper-alive.ps1']),
     ('the deploy config will not take the site down',
      ['python', 'tools/check-deploy-config.py']),
     ('every promo string is translated and fits',
@@ -92,7 +95,18 @@ PY = sys.executable
 for name, cmd in CHECKS:
     if cmd[0] == 'python':
         cmd = [PY] + cmd[1:]
-    if not os.path.exists(cmd[1]):
+
+    # Which argument is the script? It is not always cmd[1]: a powershell invocation
+    # is `powershell -NoProfile -ExecutionPolicy Bypass -File tools/x.ps1`, so cmd[1]
+    # is a flag and the existence check reported "the check script does not exist" for
+    # a script that was right there.
+    script = None
+    for argument in cmd:
+        if argument.endswith(('.py', '.mjs', '.ps1', '.js')):
+            script = argument
+            break
+
+    if script is None or not os.path.exists(script):
         results.append((name, 'MISSING', 'the check script does not exist'))
         continue
 

@@ -50,19 +50,19 @@ because it is the thing that made the decision.
 Also `Memory.forciblyPurgeJavaScriptMemory` on a one-minute throttle, for the same
 reason one level down: a wallpaper page's JS heap is stale state, not working memory.
 
-### 3. Working-set trimming of the whole group
+### 3. ~~Working-set trimming of the whole group~~ — REMOVED
 
-`EmptyWorkingSet` / `SetProcessWorkingSetSize(-1,-1)` on every process in the group,
-gated on the paused state and nothing else.
+This was implemented, measured, and removed because it broke the wallpapers. The full
+record is in `references/black-wallpaper-bug.md`; the short version:
 
-The gate is the entire safety argument. A playing wallpaper is having its frames
-faulted in continuously, so trimming it would turn every one of those into a fresh
-page fault and show as stutter. A stopped wallpaper is not being drawn at all, so the
-pages it loses are pages nobody is waiting on.
+It released a real **339 MB (447 MB → 108 MB, 76%)** when every wallpaper was stopped.
+But after the wallpapers resumed, GPU video decode stayed at **0%** and the screens
+stayed black. Restarting the app was the only thing that brought them back. A 76%
+saving against a permanently black desktop is not a trade worth making.
 
-Runs on a worker thread, with the PID list read on the UI thread first — CoreWebView2
-objects belong to the thread that created them, and the trim itself is plain Win32 on
-an integer, so only that part moves off-thread.
+`tools/check-memory-plan.py` pins the two Win32 calls as forbidden so it cannot be
+re-added by accident, and `tools/check-wallpaper-alive.ps1` is the runtime check that
+would have caught it in seconds: it reports whether the videos are actually decoding.
 
 ### 4. `MemoryUsageTargetLevel = Low` while paused
 
@@ -75,22 +75,21 @@ stays visible, so it would be rejected with `ERROR_INVALID_STATE` anyway.
 
 ## What was measured
 
-Baseline was the shipped build with none of this. Same machine, same three monitors,
-same wallpapers.
-
 | | working set | commit | browser processes |
 |---|---|---|---|
 | **before** playing | 498 MB | 1477 MB | 9 |
 | **before** paused | 498 MB | 1477 MB | 9 |
 | **after** playing | 260 MB | 1339 MB | 7 |
-| **after** paused (after trim) | **208 MB** | 1339 MB | 7 |
-| **after** resumed | 209 MB | 1339 MB | 7 |
 
-- **Pausing now releases 53 MB of working set (20%)**, where before it released 0.
-- Commit is unchanged by the trim, exactly as the documentation says. Reported anyway.
-- Memory returns on resume, and the log confirms all three wallpapers re-render.
+- **The browser arguments cut the group from 9 processes to 7**, and the playing
+  working set from 498 MB to 260 MB. That is a real, permanent saving with no
+  downside measured.
+- The working-set trim took the paused figure down to 108 MB, and is gone: see above.
+- Commit is unchanged, which is expected. The performance panel shows both numbers so
+  a single figure cannot be read as a saving that is not there.
 
-Reproduce with `tools/measure-memory.ps1`.
+Reproduce the current state with `tools/measure-memory.ps1`; check the wallpapers are
+alive with `tools/check-wallpaper-alive.ps1`.
 
 ## The bug the measurement caught
 

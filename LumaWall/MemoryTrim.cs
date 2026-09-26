@@ -4,34 +4,43 @@ using System.Runtime.InteropServices;
 namespace LumaWall
 {
     /// <summary>
-    /// Working-set trimming for the WebView2 process group.
+    /// Reads the memory of the WebView2 process group.
     ///
-    /// Why this is the right lever for a wallpaper host, and where its limit is:
+    /// ── what used to be here, and why it is gone ─────────────────────────────
     ///
-    /// A wallpaper is either animating where the user can see it, or it is stopped
-    /// because something covers it, the session is locked, or the machine is on
-    /// battery. The second state is the whole opportunity: the wallpaper is not on
-    /// screen, so making its memory resident again costs a page fault that nobody
-    /// sees. Trimming there is free.
+    /// This class also trimmed working sets: the Win32 calls that empty a process's
+    /// working set over the whole browser group, on the reasoning that a wallpaper
+    /// which is not on screen has pages nobody is waiting for, so taking them away is
+    /// free. The reasoning was wrong, and it was measured wrong twice:
     ///
-    /// In the first state it is not free at all. Removing pages from a running
-    /// decoder's working set means the frame pipeline faults them straight back in,
-    /// which shows up as stutter. So nothing here is ever called while a wallpaper
-    /// is playing - the callers are gated on the paused state.
+    ///   Attempt 1 - trim whenever one wallpaper paused. Every wallpaper in the app
+    ///   shares one CoreWebView2Environment, so GetProcessInfos() returns the same
+    ///   process list for all of them, and that list includes the GPU process doing
+    ///   the video decode. Pausing one monitor therefore trimmed the GPU process
+    ///   decoding the other two. Measured: GPU VideoDecode went 6.4% to 0.0% and all
+    ///   three screens went black, while the log reported "5/5 process(es) trimmed"
+    ///   and every wallpaper still reported itself ready.
     ///
-    /// And the honest limit: SetProcessWorkingSetSize does not free commit. The
-    /// pages are removed from the working set and, for a file-backed or
-    /// pagefile-backed page, they can be dropped; but a private page that is still
-    /// referenced comes back the moment it is touched. So this lowers the number
-    /// Task Manager shows and the number that competes for physical RAM, and it does
-    /// NOT lower commit charge. Both numbers are reported in the UI for that reason.
+    ///   Attempt 2 - trim only when every wallpaper is stopped, so no decoder is live.
+    ///   Measured: it worked, and released 339 MB (447 MB to 108 MB, 76% of the
+    ///   group's working set). Then the covers came off, the wallpapers resumed - the
+    ///   log said "resumed" and the pause state was clean - and GPU VideoDecode stayed
+    ///   at 0.0%. The videos never came back; only restarting the app restored them.
+    ///
+    /// So on this stack, trimming the working set of a process that owns a live video
+    /// decoder does not survive that decoder resuming, even though the API
+    /// documentation describes Trim as having no effect on rendering. A real 76%
+    /// saving against a permanently black wallpaper is not a trade worth making, and
+    /// attempt 2 shows the problem is not the pause logic - that logic was correct and
+    /// the decoder still died.
+    ///
+    /// What is left is measurement, which is what should have come first. The app
+    /// reports working set AND commit for the whole group, so a future attempt at a
+    /// memory saving starts from numbers instead of an assumption.
     /// </summary>
     internal static class MemoryTrim
     {
-        // SetProcessWorkingSetSize needs PROCESS_SET_QUOTA and PROCESS_QUERY_INFORMATION.
-        // EmptyWorkingSet needs PROCESS_QUERY_INFORMATION | PROCESS_SET_QUOTA as well.
-        private const int PROCESS_SET_QUOTA = 0x0100;
-        private const int PROCESS_QUERY_INFORMATION = 0x0400;
+        private const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr OpenProcess(int desiredAccess, bool inheritHandle, int processId);
@@ -39,54 +48,16 @@ namespace LumaWall
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr handle);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr minimumWorkingSetSize, IntPtr maximumWorkingSetSize);
-
-        // EmptyWorkingSet lives in psapi.dll, NOT kernel32.dll. Declaring it in
-        // kernel32 threw EntryPointNotFoundException at call time, and because that
-        // exception was caught by the same try block that wrapped
-        // SetProcessWorkingSetSize, it silently prevented the working-set call from
-        // ever running - which is why the first build reported "0/5 process(es)"
-        // trimmed. The measurement caught it; the log alone would not have.
-        [DllImport("psapi.dll", SetLastError = true)]
-        private static extern bool EmptyWorkingSet(IntPtr process);
-
         /// <summary>
-        /// Removes as many pages as possible from one process's working set.
+        /// Working set and commit of one process, in bytes.
         ///
-        /// The -1, -1 argument pair is the documented "trim it all" form: it is not a
-        /// request for an infinite quota, it tells the memory manager to remove as
-        /// many pages as it can right now.
-        ///
-        /// Returns false rather than throwing. A renderer inside Chromium's sandbox
-        /// can refuse the handle, and that is a normal outcome to log rather than a
-        /// reason to fail the wallpaper - so the caller counts successes and moves on.
+        /// Two numbers, not one, and the difference is the point. The working set is
+        /// the physical RAM held right now - what Task Manager's Processes tab shows
+        /// and what competes with the user's game. The commit is what has to fit in
+        /// RAM plus pagefile - the Details tab's "Commit size". A panel that showed
+        /// only one of them could be read as a saving that is not there, because
+        /// moving pages out of a working set does not release commit.
         /// </summary>
-        public static bool TrimProcess(int processId)
-        {
-            if (processId <= 0) return false;
-
-            IntPtr handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, processId);
-            if (handle == IntPtr.Zero) return false;
-
-            try
-            {
-                // EmptyWorkingSet is the documented shorthand for the same operation
-                // and is used first because it also drops the process's standby pages.
-                if (EmptyWorkingSet(handle)) return true;
-                return SetProcessWorkingSetSize(handle, new IntPtr(-1), new IntPtr(-1));
-            }
-            catch
-            {
-                return false;
-            }
-            finally
-            {
-                CloseHandle(handle);
-            }
-        }
-
-        /// <summary>Working set and commit of one process, in bytes. -1 when unreadable.</summary>
         public static bool TryGetMemory(int processId, out long workingSet, out long commit)
         {
             workingSet = -1;
@@ -103,6 +74,9 @@ namespace LumaWall
             }
             catch
             {
+                // Chromium sets a restrictive security descriptor on its processes and
+                // a sandboxed renderer can refuse even a read. Normal, not an error:
+                // the caller skips the process rather than blanking the panel.
                 return false;
             }
         }

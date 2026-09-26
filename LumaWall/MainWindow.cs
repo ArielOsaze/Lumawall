@@ -3124,10 +3124,13 @@ namespace LumaWall
         private void OnHealthTick(object sender, EventArgs e)
         {
             ApplyPauseState();
-            // Paused wallpapers have their memory policy re-applied here. It has to be
-            // on the tick rather than only on the pause transition: a wallpaper stopped
-            // by a fullscreen game or by the battery can stay stopped for hours, and
-            // nothing else runs for it in that time.
+            // Paused wallpapers have their page housekeeping re-applied here. It has
+            // to be on the tick rather than only on the pause transition: a wallpaper
+            // stopped by a fullscreen game or by the battery can stay stopped for
+            // hours, and nothing else runs for it in that time.
+            manager.MaintainPausedPages();
+            // The working-set trim is decided by the manager, not by each wallpaper,
+            // because the browser and GPU processes are shared across displays.
             manager.MaintainPausedMemory();
             // Self-healing: an Explorer restart or a rival wallpaper tool can
             // destroy the WorkerW the videos are parented to, which leaves a
