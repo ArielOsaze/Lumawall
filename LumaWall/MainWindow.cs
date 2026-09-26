@@ -86,6 +86,12 @@ namespace LumaWall
             { "perf.live.sub", new[] { "Pemakaian mesin wallpaper saat ini.", "Current wallpaper engine usage.", "当前壁纸引擎占用。", "現在の壁紙エンジン使用量。" } },
             { "stat.cpu", new[] { "CPU", "CPU", "CPU", "CPU" } },
             { "stat.ram", new[] { "Memori", "Memory", "内存", "メモリ" } },
+            // The detail line under the memory value. "commit" is the term Task Manager
+            // uses in its Details tab; it is deliberately shown next to the working set
+            // because a working-set trim (which this app does to a paused wallpaper)
+            // lowers the first number without lowering the second.
+            { "stat.ram.commit", new[] { "commit", "commit", "提交", "コミット" } },
+            { "stat.ram.idle", new[] { "tidak ada proses browser", "no browser process", "无浏览器进程", "ブラウザプロセスなし" } },
             { "stat.active", new[] { "Wallpaper aktif", "Active wallpapers", "活动壁纸", "稼働中の壁紙" } },
             { "toast.tray", new[] { "LumaWall tetap aktif di area notifikasi.", "LumaWall is still running in the notification area.", "LumaWall 仍在通知区域运行。", "LumaWall は通知領域で実行中です。" } },
             { "toast.fps", new[] { "Batas FPS", "FPS limit", "帧率限制", "FPS上限" } },
@@ -168,6 +174,10 @@ namespace LumaWall
         private ContentControl catalogInspectorHost;
         private TextBlock telemetryCpu;
         private TextBlock telemetryRam;
+        // The small line under the RAM value: commit charge and browser process count.
+        private TextBlock telemetryRamDetail;
+        private TextBlock telemetryCpuDetail;
+        private TextBlock telemetryActiveDetail;
         private TextBlock telemetryActive;
         private TimeSpan lastCpuTime;
         private DateTime lastCpuStamp = DateTime.MinValue;
@@ -1934,16 +1944,16 @@ namespace LumaWall
             // unit, and the third metric moves to its own row.
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            telemetryCpu = TelemetryCell(grid, 0, 0, Tr("stat.cpu"), CAccent, Icons.Cpu);
-            telemetryRam = TelemetryCell(grid, 1, 0, Tr("stat.ram"), CPrimaryHi, Icons.Memory);
-            telemetryActive = TelemetryCell(grid, 0, 1, Tr("stat.active"), CWarning, Icons.Apply);
+            telemetryCpu = TelemetryCell(grid, 0, 0, Tr("stat.cpu"), CAccent, Icons.Cpu, out telemetryCpuDetail);
+            telemetryRam = TelemetryCell(grid, 1, 0, Tr("stat.ram"), CPrimaryHi, Icons.Memory, out telemetryRamDetail);
+            telemetryActive = TelemetryCell(grid, 0, 1, Tr("stat.active"), CWarning, Icons.Apply, out telemetryActiveDetail);
             stack.Children.Add(grid);
             card.Child = stack;
             UpdateTelemetry();
             return card;
         }
 
-        private TextBlock TelemetryCell(Grid grid, int column, int row, string label, Color accent, string iconName)
+        private TextBlock TelemetryCell(Grid grid, int column, int row, string label, Color accent, string iconName, out TextBlock detailOut)
         {
             // Each cell is a 3-row block (head, value, spacer) inside its grid row
             // so cells in the same row line up regardless of label wrapping.
@@ -1981,19 +1991,67 @@ namespace LumaWall
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
             cell.Children.Add(value);
+
+            // The detail line: a second, smaller line under the value, used by the RAM
+            // cell to show the commit figure and the process count. It is always
+            // created (and left empty when unused) so the cells keep their alignment
+            // and the row does not jump when a detail appears.
+            var detail = new TextBlock
+            {
+                Text = string.Empty,
+                Foreground = new SolidColorBrush(CMuted),
+                FontSize = 10.5,
+                Margin = new Thickness(0, 3, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            cell.Children.Add(detail);
+            detailOut = detail;
+
             Grid.SetColumn(cell, column);
             Grid.SetRow(cell, row);
             grid.Children.Add(cell);
             return value;
         }
 
+        /// <summary>
+        /// Refreshes the live performance numbers.
+        ///
+        /// The RAM figure is the whole app, not this process. That distinction is the
+        /// entire reason this method was rewritten: a WebView2 host runs its browser,
+        /// GPU and renderer processes separately, so the host process's own working set
+        /// is a small fraction of what the user sees in Task Manager. Showing only that
+        /// fraction made the panel look like it was hiding something, and a performance
+        /// panel the user does not believe is worse than none.
+        ///
+        /// Working set and commit are both shown for the same reason, one level down:
+        /// trimming a working set (which is what this app does to a paused wallpaper)
+        /// moves resident pages out without releasing commit, so a single number would
+        /// let a trim look like a real release. Two numbers cannot.
+        /// </summary>
         private void UpdateTelemetry()
         {
             try
             {
                 Process process = Process.GetCurrentProcess();
                 process.Refresh();
-                if (telemetryRam != null) telemetryRam.Text = (process.WorkingSet64 / (1024d * 1024d)).ToString("0") + " MB";
+
+                long browserWorkingSet, browserCommit;
+                int browserProcesses;
+                manager.CollectMemory(out browserWorkingSet, out browserCommit, out browserProcesses);
+
+                long totalWorkingSet = process.WorkingSet64 + browserWorkingSet;
+                long totalCommit = process.PrivateMemorySize64 + browserCommit;
+
+                if (telemetryRam != null)
+                {
+                    telemetryRam.Text = (totalWorkingSet / (1024d * 1024d)).ToString("0") + " MB";
+                    telemetryRamDetail.Text = browserProcesses > 0
+                        ? (browserProcesses + (browserProcesses == 1 ? " browser process · " : " browser processes · ") +
+                           (totalCommit / (1024d * 1024d)).ToString("0") + " MB " + Tr("stat.ram.commit"))
+                        : Tr("stat.ram.idle");
+                }
+
                 if (telemetryActive != null) telemetryActive.Text = config.MonitorVideos.Count(x => File.Exists(x.Value)).ToString();
                 if (telemetryCpu != null)
                 {
@@ -3066,6 +3124,11 @@ namespace LumaWall
         private void OnHealthTick(object sender, EventArgs e)
         {
             ApplyPauseState();
+            // Paused wallpapers have their memory policy re-applied here. It has to be
+            // on the tick rather than only on the pause transition: a wallpaper stopped
+            // by a fullscreen game or by the battery can stay stopped for hours, and
+            // nothing else runs for it in that time.
+            manager.MaintainPausedMemory();
             // Self-healing: an Explorer restart or a rival wallpaper tool can
             // destroy the WorkerW the videos are parented to, which leaves a
             // black desktop behind a perfectly healthy-looking process.

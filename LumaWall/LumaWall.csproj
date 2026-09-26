@@ -37,6 +37,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="Icons.cs" />
+    <Compile Include="MemoryTrim.cs" />
     <Content Include="catalog.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="assets\*.mp4"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="assets\*.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>

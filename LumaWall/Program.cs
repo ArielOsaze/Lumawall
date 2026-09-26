@@ -855,6 +855,10 @@ namespace LumaWall
         private bool initialCompletionReported;
         private int mediaRequest;
         private string pagePath;
+        // How often a paused wallpaper has its memory policy re-applied. See
+        // MaintainPausedMemory for why a minute and not the health tick's two seconds.
+        private const double MemoryMaintenanceSeconds = 60;
+        private DateTime lastMemoryMaintenance = DateTime.MinValue;
 
         public event EventHandler RendererReady;
         public event EventHandler RendererFailed;
@@ -1071,7 +1075,74 @@ namespace LumaWall
                     // scan-out can flicker on mixed-refresh multi-monitor layouts
                     // while the regular DWM-composited surface stays stable and
                     // fully GPU-accelerated.
-                    var options = new CoreWebView2EnvironmentOptions("--autoplay-policy=no-user-gesture-required --enable-accelerated-video-decode --enable-gpu-rasterization --disable-direct-composition-video-overlays --disable-component-update --disable-domain-reliability --disable-sync --no-first-run --no-default-browser-check --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling");
+                    //
+                    // The memory flags below are all quality-neutral by construction:
+                    // none of them changes resolution, frame rate, codec choice or
+                    // colour handling. What they remove is state that accumulates
+                    // because a wallpaper page is loaded once and then lives for
+                    // weeks, which is exactly the shape of workload where Chromium's
+                    // defaults (built for browsing) hold memory nobody will ask for
+                    // again.
+                    //
+                    //   --msWebView2SimulateMemoryPressureWhenInactive
+                    //       Deliberately NOT used. The flag only fires when WebView2
+                    //       considers the control inactive - either its controller is
+                    //       invisible or the WebView is suspended - and a wallpaper
+                    //       window stays visible on the desktop even when a fullscreen
+                    //       game covers it. Shipping it would be a comment claiming a
+                    //       saving that never happens. The same effect is obtained
+                    //       explicitly instead, through the DevTools Protocol, at the
+                    //       moment this app actually knows the wallpaper is stopped.
+                    //
+                    //   --disable-back-forward-cache
+                    //       A wallpaper never navigates back. Without this, Chromium
+                    //       keeps a full frozen snapshot (DOM plus JS heap) for a
+                    //       history step that will never be used.
+                    //
+                    //   --process-per-site
+                    //       Every display hosts a page from one local directory, so
+                    //       there is nothing to isolate. This keeps the multi-monitor
+                    //       case at one renderer rather than one per display. The
+                    //       content is our own file, so the site-isolation trade-off
+                    //       that makes this flag unsafe on the open web does not apply
+                    //       here. Note the deliberate absence of
+                    //       --renderer-process-limit=1: a hard cap of one would make a
+                    //       single renderer crash take down every monitor's wallpaper,
+                    //       which is a robustness regression for no memory we are not
+                    //       already saving.
+                    //
+                    //   --js-flags=--scavenger_max_new_space_capacity_mb=8
+                    //       Caps the V8 young generation. Documented by WebView2 as a
+                    //       memory reducer; the cost is more frequent minor GCs, which
+                    //       is nothing next to a video decode.
+                    //
+                    //   cache caps
+                    //       Deterministic ceilings on the disk cache and the two Skia
+                    //       caches, so a long-lived process cannot grow them without
+                    //       bound.
+                    string arguments = string.Join(" ", new string[]
+                    {
+                        "--autoplay-policy=no-user-gesture-required",
+                        "--enable-accelerated-video-decode",
+                        "--enable-gpu-rasterization",
+                        "--disable-direct-composition-video-overlays",
+                        "--disable-component-update",
+                        "--disable-domain-reliability",
+                        "--disable-sync",
+                        "--no-first-run",
+                        "--no-default-browser-check",
+                        "--disable-features=CalculateNativeWinOcclusion",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-renderer-backgrounding",
+                        "--disable-background-timer-throttling",
+                        "--disable-back-forward-cache",
+                        "--process-per-site",
+                        "--js-flags=--scavenger_max_new_space_capacity_mb=8",
+                        "--disk-cache-size=33554432",
+                        "--skia-font-cache-limit-mb=8",
+                        "--skia-resource-cache-limit-mb=16"
+                    });
+                    var options = new CoreWebView2EnvironmentOptions(arguments);
                     sharedEnvironmentTask = CoreWebView2Environment.CreateAsync(null, userData, options);
                 }
                 return sharedEnvironmentTask;
@@ -1149,6 +1220,10 @@ namespace LumaWall
             browserReady = true;
             currentMediaPath = mediaPath;
             ApplyPlaybackState();
+            // A wallpaper that was paused before its WebView2 existed has never had the
+            // memory policy applied, so this is the first moment it can be. Done here
+            // rather than on the pause event because that event already fired.
+            ApplyMemoryPolicyOnReady();
             AppLog.Write("Wallpaper renderer ready " + screen.DeviceName + " -> " + mediaPath);
             if (!initialCompletionReported)
             {
@@ -1215,8 +1290,128 @@ namespace LumaWall
             ApplyPlaybackState();
         }
 
-        public void PauseVideo() { playbackPaused = true; ApplyPlaybackState(); }
+        public void PauseVideo() { playbackPaused = true; ApplyPlaybackState(); TrimIfHidden(); }
         public void ResumeVideo() { playbackPaused = false; ApplyPlaybackState(); }
+
+        /// <summary>
+        /// Releases the WebView2 process group's resident memory, but only when this
+        /// wallpaper is stopped and therefore not on screen.
+        ///
+        /// The gate is the entire safety argument. A wallpaper that is playing is
+        /// having its frames faulted in continuously; trimming it would make every
+        /// one of those pages a fresh page fault and show up as stutter. A wallpaper
+        /// that is stopped - covered by a fullscreen app, session locked, on battery -
+        /// is not being drawn at all, so the pages it loses are pages nobody is
+        /// waiting on, and the next time it is shown they come back from the pagefile
+        /// or are re-decoded.
+        ///
+        /// What this does NOT do is reduce commit. SetProcessWorkingSetSize moves
+        /// resident pages out of the working set; a private page that is still
+        /// referenced will be faulted back in. So this lowers the number Task Manager
+        /// shows and the number competing for physical RAM, and it does not lower the
+        /// commit charge. The performance panel reports both for that reason.
+        ///
+        /// Called from the UI thread on pause, and again on the health tick, so a
+        /// wallpaper left paused for hours does not drift back up.
+        /// </summary>
+        public void TrimIfHidden()
+        {
+            if (staticMode) return;               // no WebView2 group at all
+            if (!playbackPaused) return;          // playing: never trim the live path
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+
+            // The process list is read here, on the thread that owns the WebView2
+            // control, because CoreWebView2 objects belong to the thread that created
+            // them and touching them from a worker is how you get a cross-thread
+            // exception. Only the trimming - which is plain Win32 on a PID, with no
+            // WebView2 object involved - moves to a worker.
+            int[] pids;
+            try
+            {
+                var infos = webView.CoreWebView2.Environment.GetProcessInfos();
+                if (infos == null) return;
+                var list = new List<int>();
+                foreach (CoreWebView2ProcessInfo info in infos)
+                    if (info != null && info.ProcessId > 0) list.Add(info.ProcessId);
+                if (list.Count == 0) return;
+                pids = list.ToArray();
+            }
+            catch (Exception ex)
+            {
+                // A runtime older than the SDK, or the group already gone. Neither is
+                // worth failing a wallpaper over.
+                AppLog.Write("Memory trim skipped on " + screen.DeviceName + ": " + ex.Message);
+                return;
+            }
+
+            string device = screen.DeviceName;
+            System.Threading.Tasks.Task.Run(delegate { TrimNow(pids, device); });
+        }
+
+        private void TrimNow(int[] pids, string device)
+        {
+            // Re-checked on the worker: the user may have resumed the wallpaper between
+            // the pause and this running, and trimming a live decoder is exactly what
+            // this whole method exists to avoid.
+            if (!playbackPaused) return;
+
+            int trimmed = 0;
+            foreach (int pid in pids)
+                if (MemoryTrim.TrimProcess(pid)) trimmed++;
+
+            AppLog.Write("Memory trimmed for paused wallpaper on " + device +
+                ": " + trimmed + "/" + pids.Length + " process(es)");
+        }
+
+        /// <summary>
+        /// The process ids of this wallpaper's WebView2 group, for memory reporting.
+        ///
+        /// Must be called on the UI thread, because CoreWebView2 objects belong to the
+        /// thread that created them. Returns an empty array rather than null so callers
+        /// can sum without a null check, and never throws - a wallpaper whose group has
+        /// gone away is not an error worth surfacing in a telemetry panel.
+        /// </summary>
+        public int[] TryGetBrowserProcessIds()
+        {
+            if (staticMode || webView == null || webView.IsDisposed || webView.CoreWebView2 == null)
+                return new int[0];
+            try
+            {
+                var infos = webView.CoreWebView2.Environment.GetProcessInfos();
+                if (infos == null) return new int[0];
+                var list = new List<int>();
+                foreach (CoreWebView2ProcessInfo info in infos)
+                    if (info != null && info.ProcessId > 0) list.Add(info.ProcessId);
+                return list.ToArray();
+            }
+            catch
+            {
+                return new int[0];
+            }
+        }
+
+        /// <summary>
+        /// The memory this wallpaper's own window holds, in bytes.
+        ///
+        /// This is the app's own working set, not the WebView2 group's - the group is
+        /// separate processes and is measured by the caller through
+        /// CoreWebView2Environment.GetProcessInfos. Reported so the panel can show
+        /// what the host costs separately from what the browser costs.
+        /// </summary>
+        public void ReportMemory(out long workingSet, out long commit)
+        {
+            workingSet = 0;
+            commit = 0;
+            try
+            {
+                using (System.Diagnostics.Process self = System.Diagnostics.Process.GetCurrentProcess())
+                {
+                    workingSet = self.WorkingSet64;
+                    commit = self.PrivateMemorySize64;
+                }
+            }
+            catch { }
+        }
 
         /// <summary>
         /// Sets this window's pause state and reports whether it actually changed.
@@ -1230,7 +1425,159 @@ namespace LumaWall
             if (playbackPaused == value) return false;
             playbackPaused = value;
             ApplyPlaybackState();
+            ApplyMemoryTargetLevel();
+            if (value)
+            {
+                // Order matters: tell Chromium to drop what it can, then take the
+                // resident pages away. Trimming first would remove pages that the
+                // purge is about to free anyway, and the purge would then be working
+                // on a process whose pages are already gone - wasted work either way,
+                // and doing it in this order means the trim is the last word on what
+                // stays resident.
+                RequestMemoryPressure();
+                TrimIfHidden();
+            }
             return true;
+        }
+
+        /// <summary>
+        /// The periodic pass over a paused wallpaper.
+        ///
+        /// A wallpaper can stay paused for hours - a game left open overnight, a
+        /// laptop on battery. Memory creeps back during that time from the browser's
+        /// own timers and housekeeping, so the policy is re-applied periodically rather
+        /// than only on the transition.
+        ///
+        /// Throttled to once a minute. The caller is a two-second health tick, and
+        /// trimming or purging at that rate would be pure overhead: the pages a trim
+        /// removes do not come back within two seconds, and a forced V8 collection on
+        /// a page that is not allocating anything collects nothing. A minute is short
+        /// enough that a user watching Task Manager sees the number stay down, and long
+        /// enough that the cost is invisible.
+        ///
+        /// Everything here is gated on playbackPaused, so a playing wallpaper - the
+        /// case where any of this would cost frames - is never touched.
+        /// </summary>
+        public void MaintainPausedMemory()
+        {
+            if (!playbackPaused || staticMode) return;
+
+            DateTime now = DateTime.UtcNow;
+            if ((now - lastMemoryMaintenance).TotalSeconds < MemoryMaintenanceSeconds) return;
+            lastMemoryMaintenance = now;
+
+            PurgeJavaScriptMemory();
+            TrimIfHidden();
+        }
+
+        /// <summary>
+        /// Tells the browser engine how much memory it may hold, following the pause
+        /// state.
+        ///
+        /// This is the documented, quality-neutral half of the memory story: while the
+        /// wallpaper is stopped it is not being drawn, so there is no reason for the
+        /// engine to keep its caches warm, and Low lets it swap out browser-process
+        /// memory. The moment the wallpaper plays again it goes back to Normal, before
+        /// the first frame is drawn - so the restore is never visible.
+        ///
+        /// Not combined with TrySuspendAsync, which is the other API in this area:
+        /// TrySuspend requires the controller to be invisible and sets the target level
+        /// itself, and the two fight each other. A wallpaper window stays visible on
+        /// the desktop even when a game covers it, so TrySuspend would be rejected with
+        /// ERROR_INVALID_STATE anyway.
+        /// </summary>
+        private void ApplyMemoryTargetLevel()
+        {
+            if (staticMode) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            try
+            {
+                webView.CoreWebView2.MemoryUsageTargetLevel = playbackPaused
+                    ? CoreWebView2MemoryUsageTargetLevel.Low
+                    : CoreWebView2MemoryUsageTargetLevel.Normal;
+            }
+            catch (Exception ex)
+            {
+                // The runtime can be older than the SDK that exposes this. Logged once
+                // per state change, not per frame, so it cannot flood the log.
+                AppLog.Write("Memory target level unavailable on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Tells Chromium it is under memory pressure, at the moment this app knows
+        /// the wallpaper is stopped.
+        ///
+        /// This is the explicit form of what --msWebView2SimulateMemoryPressureWhenInactive
+        /// does automatically, and it is used instead of that flag for a concrete
+        /// reason: the flag keys off WebView2's own notion of "inactive", which is a
+        /// controller that is invisible or a WebView that is suspended. A wallpaper
+        /// window is neither - it stays visible on the desktop behind whatever is
+        /// covering it - so the flag would never fire. Here the app already knows the
+        /// real answer, because it is the thing that decided to pause.
+        ///
+        /// The command makes Chromium run its own purge machinery: discardable memory
+        /// dropped, caches trimmed, extra garbage collections. Nothing about the
+        /// decoded image changes; the pages that go are the ones that will be rebuilt
+        /// anyway the next time a frame is drawn.
+        ///
+        /// Fire-and-forget by design. This runs on the pause path, and a wallpaper must
+        /// never be held up waiting for the browser to answer a housekeeping call.
+        /// </summary>
+        private void RequestMemoryPressure()
+        {
+            if (staticMode) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            try
+            {
+                webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Memory.simulatePressureNotification",
+                    "{\"level\":\"critical\"}");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Memory pressure request skipped on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Drops the V8 heap held by the wallpaper page.
+        ///
+        /// A wallpaper page is one video element and a few dozen lines of script; if its
+        /// JS heap is large, it is stale state rather than working memory. Called only
+        /// while paused, and only on the periodic health tick - not on every pause -
+        /// because a full GC on a page that is about to resume is pure waste.
+        /// </summary>
+        private void PurgeJavaScriptMemory()
+        {
+            if (staticMode) return;
+            if (!playbackPaused) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            try
+            {
+                webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Memory.forciblyPurgeJavaScriptMemory", "{}");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("JS memory purge skipped on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Re-applies the memory policy after the page becomes ready.
+        ///
+        /// A wallpaper created while a game was already fullscreen is paused before its
+        /// WebView2 exists, so the pause-time memory settings would be applied to
+        /// nothing. This runs on the ready signal so the new page starts in the right
+        /// state instead of holding full-size caches until the next pause event.
+        /// </summary>
+        private void ApplyMemoryPolicyOnReady()
+        {
+            ApplyMemoryTargetLevel();
+            if (playbackPaused)
+            {
+                RequestMemoryPressure();
+                TrimIfHidden();
+            }
         }
         public void SetMute(bool value) { muted = value; ApplyPlaybackState(); }
         public void ChangeMedia(string path, bool mute, int fps)
@@ -1518,6 +1865,72 @@ namespace LumaWall
                 AppLog.Write("Playback updated (" + scope + "): " +
                     "paused [" + string.Join(", ", pausedNames.ToArray()) + "] " +
                     "resumed [" + string.Join(", ", resumedNames.ToArray()) + "]");
+            }
+        }
+
+        /// <summary>
+        /// Adds a manager-level way to collect the whole app's memory footprint.
+        ///
+        /// The point of this is honesty in the UI. The performance panel used to show
+        /// only this process's working set, which for a WebView2 host is a fraction of
+        /// the real number: the browser, GPU and renderer processes are separate and
+        /// hold most of the memory. A panel that reports 60 MB while Task Manager shows
+        /// 500 MB across six processes is worse than no panel, because it teaches the
+        /// user not to trust it.
+        /// </summary>
+        public void CollectMemory(out long browserWorkingSet, out long browserCommit, out int browserProcesses)
+        {
+            browserWorkingSet = 0;
+            browserCommit = 0;
+            browserProcesses = 0;
+
+            var seen = new HashSet<int>();
+            var all = new List<WallpaperWindow>();
+            foreach (var pair in windows) all.Add(pair.Value);
+            foreach (var pair in pending) all.Add(pair.Value);
+
+            foreach (WallpaperWindow window in all)
+            {
+                int[] pids;
+                try { pids = window.TryGetBrowserProcessIds(); }
+                catch { continue; }
+
+                foreach (int pid in pids)
+                {
+                    // Several wallpapers share one WebView2 environment, so the same
+                    // browser and GPU process appear once per display. Counting them
+                    // twice would overstate the footprint on exactly the multi-monitor
+                    // setups this is meant to inform.
+                    if (!seen.Add(pid)) continue;
+                    long workingSet, commit;
+                    if (!MemoryTrim.TryGetMemory(pid, out workingSet, out commit)) continue;
+                    browserWorkingSet += workingSet;
+                    browserCommit += commit;
+                    browserProcesses++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The periodic pass over every wallpaper.
+        ///
+        /// Paused wallpapers get their memory policy re-applied here, which is the only
+        /// place that covers a wallpaper left stopped for a long time - a game open
+        /// overnight, a laptop on battery. Playing wallpapers are untouched by design:
+        /// this is called from a health tick that also runs while frames are being
+        /// decoded, and nothing in the memory path is safe to do to a live decoder.
+        /// </summary>
+        public void MaintainPausedMemory()
+        {
+            foreach (var pair in windows)
+            {
+                try { pair.Value.MaintainPausedMemory(); }
+                catch { }
+            }
+            foreach (var pair in pending)
+            {
+                try { pair.Value.MaintainPausedMemory(); }
+                catch { }
             }
         }
 
