@@ -26,7 +26,7 @@ import sys
 
 SRC = os.path.join(
     os.path.expandvars(r'%LOCALAPPDATA%'),
-    'LumaWall', 'Wallpapers', 'Astral Defender Acheron.mp4',
+    'LumaWall', 'Wallpapers', 'Albedo’s Dark Grace (Overlord).mp4',
 )
 OUT = 'site/assets/video/hero-loop.mp4'
 POSTER = 'site/assets/shots/hero-bg.jpg'

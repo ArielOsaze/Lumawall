@@ -17,8 +17,13 @@ export default function SceneCatalog({ t, global }) {
   const shot = parallax(global, TOTAL, 0.55, 38);
   const head = parallax(global, TOTAL, 0.95, 26);
 
-  // The screenshot slides up inside its frame, as if the grid were scrolling.
-  const scrollY = -easeOutQuint(seg(t, 0.9, 8.2)) * 110;
+  // The screenshot drifts up gently inside its frame, as if the grid were scrolling.
+  //
+  // It was 110px, which cut the top off the screenshot - the frame is now exactly the
+  // image's own height, so any movement at all would crop it. This is a slow drift
+  // that stays inside the frame instead: the image is scaled 6% larger than the frame
+  // and moves within that margin, so the grid reads as alive without losing anything.
+  const scrollY = -easeOutQuint(seg(t, 0.9, 8.2)) * 44;
 
   // Cursor: travels in, hovers a card, clicks it.
   const travel = easeOutQuint(seg(t, 0.8, 1.9));
@@ -123,7 +128,15 @@ export default function SceneCatalog({ t, global }) {
           style={{
             position: 'relative',
             flex: 1,
-            height: 700,
+            // The frame is sized from the screenshot's OWN aspect ratio, so the
+            // image fills it exactly at rest.
+            //
+            // It was a fixed 700px tall while the image, at the width the layout
+            // gives it, is 579px tall - so 121px of the frame was empty, and the
+            // scroll animation then moved the image up by 110px and cut its top off.
+            // That is the "capture ke crop" report: the crop was not in the image,
+            // it was the frame being the wrong shape and then sliding.
+            height: 579,
             borderRadius: 16,
             overflow: 'hidden',
             border: '1px solid rgba(255,255,255,.11)',
@@ -140,8 +153,12 @@ export default function SceneCatalog({ t, global }) {
             style={{
               position: 'absolute',
               top: scrollY,
-              left: 0,
-              width: '100%',
+              left: '50%',
+              // Scaled slightly larger than the frame so the drift above has margin
+              // to move within. 1.08 gives 4% of slack on each side, which covers the
+              // 44px of travel at this width.
+              width: '108%',
+              marginLeft: '-4%',
               display: 'block',
               // The app's own screenshot has light-grey labels sitting on bright
               // artwork ("Selected wallpaper" over a purple glow), which measured

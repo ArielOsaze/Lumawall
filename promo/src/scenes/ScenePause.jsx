@@ -155,7 +155,13 @@ export default function ScenePause({ t, global }) {
           style={{
             position: 'relative',
             flex: 1,
-            height: 640,
+            // Sized from the wallpaper's own 16:9, so `object-fit: cover` in
+            // WallpaperStage has nothing to crop.
+            //
+            // It was 640 tall while a 16:9 frame at this width is 623 - a 3% mismatch,
+            // which cover resolves by trimming the sides. Small, but it is the same
+            // class of mistake as the catalogue frame and it is free to avoid.
+            height: 623,
             opacity: easeOut(seg(t, 0.4, 1.4)),
             transform: `translate3d(${stage.x + (1 - easeOut(seg(t, 0.4, 1.4))) * 50}px, ${stage.y}px, 0)
                         scale(${stage.scale})`,

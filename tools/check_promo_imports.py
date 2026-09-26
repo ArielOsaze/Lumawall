@@ -40,8 +40,20 @@ def main():
                 continue
 
             # Helpers used but not imported.
+            #
+            # A helper can come from anim.js OR from another local module: after the
+            # rewrite, Timeline.jsx takes cameraTransform from Direction.jsx, and
+            # only reading the anim.js import reported it as missing. A file that
+            # DEFINES a helper is also fine - Direction.jsx declares its own camera.
             m = re.search(r"import \{([^}]+)\} from '[^']*anim\.js'", text)
             imported = set(n.strip() for n in m.group(1).split(',')) if m else set()
+
+            for mm in re.finditer(r"import \{([^}]+)\} from '\./[^']+'", text):
+                imported |= set(n.strip() for n in mm.group(1).split(','))
+
+            defined = set(
+                re.findall(r'export\s+(?:function|const)\s+(\w+)', text)
+            )
 
             # Only look at the component body, so the import line itself and
             # comments do not count as usage.
@@ -52,7 +64,7 @@ def main():
                 h for h in HELPERS
                 if re.search(r'\b' + re.escape(h) + r'\s*\(', body)
             )
-            missing = sorted(used - imported)
+            missing = sorted(used - imported - defined)
             if missing:
                 problems.append('%s: uses %s without importing' % (rel, ', '.join(missing)))
 

@@ -33,6 +33,8 @@ CHECKS = [
      ['python', 'tools/check-frame-margins.py']),
     ('promo text is readable',
      ['python', 'tools/check-promo-text.py']),
+    ('every number on screen is a real number',
+     ['python', 'tools/check-numbers.py']),
     ('the promo backgrounds vary',
      ['python', 'tools/measure-promo-backgrounds.py']),
     ('no empty or frozen frames',
