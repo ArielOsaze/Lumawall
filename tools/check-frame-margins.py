@@ -23,11 +23,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
-# One sample in the middle of each beat, from Timeline.jsx.
-#   intro 0-6.4  problem 6.4-13.6  catalog 13.6-21.4  monitors 21.4-29.4
-#   pause 29.4-38.2  perf 38.2-45.4  outro 45.4-52
+# One sample in the middle of each shot, from Direction.jsx.
+#   intro 0-6.4  problem 6.4-13.4  catalog 13.4-21.0  monitors 21.0-28.4
+#   pause 28.4-36.4  perf 36.4-44.4  outro 44.4-52
 SAMPLES = [
-    (3.2, 'intro'), (10.0, 'problem'), (17.0, 'catalog'),
+    (3.2, 'intro'), (9.6, 'problem'), (17.2, 'catalog'),
     (25.0, 'monitors'), (33.0, 'pause'), (41.5, 'perf'), (48.5, 'outro'),
 ]
 

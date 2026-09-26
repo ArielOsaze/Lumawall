@@ -25,18 +25,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
-# Beats from Timeline.jsx.
+# Shots from Direction.jsx.
 BEATS = [
-    ('intro',    0.0,  7.2),
-    ('problem',  7.2,  14.8),
-    ('catalog',  14.8, 22.4),
-    ('monitors', 22.4, 30.6),
-    ('pause',    30.6, 38.2),
-    ('perf',     38.2, 45.4),
-    ('outro',    45.4, 52.0),
+    ('intro',    0.0,   6.4),
+    ('problem',  6.4,  13.4),
+    ('catalog', 13.4,  21.0),
+    ('monitors', 21.0, 28.4),
+    ('pause',   28.4,  36.4),
+    ('perf',    36.4,  44.4),
+    ('outro',   44.4,  52.0),
 ]
 
-# A frame is sampled from the middle of each beat, away from the handovers.
+# A frame is sampled from the middle of each shot, away from the cuts.
 SAMPLES_PER_BEAT = 3
 
 # Thresholds, measured on this material:
