@@ -10,7 +10,8 @@ if autoplay is blocked. It has to say what the product is.
 The right source is the video. Taking the frame from the finished render also means
 the still and the video can never disagree about the product's appearance.
 
-Run:  python tools/make-promo-poster.py
+Run:  python tools/make-promo-poster.py            # Indonesian
+      python tools/make-promo-poster.py --lang en  # English
 """
 
 import os
@@ -20,9 +21,19 @@ import sys
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from promo_path import promo_video
-VIDEO = promo_video() or 'site/assets/video/lumawall-promo.mp4'
-OUT = 'site/assets/shots/poster-promo.png'
+from promo_path import promo_video, promo_video_en
+
+# One poster per language, because the poster is the frame that carries the words.
+# An English page whose poster shows an Indonesian call to action is a still the
+# visitor cannot read - and it is the still they see for the whole time they are on
+# the page if autoplay is blocked.
+LANG = 'en' if '--lang' in sys.argv and sys.argv[sys.argv.index('--lang') + 1] == 'en' else 'id'
+
+VIDEO = (promo_video_en() if LANG == 'en' else promo_video()) or \
+    ('site/assets/video/lumawall-promo-en.mp4' if LANG == 'en'
+     else 'site/assets/video/lumawall-promo.mp4')
+OUT = ('site/assets/shots/poster-promo-en.png' if LANG == 'en'
+       else 'site/assets/shots/poster-promo.png')
 
 # The shots, read from the cut list so the times follow the piece. The previous
 # version hardcoded seven windows, and after the piece was re-cut to eleven shots

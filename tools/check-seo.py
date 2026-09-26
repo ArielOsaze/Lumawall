@@ -219,9 +219,74 @@ def main():
                 problems.append('the answer to "%s" is %d characters - too short to be '
                                 'a real answer' % (q['name'][:40], len(a)))
 
+    # ── images and their alternative text ────────────────────────────────────
+    #
+    # The rule here is deliberately narrow, because the obvious version of it is
+    # wrong. `alt=""` is not a fault: an empty alt is the spec's way of marking an
+    # image as decorative, and adding aria-hidden on top of it is redundant. The
+    # first version of this check demanded aria-hidden alongside every empty alt and
+    # reported two false positives - and the tempting response, adding aria-hidden to
+    # satisfy it, would have made the page slightly worse to satisfy a wrong rule.
+    #
+    # What actually matters:
+    #
+    #   · an <img> with no alt attribute at all - the real accessibility fault,
+    #     because a screen reader then reads out the file name
+    #   · a link whose only content is an image with no alt text, which leaves the
+    #     link with no accessible name
+    #
+    # Both are invisible: the page renders perfectly and a screen reader announces
+    # "link" or "logo-150.png".
+    print()
+    print('  ── images ──')
+    html = read(INDEX)
+    imgs = re.findall(r'<img\b[^>]*>', html, re.I)
+    missing_alt = []
+    decorative = 0
+    described = 0
+    for tag in imgs:
+        if not re.search(r'\balt\s*=', tag, re.I):
+            missing_alt.append(tag)
+        elif re.search(r'\balt\s*=\s*"\s*"', tag, re.I):
+            decorative += 1
+        else:
+            described += 1
+
+    print('    images            %d total, %d described, %d decorative, %d with no alt'
+          % (len(imgs), described, decorative, len(missing_alt)))
+
+    for tag in missing_alt:
+        problems.append('an <img> has no alt attribute at all, so a screen reader '
+                        'reads out the file name: %s' % tag[:90])
+
+    # A link whose only content is an image with alt="" has no accessible name.
+    for match in re.finditer(r'<a\b[^>]*>(.*?)</a>', html, re.S | re.I):
+        inner = match.group(1)
+        if '<img' not in inner:
+            continue
+        text = re.sub(r'<[^>]+>', '', inner).strip()
+        img_alts = [a for a in re.findall(r'\balt\s*=\s*"([^"]*)"', inner, re.I) if a.strip()]
+        if not text and not img_alts:
+            problems.append('a link contains only an image with no alt text and no text, '
+                            'so it has no accessible name: %s'
+                            % re.sub(r'\s+', ' ', match.group(0))[:90])
+
     # ── robots and sitemap ───────────────────────────────────────────────────
     print()
     print('  ── crawling ──')
+
+    # The page's own hreflang block, read once so the sitemap can be checked against
+    # it. A disagreement between the two is worse than having neither.
+    page_alts = {}
+    for match in re.finditer(r'<link\b[^>]*\bhreflang="([^"]*)"[^>]*\bhref="([^"]*)"',
+                             s, re.I):
+        page_alts[match.group(1)] = match.group(2)
+    # Attribute order is not guaranteed, so catch href-before-hreflang too.
+    for match in re.finditer(r'<link\b[^>]*\bhref="([^"]*)"[^>]*\bhreflang="([^"]*)"',
+                             s, re.I):
+        page_alts.setdefault(match.group(2), match.group(1))
+    print('    page hreflang     %s' % (', '.join(sorted(page_alts)) or 'NONE'))
+
     robots = os.path.join(SITE, 'robots.txt')
     if not os.path.exists(robots):
         problems.append('no robots.txt')
@@ -246,11 +311,70 @@ def main():
             print('    sitemap.xml       %d URL(s): %s' % (len(locs), ', '.join(locs)))
             if not locs:
                 problems.append('the sitemap has no <loc>')
-            elif canonical and locs[0].rstrip('/') != canonical.rstrip('/'):
-                problems.append('the sitemap says %s but the canonical says %s'
-                                % (locs[0], canonical))
+            else:
+                # Both language versions must be listed. A sitemap carrying only the
+                # Indonesian page still lets Google find /en/ through the hreflang
+                # link, but it is the one place both URLs can be stated together.
+                if canonical and locs[0].rstrip('/') != canonical.rstrip('/'):
+                    problems.append('the sitemap says %s but the canonical says %s'
+                                    % (locs[0], canonical))
+                if '/en/' not in ' '.join(locs):
+                    problems.append('the sitemap does not list /en/, so the English page '
+                                    'is only discoverable by crawling the hreflang link')
+
+                # Every hreflang in the sitemap must agree with the page's own
+                # hreflang block. Google's documentation is explicit that a
+                # disagreement between the two is worse than having neither.
+                alt_pairs = set()
+                for node in doc.getElementsByTagName('xhtml:link'):
+                    hreflang = node.getAttribute('hreflang')
+                    href = node.getAttribute('href')
+                    if hreflang and href:
+                        alt_pairs.add((hreflang, href.rstrip('/')))
+                for hreflang, href in sorted(alt_pairs):
+                    if hreflang not in page_alts:
+                        problems.append('the sitemap declares hreflang="%s" but the page '
+                                        'does not' % hreflang)
+                    elif page_alts[hreflang].rstrip('/') != href:
+                        problems.append('hreflang="%s" points at %s in the sitemap and %s '
+                                        'on the page'
+                                        % (hreflang, href, page_alts[hreflang]))
+                print('    sitemap hreflang  %d alternate(s): %s'
+                      % (len(alt_pairs), ', '.join(sorted(h for h, _ in alt_pairs))))
         except Exception as e:
             problems.append('sitemap.xml does not parse: %s' % e)
+
+    # ── the trailing-slash agreement ─────────────────────────────────────────
+    #
+    # Vercel's trailingSlash setting decides whether the server's real URL is /en/ or
+    # /en, and everything that names a URL - canonical, hreflang, sitemap - has to
+    # name the same one. If they disagree, the server redirects the URL the canonical
+    # names, and Google reports "canonical points to a redirect" and ignores the
+    # signal. The site shipped exactly that: trailingSlash was false while the
+    # canonical, the hreflang block and the sitemap all used a trailing slash.
+    print()
+    print('  ── url form ──')
+    cfg_path = os.path.join(SITE, 'vercel.json')
+    if not os.path.exists(cfg_path):
+        print('    vercel.json       MISSING')
+    else:
+        try:
+            cfg = json.loads(read(cfg_path))
+            trailing = cfg.get('trailingSlash')
+            print('    trailingSlash     %s' % trailing)
+            canonical_form = canonical.endswith('/') if canonical else None
+            print('    canonical form    %s' % ('with a trailing slash'
+                                               if canonical_form else 'without'))
+            if trailing is True and canonical_form is False:
+                problems.append('trailingSlash is true but the canonical %s has no '
+                                'trailing slash, so the server redirects the URL the '
+                                'canonical names' % canonical)
+            if trailing is False and canonical_form is True:
+                problems.append('trailingSlash is false but the canonical %s has a '
+                                'trailing slash, so the server redirects the URL the '
+                                'canonical names' % canonical)
+        except ValueError as e:
+            problems.append('vercel.json does not parse: %s' % e)
 
     print()
     if problems:

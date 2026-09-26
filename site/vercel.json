@@ -5,7 +5,7 @@
   "buildCommand": null,
   "outputDirectory": null,
   "cleanUrls": true,
-  "trailingSlash": false,
+  "trailingSlash": true,
   "headers": [
     {
       "source": "/assets/downloads/(.*)",

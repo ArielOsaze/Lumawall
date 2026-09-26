@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<!--
+  Both language versions are listed, each carrying the full set of alternates.
+
+  A sitemap that lists only the Indonesian page would still let Google find /en/
+  by crawling the hreflang link on the Indonesian page - but it would find it
+  slower, and the sitemap is the one place where both URLs can be stated together
+  with the relationship between them. The xhtml:link entries repeat the same
+  hreflang set that is in each page's <head>, which is what Google's documentation
+  asks for: the sitemap and the page must not disagree.
+
+  changefreq and priority are omitted deliberately. Google has stated it ignores
+  both, and a value that is ignored but present invites someone to maintain it.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://lumawall.xinet.id/</loc>
     <lastmod>2026-09-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/"/>
+  </url>
+  <url>
+    <loc>https://lumawall.xinet.id/en/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/"/>
   </url>
 </urlset>

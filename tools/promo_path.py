@@ -33,6 +33,32 @@ def promo_video(site=SITE):
     return plain if os.path.exists(plain) else None
 
 
+def promo_video_en(site=SITE):
+    """The English promo's path, hashed or not, or None.
+
+    A separate function rather than a `lang` argument on promo_video, because the two
+    files have different names and every caller already knows which language it wants.
+
+    Note on the glob: `lumawall-promo.*.mp4` does NOT match
+    `lumawall-promo-en.<hash>.mp4` - the literal dot after "promo" cannot match the
+    "-en" suffix - so the Indonesian lookup was never in danger of returning the
+    English file. Checked rather than assumed, because the opposite would have been
+    silent: an English render would have been picked up as the Indonesian promo and
+    every check would have passed against the wrong video.
+    """
+    folder = os.path.join(site, 'assets', 'video')
+    if not os.path.isdir(folder):
+        return None
+
+    hashed = sorted(glob.glob(os.path.join(folder, 'lumawall-promo-en.*.mp4')))
+    hashed = [h for h in hashed if not h.endswith('.part.mp4')]
+    if hashed:
+        return max(hashed, key=os.path.getmtime)
+
+    plain = os.path.join(folder, 'lumawall-promo-en.mp4')
+    return plain if os.path.exists(plain) else None
+
+
 def hero_video(site=SITE):
     """The hero loop's path, hashed or not, or None."""
     folder = os.path.join(site, 'assets', 'video')

@@ -130,16 +130,93 @@ $files = Get-ChildItem $site -Recurse -File
 $totalMb = [math]::Round(($files | Measure-Object Length -Sum).Sum / 1MB, 1)
 Write-Host ("   " + $files.Count + " files, " + $totalMb + " MB")
 
-foreach ($need in @('index.html', 'assets\video\lumawall-promo.mp4', 'assets\css\style.css', 'assets\js\main.js')) {
-    if (Test-Path (Join-Path $site $need)) { Ok $need } else { Bad "MISSING $need"; exit 4 }
+# The required files, by pattern rather than by exact name: cache-bust.py renames
+# every long-cached asset to `<name>.<hash>.<ext>` and removes the unversioned
+# original, so an exact-name check fails on a perfectly good deploy. That is what
+# happened - the script refused with "MISSING assets\video\lumawall-promo.mp4" and
+# then "MISSING assets\css\style.css" while both files were sitting right there
+# under their versioned names.
+function Find-Versioned {
+    param([string]$Stem, [string]$Folder, [string]$Extension)
+    $path = Join-Path $site $Folder
+    if (-not (Test-Path $path)) { return $null }
+    # Matched by splitting the name rather than with a regex, because the regex
+    # version needed an escaped backslash inside a PowerShell single-quoted string and
+    # the escaping went wrong: `'\\.'` became a literal `\\.` in the pattern, so
+    # `style.635ef7e069.css` did not match `^style\.[0-9a-f]{6,}\\.css$` and the
+    # deploy refused a file that was right there. Splitting has no escaping at all.
+    $found = Get-ChildItem $path -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -notlike '*.part*' -and (Test-VersionedName $_.Name $Stem $Extension)
+        } |
+        Sort-Object LastWriteTime -Descending
+    if ($found) { return $found[0] }
+    return $null
+}
+
+function Test-VersionedName {
+    param([string]$Name, [string]$Stem, [string]$Extension)
+    if ($Name -eq ($Stem + $Extension)) { return $true }
+
+    # "<stem>.<hex><ext>" -> strip the extension, then the stem, and what is left
+    # must be a dot followed by hex.
+    if (-not $Name.EndsWith($Extension)) { return $false }
+    $body = $Name.Substring(0, $Name.Length - $Extension.Length)
+    if (-not $body.StartsWith($Stem + '.')) { return $false }
+    $hash = $body.Substring($Stem.Length + 1)
+    if ($hash.Length -lt 6) { return $false }
+    return ($hash -match '^[0-9a-f]+$')
+}
+
+$required = @(
+    @{ Stem = 'style';          Folder = 'assets\css';   Ext = '.css'; Label = 'the stylesheet' },
+    @{ Stem = 'main';           Folder = 'assets\js';    Ext = '.js';  Label = 'the page script' },
+    @{ Stem = 'lumawall-promo'; Folder = 'assets\video'; Ext = '.mp4'; Label = 'the Indonesian promo' },
+    @{ Stem = 'lumawall-promo-en'; Folder = 'assets\video'; Ext = '.mp4'; Label = 'the English promo' }
+)
+
+$assets = @{}
+foreach ($item in $required) {
+    $file = Find-Versioned -Stem $item.Stem -Folder $item.Folder -Extension $item.Ext
+    if (-not $file) {
+        Bad ("MISSING " + $item.Folder + "\" + $item.Stem + $item.Ext + " (" + $item.Label + ")")
+        exit 4
+    }
+    $assets[$item.Stem] = $file
+    Ok ($item.Label + ": " + $file.Name)
+}
+
+foreach ($page in @('index.html', 'en\index.html')) {
+    if (Test-Path (Join-Path $site $page)) { Ok $page } else { Bad "MISSING $page"; exit 4 }
+}
+
+# Each page must reference the video that is actually in the payload, and not the
+# other language's. A page pointing at a filename that was never rendered returns
+# 200 with valid HTML and shows a blank video block, and nothing on the server side
+# can see it - which is exactly the fault that produced
+# `lumawall-promo-en.18231fc9a2.mp4`, a reference to a file that did not exist.
+foreach ($pair in @(@{Page = 'index.html'; Stem = 'lumawall-promo'; Other = 'lumawall-promo-en'},
+                    @{Page = 'en\index.html'; Stem = 'lumawall-promo-en'; Other = 'lumawall-promo'})) {
+    $html = Get-Content (Join-Path $site $pair.Page) -Raw
+    $expected = $assets[$pair.Stem].Name
+    $otherName = $assets[$pair.Other].Name
+    if ($html -notmatch [regex]::Escape($expected)) {
+        Bad "$($pair.Page) does not reference $expected"
+        exit 4
+    }
+    if ($html -match [regex]::Escape($otherName)) {
+        Bad "$($pair.Page) references the other language's video ($otherName)"
+        exit 4
+    }
+    Ok "$($pair.Page) -> $expected"
 }
 
 # The video must be a real, complete file - not a fragment being written right
 # now. A render once published a 48-byte mp4 that returned 200 with
 # Content-Type: video/mp4, so existence and content type were both fine while the
 # video was empty. The check is a size floor plus the mp4 box structure.
-$videoPath = Join-Path $site 'assets\video\lumawall-promo.mp4'
-$video = Get-Item $videoPath
+$video = $assets['lumawall-promo']
+$videoPath = $video.FullName
 $videoMb = [math]::Round($video.Length / 1MB, 2)
 Write-Host ("   promo video: " + $videoMb + " MB")
 

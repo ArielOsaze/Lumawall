@@ -151,10 +151,23 @@ def main():
             problems.append('%s declares lang="%s" but is the %s page'
                             % (path, html_lang, lang))
 
+        # The canonical must be the form the server actually serves. Vercel's
+        # trailingSlash setting decides whether /en/ or /en is the real URL, and if
+        # the canonical disagrees the server redirects the URL the canonical names -
+        # which Google reports as "canonical points to a redirect" and treats as a
+        # signal to ignore. The site had exactly that: trailingSlash was false, so
+        # /en/ redirected to /en, while the canonical, the hreflang block and the
+        # sitemap all said /en/.
         expected_canonical = BASE + ('/en/' if lang == 'en' else '/')
         if canonical != expected_canonical:
             problems.append('%s canonical is %s, expected %s'
                             % (path, canonical, expected_canonical))
+
+        # The sitemap and the canonical must agree on the trailing slash, because a
+        # mismatch is the same redirect problem one level out.
+        if canonical and not canonical.endswith('/'):
+            problems.append('%s canonical %s has no trailing slash, but the sitemap '
+                            'and hreflang use one' % (path, canonical))
 
         # hreflang: this page and the other one, plus x-default.
         alts = dict(re.findall(r'hreflang="([^"]*)"\s+href="([^"]*)"', s))
@@ -199,15 +212,52 @@ def main():
                 problems.append('%s is missing expected English text: %s'
                                 % (path, ', '.join(absent)))
 
-        # A page must not point at the other language's video.
-        m = re.search(r'<source\s+src="([^"]*lumawall-promo[^"]*)"', s)
-        video = m.group(1) if m else ''
-        want_en = '-en' in video
-        if lang == 'en' and not want_en:
-            problems.append('%s plays the Indonesian video (%s)' % (path, video))
-        if lang == 'id' and want_en:
-            problems.append('%s plays the English video (%s)' % (path, video))
-        print('    %-14s video=%s' % ('', video.split('/')[-1] if video else 'MISSING'))
+        # A page must not point at the other language's video, poster or share card.
+        #
+        # This is not hypothetical: the generator used to copy the Indonesian video's
+        # content hash onto the English filename, producing
+        # `lumawall-promo-en.18231fc9a2.mp4` - a file that does not exist. The page
+        # returned 200, the HTML was valid, and the video was simply blank. Nothing
+        # server-side could see it, which is why the check is here.
+        #
+        # Same class of fault for og:image: the English page was pointing at the
+        # Indonesian share card, so an English link previewed with a thumbnail the
+        # visitor could not read.
+        if lang == 'en':
+            wrong = []
+            for pattern, label in (
+                (r'assets/video/lumawall-promo\.', 'the Indonesian promo video'),
+                (r'assets/shots/poster-promo\.', 'the Indonesian poster'),
+                (r'assets/shots/og-card\.', 'the Indonesian share card'),
+            ):
+                if re.search(pattern, s):
+                    wrong.append(label)
+            if wrong:
+                problems.append('%s points at %s' % (path, ' and '.join(wrong)))
+                print('    %-14s POINTS AT THE WRONG LANGUAGE: %s' % ('', ', '.join(wrong)))
+        else:
+            wrong = []
+            for pattern, label in (
+                (r'assets/video/lumawall-promo-en\.', 'the English promo video'),
+                (r'assets/shots/poster-promo-en\.', 'the English poster'),
+                (r'assets/shots/og-card-en\.', 'the English share card'),
+            ):
+                if re.search(pattern, s):
+                    wrong.append(label)
+            if wrong:
+                problems.append('%s points at %s' % (path, ' and '.join(wrong)))
+
+        # Every asset the page references must exist. A versioning step that rewrites
+        # URLs can break one, and a broken URL is invisible from the server: the page
+        # returns 200 and the asset 404s in the browser.
+        missing_assets = []
+        for rel in set(re.findall(r'(?:src|href)="(/[^"]+\.(?:mp4|png|jpg|jpeg|css|js|woff2))"', s)):
+            if not os.path.exists(os.path.join(SITE, rel.lstrip('/'))):
+                missing_assets.append(rel)
+        if missing_assets:
+            problems.append('%s references %d asset(s) that do not exist: %s'
+                            % (path, len(missing_assets), ', '.join(missing_assets[:4])))
+            print('    %-14s MISSING ASSETS: %s' % ('', ', '.join(missing_assets[:4])))
 
     print()
     if problems:

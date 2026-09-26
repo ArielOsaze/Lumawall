@@ -241,17 +241,50 @@ def rewrite_video(s, name):
     """Point the page at a different promo render.
 
     The video block names its file with a content hash, so this replaces the stem and
-    leaves whatever hash is there - the hash belongs to the file the build produced, not
-    to this script.
+    clears the hash - deliberately NOT leaving whatever hash was there. The hash
+    belongs to the Indonesian render's bytes, and the English render is a different
+    file with a different hash, so copying it across produced a reference to
+    `lumawall-promo-en.18231fc9a2.mp4` - a file that does not exist. A missing video
+    is not silent on the server side (the page returns 200 and the HTML is valid) and
+    it is the one thing the visitor came to watch.
+
+    So the reference is left unhashed here and cache-bust.py gives it the hash of the
+    file that actually exists. Same path the Indonesian poster takes, and it means
+    this script never has to know anything about file contents.
     """
-    return re.sub(r'(assets/video/)' + re.escape(VIDEO_ID) + r'(\.[0-9a-f]+\.mp4)',
-                  lambda m: m.group(1) + name + m.group(2), s)
+    return re.sub(r'(assets/video/)' + re.escape(VIDEO_ID) + r'(\.[0-9a-f]+)?\.mp4',
+                  lambda m: m.group(1) + name + '.mp4', s)
+
+
+def rewrite_og_card(s):
+    """Give the English page its own share card.
+
+    og:image was left pointing at the Indonesian card, so an English link previewed
+    with an Indonesian thumbnail - a preview the visitor cannot read, on the page
+    whose entire purpose is to be readable in English. Nothing about the page itself
+    showed the fault; it only appears when the link is pasted somewhere.
+
+    Unhashed, like the poster, so cache-bust.py supplies the right hash.
+    """
+    return re.sub(r'(assets/shots/)og-card(\.[0-9a-f]+)?\.png',
+                  lambda m: m.group(1) + 'og-card-en.png', s)
 
 
 def rewrite_poster(s):
-    """Give the English page its own poster, so the still is English too."""
-    return re.sub(r'(assets/shots/poster-promo)(\.[0-9a-f]+\.png)',
-                  lambda m: 'assets/shots/poster-promo-en' + m.group(2), s)
+    """Give the English page its own poster, so the still is English too.
+
+    The English poster's content hash is NOT the same as the Indonesian one - they
+    are different images and cache-bust.py hashes content - so this cannot copy the
+    hash across. It did exactly that in its first version, and the result was an
+    English page pointing at `poster-promo-en.759c8626ec.png`, a file that does not
+    exist. A missing poster is silent: the video block still plays, and only a visitor
+    whose browser blocks autoplay sees a blank rectangle.
+
+    So the reference is rewritten to the plain name and cache-bust.py gives it the
+    right hash afterwards, which is the same path the Indonesian poster takes.
+    """
+    return re.sub(r'assets/shots/poster-promo(\.[0-9a-f]+)?\.png',
+                  'assets/shots/poster-promo-en.png', s)
 
 
 def rebuild_schema(s, lang):
@@ -351,6 +384,7 @@ def main():
     en = set_og_url(en, BASE + '/en/')
     en = rewrite_video(en, VIDEO_EN)
     en = rewrite_poster(en)
+    en = rewrite_og_card(en)
     en = rebuild_schema(en, 'en')
 
     os.makedirs(EN_DIR, exist_ok=True)
