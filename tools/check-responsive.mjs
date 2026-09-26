@@ -127,8 +127,22 @@ for (const size of SIZES) {
     // is a deliberate crop, not a defect. What is a defect is the element not
     // covering the band at all - which is what happened when the video rendered
     // at its intrinsic 1920px in a 2560px window and left flat black beside it.
-    const bg = document.querySelector('.hero-bg video') || document.querySelector('.hero-bg img');
+    //
+    // Which element to measure: the video is hidden under prefers-reduced-motion
+    // (headless Chrome reports 'reduce'), so asking for the video first found an
+    // element with a 0x0 rect and reported that the hero fills 0% of its band - a
+    // failure about a page that was correct. Measure whichever one is painted.
     const band = document.querySelector('.hero-bg');
+    const candidates = [
+      document.querySelector('.hero-bg video'),
+      document.querySelector('.hero-bg img'),
+    ].filter(Boolean);
+    const bg = candidates.find((el) => {
+      const s = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+    }) || candidates[0];
+
     let covers = null, kept = null;
     if (bg && band) {
       const r = bg.getBoundingClientRect();

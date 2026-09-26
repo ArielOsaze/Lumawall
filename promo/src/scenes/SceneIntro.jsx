@@ -117,7 +117,7 @@ export default function SceneIntro({ t, global }) {
             transform: `translateY(${(1 - subIn) * 18}px)`,
           }}
         >
-          Video berjalan di desktop, diproses chip grafis, dan berhenti saat kamu main game.
+          Diproses chip grafis. Berhenti sendiri saat kamu main game.
         </div>
       </div>
     </div>

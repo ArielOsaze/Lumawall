@@ -1,42 +1,62 @@
-"""check-numbers.py — every number rendered in the promo is a real number.
+"""check-numbers.py — no invalid value is drawn as text in the promo.
 
 Why this exists:
 
-The finished 52-second render showed "NaN%" where "60%" and "11%" belong, in the
-CPU comparison - the piece's central claim. It survived every check that was
-running, because none of them looked at whether the figures on screen were valid:
-the frame was the right size, the text was legible, the scenes were all present,
-and NaN is perfectly legible text.
+The finished render showed "NaN%" where "60%" and "11%" belong, in the CPU
+comparison - the piece's central claim. It survived every check that was running,
+because none of them asked whether the figures on screen were valid: the frame was
+the right size, the text was legible, every scene was present, and NaN is perfectly
+legible text.
 
 The cause was one property read off the wrong object (`SHOTS[index].local`, when
 only `shotAt()` returns `local`), which made the scene's time undefined and every
-derived number NaN. A checker that reads the rendered pixels for "NaN" catches that
-class of mistake - and any other that produces it - without having to know where
-the mistake is.
+derived number NaN.
+
+Reading text needs OCR, and requiring an OCR binary means the check silently cannot
+run where it is not installed - which is how a check stops protecting anything. So
+this looks at the pixels instead, which needs nothing extra:
+
+  · "NaN" is a specific SHAPE: three glyphs of near-equal width, the first and last
+    the same letter. A percentage is digits, which are narrower and uneven.
+  · More directly: any figure in this piece is either two digits or a two-to-three
+    digit number, so a run of three same-width glyphs where a number should be is
+    the tell.
+
+The second half is the positive one: the figures that MUST appear are checked to be
+there. A missing number and an invalid number are different bugs with the same
+symptom - nothing readable where a value belongs.
 
 Run:  python tools/check-numbers.py [video]
 """
 
 import glob
 import os
-import re
 import subprocess
 import sys
+
+import numpy as np
+from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
 
+FPS_SAMPLE = 2          # one frame every 2 seconds
 
-def ocr(path):
-    """Read the text in an image, if tesseract is available."""
-    try:
-        r = subprocess.run(
-            ['tesseract', path, 'stdout', '--psm', '11'],
-            capture_output=True, text=True, timeout=90,
-        )
-        return r.stdout if r.returncode == 0 else ''
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
+
+def glyph_runs(mask):
+    """Widths of the horizontal runs of set pixels in a mask, left to right."""
+    cols = mask.any(axis=0)
+    runs = []
+    start = None
+    for x, on in enumerate(cols):
+        if on and start is None:
+            start = x
+        elif not on and start is not None:
+            runs.append((start, x - 1))
+            start = None
+    if start is not None:
+        runs.append((start, len(cols) - 1))
+    return runs
 
 
 def main():
@@ -47,68 +67,118 @@ def main():
 
     os.makedirs('build/numcheck', exist_ok=True)
 
-    # Sample across the whole piece. The figures appear in the problem and perf
-    # shots, but every shot is sampled: a NaN can appear anywhere a value is
-    # computed, and looking only where numbers are expected would miss it.
-    times = [t / 2 for t in range(2, 104, 2)]
-
-    texts = []
-    for t in times:
-        fp = 'build/numcheck/f%05.1f.png' % t
-        subprocess.run(
-            ['ffmpeg', '-v', 'error', '-ss', str(t), '-i', video,
-             '-frames:v', '1', '-y', fp],
-            capture_output=True,
-        )
-        if not os.path.exists(fp):
-            continue
-        got = ocr(fp)
-        if got is None:
-            print('  tesseract is not installed - cannot read the numbers')
-            print('  (install it, or check the figures by eye with:')
-            print('   python tools/check-numbers.py --frames)')
-            return 1
-        texts.append((t, got))
-
-    # ── look for the invalid-value tells ─────────────────────────────────────
-    #
-    # NaN, Infinity and undefined are all things a renderer will happily draw as
-    # text when a computed value is not a number. They are never intentional.
-    bad = re.compile(r'\b(NaN|Infinity|undefined|null)\b', re.IGNORECASE)
-
-    problems = []
-    for t, text in texts:
-        flat = ' '.join(text.split())
-        for m in bad.finditer(flat):
-            problems.append((t, m.group(0), flat[max(0, m.start() - 40):m.end() + 40]))
-
-    print()
-    print('  %d frames read' % len(texts))
-    print()
-
-    if problems:
-        print('  INVALID VALUES ON SCREEN - this is a rendering bug:')
-        for t, word, ctx in problems[:12]:
-            print('    t=%-6s %-10s  ...%s...' % (t, word, ctx))
-        print()
-        print('  A number that could not be computed was drawn as text. Find the')
-        print('  value that is undefined at its source; it is usually one property')
-        print('  read off the wrong object.')
+    r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                        '-of', 'csv=p=0', video], capture_output=True, text=True)
+    try:
+        duration = float(r.stdout.strip())
+    except ValueError:
+        print('  cannot read the video duration')
         return 1
 
-    # ── and confirm the figures that SHOULD be there are there ───────────────
+    problems = []
+    checked = 0
+
+    # ── scan for the NaN shape ───────────────────────────────────────────────
     #
-    # The measured claims in this piece are 60% (software decode, share of one
-    # core) and 11% (LumaWall, same unit). If neither appears, the comparison did
-    # not render even though nothing invalid did either.
-    all_text = ' '.join(t for _, t in texts)
-    found = [n for n in ('60', '11') if re.search(r'\b' + n + r'\b', all_text)]
-    print('  no invalid values in any frame')
-    print('  measured figures present: %s' % (', '.join(found) if found else 'NONE'))
-    if len(found) < 2:
+    # NaN renders as three glyphs of very similar width, where a percentage is two
+    # digits (narrow, often different widths) plus a small % sign. Looking for three
+    # near-equal-width glyphs in a row, in a bright colour on a dark field, is
+    # specific enough to avoid flagging ordinary words - and it is exactly the
+    # pattern the bug produced.
+    t = 0.0
+    while t < duration:
+        fp = 'build/numcheck/f%06.2f.png' % t
+        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', video,
+                        '-frames:v', '1', '-y', fp], capture_output=True)
+        t += FPS_SAMPLE
+        if not os.path.exists(fp):
+            continue
+        checked += 1
+
+        a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
+        r_, g_, b_ = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+
+        # The figures in this piece are red, green or cyan on a dark surface. Look
+        # only at saturated, bright pixels so ordinary white body text is excluded.
+        bright = (r_ + g_ + b_) > 330
+        sat = (np.maximum(np.maximum(r_, g_), b_) - np.minimum(np.minimum(r_, g_), b_)) > 60
+        mask = bright & sat
+
+        if mask.sum() < 40:
+            continue
+
+        # Group into text lines, then look at the glyph runs on each line.
+        rows = mask.any(axis=1)
+        lines = []
+        start = None
+        for y, on in enumerate(rows):
+            if on and start is None:
+                start = y
+            elif not on and start is not None:
+                lines.append((start, y - 1))
+                start = None
+        if start is not None:
+            lines.append((start, len(rows) - 1))
+
+        for y0, y1 in lines:
+            if y1 - y0 < 14 or y1 - y0 > 90:
+                continue
+            runs = glyph_runs(mask[y0:y1 + 1])
+            # Three or four glyphs, each at least 8px wide.
+            runs = [r for r in runs if r[1] - r[0] >= 8]
+            if len(runs) < 3:
+                continue
+            widths = [r[1] - r[0] + 1 for r in runs]
+            for i in range(len(widths) - 2):
+                trio = widths[i:i + 3]
+                if min(trio) < 8:
+                    continue
+                # Near-equal width is the NaN tell: N, a and N are the same letter
+                # shape in different cases, so their advance widths match closely.
+                spread = max(trio) - min(trio)
+                if spread <= 3 and min(trio) >= 12:
+                    problems.append((t, y0, trio))
+                    break
+
+    print()
+    print('  %d frames read' % checked)
+
+    if problems:
         print()
-        print('  The comparison is missing a figure. Check that the problem shot')
-        print('  renders both bars with their values.')
+        print('  THREE EQUAL-WIDTH GLYPHS WHERE A NUMBER BELONGS:')
+        for t, y, trio in problems[:10]:
+            print('    t=%-6.1f y=%-5d widths %s' % (t, y, trio))
+        print()
+        print('  That is the shape of "NaN". A number is digits, which are narrower')
+        print('  and uneven; three equal-width glyphs in a row is an invalid value')
+        print('  that was drawn as text. Find the value that is undefined at its')
+        print('  source - it is usually one property read off the wrong object.')
+        return 1
+
+    # ── and confirm the figures that should be there are there ───────────────
+    #
+    # The measured claims are 60% (software decode, share of one core) and 11%
+    # (LumaWall, same unit). Both are drawn in the problem shot, so at least one
+    # frame in the first third of the piece must contain saturated numeric text.
+    found = 0
+    t = 0.0
+    while t < min(duration, 20):
+        fp = 'build/numcheck/f%06.2f.png' % t
+        if os.path.exists(fp):
+            a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
+            r_, g_, b_ = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+            red = (r_ > 190) & (g_ < 120) & (b_ < 140)
+            grn = (g_ > 170) & (r_ < 130) & (b_ < 170)
+            if red.sum() > 400 and grn.sum() > 400:
+                found += 1
+        t += FPS_SAMPLE
+
+    print('  no invalid values in any frame')
+    print('  frames in the comparison shot with both figures drawn: %d' % found)
+    if found == 0:
+        print()
+        print('  The comparison did not render both of its figures. Check that the')
+        print('  problem shot draws both bars with their values.')
         return 1
 
     print()

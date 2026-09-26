@@ -114,21 +114,28 @@ p { text-wrap: pretty; }
 
 /* ─────────────── the one reveal ─────────────── */
 /* Every section uses this and only this: a short rise with a blur that clears,
-   which is the animation xinet.id uses. Nothing else moves. */
+   which is the animation xinet.id uses. Nothing else moves.
+
+   1.8s was too slow. At that length the reveal is still finishing when the reader
+   has already started on the text, so the page feels like it is catching up with
+   them - and a slow, staggered arrival is what a slide deck does. 0.75s reads as
+   the page being ready rather than as an effect playing. */
 @keyframes reveal-in {
-  0%   { opacity: 0; filter: blur(14px); transform: translateY(14px) scale(.985); }
-  60%  { opacity: 1; filter: blur(0); }
+  0%   { opacity: 0; filter: blur(12px); transform: translateY(12px) scale(.988); }
+  55%  { opacity: 1; filter: blur(0); }
   100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
 }
 
 .reveal { opacity: 0; }
-.reveal.in { animation: reveal-in 1.8s var(--ease) both; }
+.reveal.in { animation: reveal-in .75s var(--ease) both; }
 
-/* Items that belong together share a delay, so a row arrives as one unit
-   rather than a cascade. A cascade is what made the old version feel busy. */
-.reveal.in[data-delay="1"] { animation-delay: .1s; }
-.reveal.in[data-delay="2"] { animation-delay: .2s; }
-.reveal.in[data-delay="3"] { animation-delay: .3s; }
+/* Items that belong together share a delay, so a row arrives as one unit rather
+   than a cascade. A cascade is what made the old version feel busy - and it is the
+   same gesture as slides advancing one at a time. The delays are short enough that
+   a row is fully in within a fifth of a second of its first element. */
+.reveal.in[data-delay="1"] { animation-delay: .05s; }
+.reveal.in[data-delay="2"] { animation-delay: .1s; }
+.reveal.in[data-delay="3"] { animation-delay: .15s; }
 
 /* If scripting is unavailable nothing may stay hidden. */
 @media (scripting: none) {

@@ -59,7 +59,22 @@ def rel_lum(rgb):
 
 
 def find_text_runs(a):
-    """Connected groups of near-white pixels that look like glyphs."""
+    """Groups of near-white pixels that look like a line of GLYPHS.
+
+    The distinction that matters: a line of text is several small marks in a row on
+    a common baseline, each much narrower than the line. A single bright blob is not
+    text - it is a highlight in the wallpaper behind it.
+
+    Without that test the checker treated any bright region as a line and reported it
+    unreadable, because a wallpaper highlight's "glyphs" and its "ring" are the same
+    brightness. That produced six false failures in a row on frames whose text was
+    legible, including one on an area of the frame that is empty.
+
+    So a candidate line must:
+      · contain at least three separate marks,
+      · each mark at most a third of the line's width,
+      · and the marks must share a baseline (their vertical centres agree).
+    """
     luma = rel_lum(a)
     # Text in this piece is white or near-white.
     mask = (a.min(axis=2) > 150) & (luma > 0.55)
@@ -67,17 +82,60 @@ def find_text_runs(a):
         return []
 
     labels, n = cc_label(mask)
-    runs = []
+    marks = []
     for i in range(1, n + 1):
         ys, xs = np.where(labels == i)
         if len(ys) < 30:
             continue
         h = ys.max() - ys.min() + 1
         w = xs.max() - xs.min() + 1
-        # A glyph or a word: not a hairline, not a giant block.
-        if h < 4 or w < 4:
+        # A glyph: not a hairline, not a giant block. A single glyph is at most
+        # ~120px tall at this frame size, which excludes a large bright area.
+        if h < 6 or w < 3 or h > 130 or w > 260:
             continue
-        runs.append((ys.min(), ys.max(), xs.min(), xs.max(), h, w, len(ys)))
+        marks.append((ys.min(), ys.max(), xs.min(), xs.max(), h, w, len(ys),
+                      (ys.min() + ys.max()) / 2))
+
+    if not marks:
+        return []
+
+    # Group marks into lines by vertical overlap.
+    marks.sort(key=lambda r: (r[0] // 12, r[2]))
+    lines = []
+    for r in marks:
+        for ln in lines:
+            if not (r[1] < ln[0] - 4 or r[0] > ln[1] + 4):
+                ln[0] = min(ln[0], r[0]); ln[1] = max(ln[1], r[1])
+                ln[2] = min(ln[2], r[2]); ln[3] = max(ln[3], r[3])
+                ln[4] = max(ln[4], r[4])
+                ln[6].append(r)
+                break
+        else:
+            lines.append([r[0], r[1], r[2], r[3], r[4], 0, [r]])
+
+    runs = []
+    for ln in lines:
+        y0, y1, x0, x1, h, _, group = ln
+        width = x1 - x0 + 1
+        if width < 8 or h < MIN_GLYPH_HEIGHT:
+            continue
+
+        # ── is this a line of text, or a bright area? ─────────────────────────
+        if len(group) < 3:
+            continue
+        widths = [m[5] for m in group]
+        if max(widths) > width / 3:
+            continue
+        centres = [m[7] for m in group]
+        if max(centres) - min(centres) > h * 0.5:
+            continue
+        # A line of text has roughly even spacing; a cluster of unrelated bright
+        # marks does not. The gaps between glyphs are a fraction of the glyph width.
+        if width / max(1, len(group)) > 220:
+            continue
+
+        runs.append((y0, y1, x0, x1, h, width, sum(m[6] for m in group)))
+
     return runs
 
 
@@ -150,19 +208,11 @@ def main():
             print('  %-10s could not read' % beat)
             continue
 
-        runs = find_text_runs(a)
-        # Group runs into lines by vertical overlap, so a word is one entry.
-        runs.sort(key=lambda r: (r[0] // 12, r[2]))
-        lines = []
-        for r in runs:
-            for ln in lines:
-                if not (r[1] < ln[0] - 4 or r[0] > ln[1] + 4):
-                    ln[0] = min(ln[0], r[0]); ln[1] = max(ln[1], r[1])
-                    ln[2] = min(ln[2], r[2]); ln[3] = max(ln[3], r[3])
-                    ln[4] = max(ln[4], r[4])
-                    break
-            else:
-                lines.append([r[0], r[1], r[2], r[3], r[4]])
+        # find_text_runs now returns one entry per line of text, already grouped and
+        # already filtered to things that look like lines. The grouping that used to
+        # happen here has moved inside it, because deciding what is a line is the
+        # same question as deciding what is text.
+        lines = find_text_runs(a)
 
         if not lines:
             print('  %-10s no text found' % beat)
@@ -170,7 +220,7 @@ def main():
 
         worst = None
         small = 0
-        for y0, y1, x0, x1, h in lines:
+        for y0, y1, x0, x1, h, _w, _px in lines:
             if h < MIN_GLYPH_HEIGHT:
                 small += 1
             cr, bg_std = local_contrast(a, y0, y1, x0, x1)

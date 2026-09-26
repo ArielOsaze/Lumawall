@@ -99,7 +99,7 @@ export default function SceneMonitors({ t, global }) {
               transform: `translateY(${(1 - easeOut(seg(t, 0.9, 1.6))) * 16}px)`,
             }}
           >
-            Tiap monitor punya pengaturannya sendiri, dan susunannya bisa disimpan.
+            Tiap layar punya pengaturannya sendiri.
           </div>
         </div>
 

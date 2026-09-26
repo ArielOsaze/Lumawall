@@ -24,9 +24,9 @@ from promo_path import promo_video
 VIDEO = promo_video() or 'site/assets/video/lumawall-promo.mp4'
 OUT = 'site/assets/shots/poster-promo.png'
 
-# The beats, from Timeline.jsx:
-#   intro 0.0-6.4   problem 6.4-13.6   catalog 13.6-21.4   monitors 21.4-29.4
-#   pause 29.4-38.2   perf 38.2-45.4   outro 45.4-52
+# The shots, from Direction.jsx:
+#   intro 0-6.4   problem 6.4-13.4   catalog 13.4-21.0   monitors 21.0-28.4
+#   pause 28.4-36.4   perf 36.4-44.4   outro 44.4-52
 #
 # The outro's call-to-action frame is the right poster. It carries the mark, the
 # headline and the URL, so a visitor whose browser blocks autoplay sees what the
@@ -34,8 +34,8 @@ OUT = 'site/assets/shots/poster-promo.png'
 # is prettier but has no branding at all - a review of exactly that choice scored it
 # 5/10 and pointed out that nothing on it said "LumaWall".
 CANDIDATES = [
-    (47.0, 'outro',    'the call-to-action frame: mark, headline, download button'),
-    (46.2, 'outro',    'a moment earlier, before the button changes state'),
+    (49.0, 'outro',    'the call-to-action frame: mark, headline, download button'),
+    (47.5, 'outro',    'a moment earlier, before the button changes state'),
     (25.0, 'monitors', 'three screens, three wallpapers - no branding'),
     (17.0, 'catalog',  'the app UI with its wallpaper grid'),
 ]

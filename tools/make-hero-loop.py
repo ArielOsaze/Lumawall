@@ -24,9 +24,19 @@ import os
 import subprocess
 import sys
 
+# The hero used "Astral Defender Acheron", which is also the wallpaper behind the
+# download section further down the same page - the front page showed the same
+# artwork twice, and the visitor's note was that it looked like a repeat. That was
+# changed to Albedo, and Albedo turned out to appear in the promo too (the monitors
+# shot and the closing shot), so the page and the video repeated each other instead.
+#
+# "Girl Behind Curtains" is the replacement: its left half is pure black (measured
+# luminance 2/255) so white type sits on it with no scrim, it is the most cinematic
+# of the candidates, and it appears in no other place - not in the video, not in the
+# closing section.
 SRC = os.path.join(
     os.path.expandvars(r'%LOCALAPPDATA%'),
-    'LumaWall', 'Wallpapers', 'Albedo’s Dark Grace (Overlord).mp4',
+    'LumaWall', 'Wallpapers', 'Girl Behind Curtains.mp4',
 )
 OUT = 'site/assets/video/hero-loop.mp4'
 POSTER = 'site/assets/shots/hero-bg.jpg'
