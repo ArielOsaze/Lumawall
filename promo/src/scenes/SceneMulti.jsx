@@ -33,15 +33,16 @@
 // deliberately (that is the depth), and the app panel is whole.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Shot, Type, Eyebrow, Wallpaper, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint } from '../anim.js';
 
 // The row, receding. `z` is depth: 0 is nearest. Scale, height and angle all follow
 // from it, so the row is generated rather than hand-placed.
 const SCREENS = [
-  { clip: 'i14',    label: 'Display 1', color: '#ff3b57', z: 0 },
-  { clip: 'albedo', label: 'Display 2', color: '#3ad0e0', z: 1 },
-  { clip: 'raiden', label: 'Display 3', color: '#35e07a', z: 2 },
+  { clip: 'i14',    label: tx('Display 1'), color: '#ff3b57', z: 0 },
+  { clip: 'albedo', label: tx('Display 2'), color: '#3ad0e0', z: 1 },
+  { clip: 'raiden', label: tx('Display 3'), color: '#35e07a', z: 2 },
 ];
 
 // A short focal length. This is what turns the row's side screens into trapezoids
@@ -282,10 +283,8 @@ export default function SceneMulti({ t, global, variant = 0 }) {
           zIndex: 50,
         }}
       >
-        <Eyebrow color="#3ad0e0" style={{ marginBottom: 14 }}>
-          Multi-monitor
-        </Eyebrow>
-        <Type size={50}>Tiap layar, pengaturannya sendiri.</Type>
+        <Eyebrow color="#3ad0e0" style={{ marginBottom: 14 }}>{tx('Multi-monitor')}</Eyebrow>
+        <Type size={50}>{tx('Tiap layar, pengaturannya sendiri.')}</Type>
       </div>
     </div>
   );

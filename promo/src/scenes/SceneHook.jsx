@@ -12,6 +12,7 @@
 // keep watching.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { WallpaperFull, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint } from '../anim.js';
 
@@ -86,9 +87,7 @@ export default function SceneHook({ t, global, variant = 0 }) {
                 lineHeight: 1,
                 transform: `translateX(${(1 - word) * -100}%)`,
               }}
-            >
-              LumaWall
-            </div>
+            >{tx('LumaWall')}</div>
           </div>
         </div>
 
@@ -115,9 +114,7 @@ export default function SceneHook({ t, global, variant = 0 }) {
             opacity: sub,
             transform: `translateY(${(1 - sub) * 20}px)`,
           }}
-        >
-          Wallpaper hidup di desktop Windows — diproses chip grafis, bukan CPU.
-        </div>
+        >{tx('Wallpaper hidup di desktop Windows — diproses chip grafis, bukan CPU.')}</div>
       </div>
 
       {/* The lower third: three short facts, so the opening states the product
@@ -133,7 +130,7 @@ export default function SceneHook({ t, global, variant = 0 }) {
           opacity: easeOut(seg(t, 2.1, 3.1)),
         }}
       >
-        {['Windows 10 / 11', '5.000+ wallpaper', 'Pause per monitor'].map((s, i) => {
+        {[tx('Windows 10 / 11'), tx('5.000+ wallpaper'), tx('Pause per monitor')].map((s, i) => {
           const k = easeOut(seg(t, 2.1 + i * 0.12, 2.8 + i * 0.12));
           return (
             <span

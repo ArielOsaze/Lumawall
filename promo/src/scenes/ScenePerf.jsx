@@ -15,6 +15,7 @@
 // frame on decoration.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Eyebrow, Bar, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint } from '../anim.js';
 
@@ -44,10 +45,8 @@ export default function ScenePerf({ t, global, variant = 0 }) {
         }}
       >
         <div style={{ opacity: head, transform: `translateY(${(1 - head) * 20}px)` }}>
-          <Eyebrow color="#35e07a" style={{ marginBottom: 18 }}>
-            Hasil
-          </Eyebrow>
-          <Type size={56}>Beban CPU, diukur pada animasi yang sama.</Type>
+          <Eyebrow color="#35e07a" style={{ marginBottom: 18 }}>{tx('Hasil')}</Eyebrow>
+          <Type size={56}>{tx('Beban CPU, diukur pada animasi yang sama.')}</Type>
         </div>
 
         <div style={{ marginTop: 52, display: 'flex', gap: 80, opacity: body }}>
@@ -57,7 +56,7 @@ export default function ScenePerf({ t, global, variant = 0 }) {
               delay={0.35}
               value={41.2}
               max={MAX}
-              label="Wallpaper engine biasa"
+              label={tx('Wallpaper engine biasa')}
               color="#ff3b57"
               suffix="%"
               decimals={1}
@@ -88,13 +87,9 @@ export default function ScenePerf({ t, global, variant = 0 }) {
             opacity: foot,
           }}
         >
-          <span style={{ fontFamily: FONT, fontSize: 18, color: '#8d939c' }}>
-            1920×1080 · 60 fps · animasi 4K yang sama
-          </span>
+          <span style={{ fontFamily: FONT, fontSize: 18, color: '#8d939c' }}>{tx('1920×1080 · 60 fps · animasi 4K yang sama')}</span>
           <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,.14)' }} />
-          <span style={{ fontFamily: FONT, fontSize: 18, color: '#8d939c' }}>
-            diukur di Windows 11, Ryzen 5
-          </span>
+          <span style={{ fontFamily: FONT, fontSize: 18, color: '#8d939c' }}>{tx('diukur di Windows 11, Ryzen 5')}</span>
         </div>
       </div>
     </div>

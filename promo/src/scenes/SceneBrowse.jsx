@@ -19,6 +19,7 @@
 // The screenshot is sized by WIDTH ONLY (see Kit.Shot), so it cannot be cropped.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Shot, Type, Eyebrow, Cursor, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint } from '../anim.js';
 
@@ -70,9 +71,7 @@ export default function SceneBrowse({ t, global }) {
             opacity: enter,
             transform: `translateY(${(1 - enter) * 14}px)`,
           }}
-        >
-          Katalog
-        </Eyebrow>
+        >{tx('Katalog')}</Eyebrow>
 
         <div
           style={{
@@ -131,12 +130,8 @@ export default function SceneBrowse({ t, global }) {
             transform: `translateY(${(1 - caption) * 16}px)`,
           }}
         >
-          <Type size={38} weight={800}>
-            5.000+ wallpaper
-          </Type>
-          <span style={{ fontFamily: FONT, fontSize: 23, fontWeight: 500, color: '#9aa0a9' }}>
-            cari, filter, unduh — semuanya di dalam aplikasi
-          </span>
+          <Type size={38} weight={800}>{tx('5.000+ wallpaper')}</Type>
+          <span style={{ fontFamily: FONT, fontSize: 23, fontWeight: 500, color: '#9aa0a9' }}>{tx('cari, filter, unduh — semuanya di dalam aplikasi')}</span>
         </div>
       </div>
     </div>

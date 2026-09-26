@@ -38,6 +38,18 @@ const SCALE = Number(arg('--scale', '1'));     // 1 = full quality, 0.5 = fast p
 const MAX_FRAMES = Number(arg('--max-frames', '0')) || Infinity;
 const CRF = arg('--crf', '18');
 
+// The language the piece is rendered in. The copy lives in src/copy.js keyed by the
+// Indonesian source string, and the scenes read it - so the same scenes produce both
+// versions and neither can drift from the other.
+//
+// It is set on the page before the app loads (see addScriptToEvaluateOnNewDocument
+// below), not after: the scenes read `window.__lang` at render time, so setting it
+// later would render the first frame in the wrong language and leave it there.
+const LANG = arg('--lang', 'id');
+if (!['id', 'en'].includes(LANG)) {
+  throw new Error(`unknown language "${LANG}" - expected id or en`);
+}
+
 const totalFrames = Math.min(Math.ceil(DURATION * FPS), MAX_FRAMES);
 const outW = Math.round(WIDTH * SCALE);
 const outH = Math.round(HEIGHT * SCALE);
@@ -208,6 +220,19 @@ const { sessionId } = await send('Target.attachToTarget', { targetId: target.tar
 
 await send('Page.enable', {}, sessionId);
 await send('Runtime.enable', {}, sessionId);
+
+// Set the language BEFORE any page script runs.
+//
+// The page has already loaded once by the time we attach, so the script alone is not
+// enough - the app has already rendered in the default language. Registering it and
+// then reloading means the app's very first render reads the right value, which
+// matters because the renderer captures frame 0.
+await send('Page.addScriptToEvaluateOnNewDocument', {
+  source: `window.__lang = ${JSON.stringify(LANG)};`,
+}, sessionId);
+await send('Page.reload', { ignoreCache: true }, sessionId);
+await waitForEvent('Page.loadEventFired', 20000);
+
 await send('Emulation.setDeviceMetricsOverride', {
   width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false,
 }, sessionId);

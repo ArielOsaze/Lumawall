@@ -15,6 +15,7 @@
 // The wallpaper sits inside a panel at its own aspect ratio. Nothing is cropped.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Shot, Type, Eyebrow, Cursor, Wallpaper, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, loop } from '../anim.js';
 
@@ -47,14 +48,10 @@ export default function ScenePause({ t, global, variant = 0 }) {
       >
         {/* ── the argument ───────────────────────────────────────────────────── */}
         <div style={{ width: 600, flexShrink: 0 }}>
-          <Eyebrow color="#ffb020" style={{ marginBottom: 20, opacity: head }}>
-            Pause
-          </Eyebrow>
+          <Eyebrow color="#ffb020" style={{ marginBottom: 20, opacity: head }}>{tx('Pause')}</Eyebrow>
           <Type size={54} style={{ opacity: head, transform: `translateY(${(1 - head) * 22}px)` }}>
-            Berhenti tanpa
-            <br />
-            menutup apa pun.
-          </Type>
+            {tx('Berhenti tanpa')}
+            <br />{tx('menutup apa pun.')}</Type>
           <div
             style={{
               marginTop: 26,
@@ -66,8 +63,7 @@ export default function ScenePause({ t, global, variant = 0 }) {
               opacity: easeOut(seg(t, 0.65, 1.35)),
             }}
           >
-            Wallpaper yang berat tidak perlu dihapus — cukup dijeda saat kamu butuh
-            tenaganya.
+            {tx('Wallpaper yang berat tidak perlu dihapus — cukup dijeda saat kamu butuh tenaganya.')}
           </div>
 
           <div
@@ -89,9 +85,7 @@ export default function ScenePause({ t, global, variant = 0 }) {
                 boxShadow: `0 0 0 ${4 + 3 * Math.sin(t * 5)}px rgba(255,176,32,.16)`,
               }}
             />
-            <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 600, color: '#e6e9ee' }}>
-              Wallpaper dijeda — aplikasi tetap jalan
-            </span>
+            <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 600, color: '#e6e9ee' }}>{tx('Wallpaper dijeda — aplikasi tetap jalan')}</span>
           </div>
         </div>
 

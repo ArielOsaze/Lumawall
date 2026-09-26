@@ -14,6 +14,7 @@
 // Nothing here is an image, so nothing here can be cropped.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Eyebrow, Figure, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, easeOutExpo, loop } from '../anim.js';
 
@@ -60,11 +61,9 @@ export default function SceneGpu({ t, global, variant = 0 }) {
         }}
       >
         <div style={{ opacity: head, transform: `translateY(${(1 - head) * 20}px)` }}>
-          <Eyebrow color="#4a9bff" style={{ marginBottom: 18 }}>
-            Arsitektur
-          </Eyebrow>
+          <Eyebrow color="#4a9bff" style={{ marginBottom: 18 }}>{tx('Arsitektur')}</Eyebrow>
           <Type size={54}>
-            Didekode di <span style={{ color: '#4a9bff' }}>GPU</span>, bukan di CPU.
+            {tx('Didekode di')} <span style={{ color: '#4a9bff' }}>{tx('GPU')}</span>{tx(', bukan di CPU.')}
           </Type>
         </div>
 
@@ -74,8 +73,8 @@ export default function SceneGpu({ t, global, variant = 0 }) {
             {/* The two tracks. The upper one is the GPU path and carries the traffic;
                 the lower one is the CPU path and stays empty. */}
             {[
-              { y: 26, label: 'GPU', color: '#4a9bff', active: true, note: 'dekode · komposit · tampil' },
-              { y: 158, label: 'CPU', color: '#6b7280', active: false, note: 'hampir tidak tersentuh' },
+              { y: 26, label: tx('GPU'), color: '#4a9bff', active: true, note: tx('dekode · komposit · tampil') },
+              { y: 158, label: tx('CPU'), color: '#6b7280', active: false, note: tx('hampir tidak tersentuh') },
             ].map((track) => (
               <div key={track.label} style={{ position: 'absolute', left: 0, right: 0, top: track.y, height: 62 }}>
                 <div
@@ -162,23 +161,17 @@ export default function SceneGpu({ t, global, variant = 0 }) {
         {/* ── the readings ──────────────────────────────────────────────────── */}
         <div style={{ marginTop: 40, display: 'flex', gap: 64, opacity: body }}>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>
-              PEMAKAIAN CPU
-            </div>
+            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>{tx('PEMAKAIAN CPU')}</div>
             <Figure to={2.4 + jitter} t={cpu} dur={0.01} decimals={1} suffix="%" color="#35e07a" size={72} />
           </div>
           <div style={{ width: 1, background: 'rgba(255,255,255,.10)' }} />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>
-              FRAME RATE
-            </div>
+            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>{tx('FRAME RATE')}</div>
             <Figure to={60} t={fps} dur={1.2} suffix=" fps" color="#fff" size={72} />
           </div>
           <div style={{ width: 1, background: 'rgba(255,255,255,.10)' }} />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>
-              RESOLUSI
-            </div>
+            <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 10 }}>{tx('RESOLUSI')}</div>
             <Figure to={4} t={fps} dur={1.2} suffix="K" color="#fff" size={72} />
           </div>
         </div>

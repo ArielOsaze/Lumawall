@@ -13,6 +13,7 @@
 // is called and where to get it.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Wallpaper, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, easeOutExpo } from '../anim.js';
 
@@ -68,9 +69,7 @@ export default function SceneClose({ t, global, variant = 0 }) {
                 opacity: word,
                 transform: `translateX(${(1 - word) * -26}px)`,
               }}
-            >
-              LumaWall
-            </div>
+            >{tx('LumaWall')}</div>
           </div>
 
           <div
@@ -84,9 +83,7 @@ export default function SceneClose({ t, global, variant = 0 }) {
               opacity: line,
               transform: `translateY(${(1 - line) * 18}px)`,
             }}
-          >
-            Wallpaper hidup, tanpa membebani komputer.
-          </div>
+          >{tx('Wallpaper hidup, tanpa membebani komputer.')}</div>
 
           {/* The call to action, as a pill rather than as a sentence. */}
           <div
@@ -103,9 +100,7 @@ export default function SceneClose({ t, global, variant = 0 }) {
               boxShadow: '0 22px 50px -20px rgba(255,59,87,.65)',
             }}
           >
-            <span style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: '#fff' }}>
-              Unduh gratis di lumawall.xinet.id
-            </span>
+            <span style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: '#fff' }}>{tx('Unduh gratis di lumawall.xinet.id')}</span>
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -119,7 +114,7 @@ export default function SceneClose({ t, global, variant = 0 }) {
               opacity: pill,
             }}
           >
-            {['Windows 10 / 11', 'Gratis', 'Tanpa akun'].map((s) => (
+            {[tx('Windows 10 / 11'), tx('Gratis'), tx('Tanpa akun')].map((s) => (
               <span
                 key={s}
                 style={{

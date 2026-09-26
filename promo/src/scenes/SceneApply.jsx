@@ -15,6 +15,7 @@
 // the scene, not the backdrop of it.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Shot, Type, Eyebrow, Cursor, WallpaperFull, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, easeOutExpo } from '../anim.js';
 
@@ -74,12 +75,10 @@ export default function SceneApply({ t, global, variant = 0 }) {
         }}
       >
         <div style={{ width: 660, flexShrink: 0 }}>
-          <Eyebrow style={{ marginBottom: 20, opacity: panel }}>Terapkan</Eyebrow>
+          <Eyebrow style={{ marginBottom: 20, opacity: panel }}>{tx('Terapkan')}</Eyebrow>
           <Type size={54} style={{ opacity: panel, transform: `translateY(${(1 - panel) * 24}px)` }}>
-            Pilih, klik,
-            <br />
-            langsung ganti.
-          </Type>
+            {tx('Pilih, klik,')}
+            <br />{tx('langsung ganti.')}</Type>
           <div
             style={{
               marginTop: 24,
@@ -90,9 +89,7 @@ export default function SceneApply({ t, global, variant = 0 }) {
               maxWidth: 560,
               opacity: easeOut(seg(t, 0.7, 1.4)),
             }}
-          >
-            Tanpa keluar dari aplikasi, tanpa atur file manual.
-          </div>
+          >{tx('Tanpa keluar dari aplikasi, tanpa atur file manual.')}</div>
 
           <div
             style={{
@@ -119,9 +116,7 @@ export default function SceneApply({ t, global, variant = 0 }) {
                 <path d="M5 13l4 4L19 7" fill="none" stroke="#07220f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 600, color: '#e6e9ee' }}>
-              Diterapkan ke Display 1
-            </span>
+            <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 600, color: '#e6e9ee' }}>{tx('Diterapkan ke Display 1')}</span>
           </div>
         </div>
 
@@ -153,9 +148,7 @@ export default function SceneApply({ t, global, variant = 0 }) {
             color: '#ff6b7f',
             marginBottom: 12,
           }}
-        >
-          Sedang dipakai
-        </div>
+        >{tx('Sedang dipakai')}</div>
         <div style={{ fontFamily: FONT, fontSize: 44, fontWeight: 800, letterSpacing: '-.03em', color: '#fff' }}>
           {label}
         </div>

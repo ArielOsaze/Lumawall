@@ -16,6 +16,7 @@
 // has to: the subject is the image itself.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Eyebrow, Wallpaper, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, easeOutExpo } from '../anim.js';
 
@@ -111,14 +112,10 @@ export default function SceneQuality({ t, global, variant = 0 }) {
           opacity: frame,
         }}
       >
-        <Eyebrow color="#35e07a" style={{ marginBottom: 20 }}>
-          Kualitas
-        </Eyebrow>
+        <Eyebrow color="#35e07a" style={{ marginBottom: 20 }}>{tx('Kualitas')}</Eyebrow>
         <Type size={54}>
-          Resolusi asli,
-          <br />
-          tanpa dikompres ulang.
-        </Type>
+          {tx('Resolusi asli,')}
+          <br />{tx('tanpa dikompres ulang.')}</Type>
         <div
           style={{
             marginTop: 26,
@@ -130,8 +127,7 @@ export default function SceneQuality({ t, global, variant = 0 }) {
             opacity: easeOut(seg(t, 0.7, 1.5)),
           }}
         >
-          File kamu diputar apa adanya lewat dekoder perangkat keras — tidak
-          di-encode lagi, tidak diperkecil.
+          {tx('File kamu diputar apa adanya lewat dekoder perangkat keras — tidak di-encode lagi, tidak diperkecil.')}
         </div>
 
         {/* The file's own numbers, read out as a file card rather than as a claim. */}
@@ -145,9 +141,9 @@ export default function SceneQuality({ t, global, variant = 0 }) {
           }}
         >
           {[
-            { k: 'RESOLUSI', v: '3840×2160' },
-            { k: 'BITRATE', v: '24 Mbps' },
-            { k: 'KODEK', v: 'HEVC 10-bit' },
+            { k: tx('RESOLUSI'), v: '3840×2160' },
+            { k: tx('BITRATE'), v: '24 Mbps' },
+            { k: tx('KODEK'), v: 'HEVC 10-bit' },
           ].map((r) => (
             <div key={r.k}>
               <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, letterSpacing: '.16em', color: '#8d939c', marginBottom: 8 }}>

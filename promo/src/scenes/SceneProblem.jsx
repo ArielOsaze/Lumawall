@@ -14,14 +14,15 @@
 // Nothing here is a screenshot, so nothing here can be cropped.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Eyebrow, Figure, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint, easeOutExpo, loop } from '../anim.js';
 
 const ROWS = [
-  { name: 'Wallpaper engine', cpu: 41.2, mem: 1.24, hot: true },
-  { name: 'Browser', cpu: 8.4, mem: 2.10, hot: false },
-  { name: 'Explorer', cpu: 2.1, mem: 0.42, hot: false },
-  { name: 'Spotify', cpu: 1.6, mem: 0.38, hot: false },
+  { name: tx('Wallpaper engine'), cpu: 41.2, mem: 1.24, hot: true },
+  { name: tx('Browser'), cpu: 8.4, mem: 2.10, hot: false },
+  { name: tx('Explorer'), cpu: 2.1, mem: 0.42, hot: false },
+  { name: tx('Spotify'), cpu: 1.6, mem: 0.38, hot: false },
 ];
 
 export default function SceneProblem({ t, global }) {
@@ -60,13 +61,13 @@ export default function SceneProblem({ t, global }) {
       >
         {/* ── the statement ─────────────────────────────────────────────────── */}
         <div style={{ width: 560, flexShrink: 0 }}>
-          <Eyebrow style={{ marginBottom: 22, opacity: head }}>Masalahnya</Eyebrow>
+          <Eyebrow style={{ marginBottom: 22, opacity: head }}>{tx('Masalahnya')}</Eyebrow>
           <Type size={56} style={{ opacity: head, transform: `translateY(${(1 - head) * 26}px)` }}>
-            Wallpaper hidup
+            {tx('Wallpaper hidup')}
             <br />
-            biasanya makan
+            {tx('biasanya makan')}
             <br />
-            <span style={{ color: '#ff3b57' }}>CPU.</span>
+            <span style={{ color: '#ff3b57' }}>{tx('CPU.')}</span>
           </Type>
           <div
             style={{
@@ -79,8 +80,7 @@ export default function SceneProblem({ t, global }) {
               opacity: body,
             }}
           >
-            Animasi diproses di prosesor, laptop jadi panas, kipas berisik, baterai
-            cepat habis.
+            {tx('Animasi diproses di prosesor, laptop jadi panas, kipas berisik, baterai cepat habis.')}
           </div>
         </div>
 
@@ -120,9 +120,7 @@ export default function SceneProblem({ t, global }) {
               {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
                 <span key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c }} />
               ))}
-              <span style={{ marginLeft: 12, fontFamily: FONT, fontSize: 15, color: '#8d939c' }}>
-                Task Manager — CPU
-              </span>
+              <span style={{ marginLeft: 12, fontFamily: FONT, fontSize: 15, color: '#8d939c' }}>{tx('Task Manager — CPU')}</span>
             </div>
 
             {/* A big figure and a live trace. */}
@@ -137,8 +135,8 @@ export default function SceneProblem({ t, global }) {
                 size={78}
               />
               <div style={{ paddingBottom: 10 }}>
-                <div style={{ fontFamily: FONT, fontSize: 17, color: '#8d939c' }}>Wallpaper engine</div>
-                <div style={{ fontFamily: FONT, fontSize: 15, color: '#5f6670' }}>1 proses · 12 utas</div>
+                <div style={{ fontFamily: FONT, fontSize: 17, color: '#8d939c' }}>{tx('Wallpaper engine')}</div>
+                <div style={{ fontFamily: FONT, fontSize: 15, color: '#5f6670' }}>{tx('1 proses · 12 utas')}</div>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-"""make-og-card.py — builds the image that appears when the link is shared.
+"""make-og-card.py — the image that appears when the link is shared, per language.
 
 Why this file matters: og:image was pointing at a wallpaper, at a relative path, at
 full wallpaper dimensions. Three separate problems, and all three fail silently - the
@@ -11,6 +11,13 @@ page loads, the link works, and the preview is a bare URL with no thumbnail.
 
 So the card is 1200x630 - the size every platform crops from - composed from the
 product's own assets.
+
+── why there is a language argument ────────────────────────────────────────
+
+The card carries the claim in words, so an English link with an Indonesian card is a
+preview the visitor cannot read - and a preview they cannot read is one they do not
+click. The two pages therefore need two cards, and the layout is shared because the
+English strings are no longer than the Indonesian ones in every case but one.
 
 ── the rewrite, and what it fixes ──────────────────────────────────────────
 
@@ -29,42 +36,43 @@ are set at 30px, and the vertical rhythm is tight. The subject moves right and t
 plate is a full-height gradient rather than a fading strip, so the type sits on a
 consistent dark field instead of on whatever part of the wallpaper is under it.
 
-The measurements are in the code as named constants rather than inline numbers, so a
-future change can see what it is moving.
+The measurements are named constants rather than inline numbers, so a future change
+can see what it is moving.
 
-Run:  python tools/make-og-card.py
+Usage:
+    python tools/make-og-card.py            # both languages
+    python tools/make-og-card.py --lang en
 """
 
 import os
 import subprocess
 import sys
 
-OUT = 'site/assets/shots/og-card.png'
 W, H = 1200, 630
-
-# The assets are served with a content hash in the filename (`hero-bg.6609e553d0.jpg`),
-# and the unhashed name only exists in the working tree between a build and a
-# cache-bust. Resolving the stem rather than the exact name means this runs whether or
-# not the cache-buster has been through - the first version hardcoded the plain name
-# and failed with "missing site/assets/shots/hero-bg.jpg" the moment it had.
 SHOTS = 'site/assets/shots'
-
-
-def resolve(stem, exts=('.jpg', '.jpeg', '.png')):
-    """The file for `stem`, hashed or not."""
-    for ext in exts:
-        plain = os.path.join(SHOTS, stem + ext)
-        if os.path.exists(plain):
-            return plain
-    for f in sorted(os.listdir(SHOTS)):
-        for ext in exts:
-            if f.startswith(stem + '.') and f.endswith(ext) and not f.endswith('.bak'):
-                return os.path.join(SHOTS, f)
-    return None
-
-
-WALL = resolve('hero-bg')
 MARK = 'site/assets/logo/logo-150.png'
+
+# The card's copy, per language. Not read from site-copy.js: the card's lines are
+# shorter than the page's headings, so they are their own set - but they make the same
+# claims, and the check below confirms each page points at its own card.
+CARDS = {
+    'id': {
+        'out': os.path.join(SHOTS, 'og-card.png'),
+        'name': 'LumaWall',
+        'sub': 'Wallpaper hidup untuk Windows',
+        'claim1': 'Wallpaper bergerak,',
+        'claim2': 'komputer tetap tenang',
+        'facts': ['5.000+ wallpaper', 'CPU di bawah 1%', 'Gratis, tanpa iklan'],
+    },
+    'en': {
+        'out': os.path.join(SHOTS, 'og-card-en.png'),
+        'name': 'LumaWall',
+        'sub': 'Live wallpaper for Windows',
+        'claim1': 'Wallpaper that moves,',
+        'claim2': 'a computer that stays quiet',
+        'facts': ['5,000+ wallpapers', 'CPU under 1%', 'Free, no ads'],
+    },
+}
 
 # ── the layout ───────────────────────────────────────────────────────────────
 #
@@ -80,6 +88,12 @@ SUB_SIZE = 23
 CLAIM_SIZE = 52
 FACT_SIZE = 30
 
+# The English second line is 27 characters against the Indonesian 21, and at 52px it
+# runs to about x=1010 - past the plate, onto the subject. Setting it smaller keeps it
+# inside the text column, which is the only thing the card has to get right.
+CLAIM_SIZE_LONG = 45
+CLAIM_LONG_THRESHOLD = 24
+
 Y_MARK = 84
 Y_NAME = 92
 Y_SUB = 144
@@ -87,60 +101,6 @@ Y_CLAIM = 268
 Y_CLAIM_2 = 330
 Y_FACTS = 424
 FACT_STEP = 46
-
-for path in (WALL, MARK):
-    if not os.path.exists(path):
-        sys.exit('missing %s' % path)
-
-# The wallpaper is graded, then the plate is applied as a full-height horizontal
-# gradient: solid on the left where the text is, clearing to the right where the
-# subject is. The first version's plate faded to nothing by x=864 and left the type
-# on bare wallpaper - which is why a review said the card "relies entirely on the
-# dark void".
-grade = (
-    f'scale={W}:{H}:force_original_aspect_ratio=increase,'
-    f'crop={W}:{H},'
-    'eq=brightness=-0.14:contrast=1.12:saturation=0.92,'
-    'vignette=PI/4'
-)
-
-r = subprocess.run(
-    ['ffmpeg', '-v', 'error', '-y', '-i', WALL, '-vf', grade, '-frames:v', '1',
-     OUT + '.base.png'],
-    capture_output=True, text=True,
-)
-if r.returncode != 0:
-    print('  ffmpeg failed:')
-    print('   ', r.stderr.strip()[:500])
-    sys.exit(1)
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except ImportError:
-    print('  Pillow is needed for the text overlay')
-    print('  the graded plate is at %s.base.png' % OUT)
-    sys.exit(1)
-
-base = Image.open(OUT + '.base.png').convert('RGB')
-
-# ── the plate ────────────────────────────────────────────────────────────────
-#
-# A gradient rather than a fading strip. Solid to x=0.62W, then clearing. The
-# subject lives right of 0.72W, so it is never covered.
-plate = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-pd = ImageDraw.Draw(plate)
-for x in range(W):
-    f = x / float(W)
-    if f <= 0.62:
-        a = 214
-    else:
-        # Clear over the last third, smoothly.
-        k = (f - 0.62) / 0.38
-        a = int(214 * (1 - k) ** 1.25)
-    pd.line([(x, 0), (x, H)], fill=(8, 9, 13, a))
-base = Image.alpha_composite(base.convert('RGBA'), plate).convert('RGB')
-
-draw = ImageDraw.Draw(base)
 
 FONT_DIR = 'site/assets/fonts'
 FONT_CANDIDATES = [
@@ -152,7 +112,29 @@ FONT_CANDIDATES = [
 ]
 
 
-def load(size):
+def resolve(stem, exts=('.jpg', '.jpeg', '.png')):
+    """The file for `stem`, hashed or not.
+
+    The assets are served with a content hash in the filename
+    (`hero-bg.6609e553d0.jpg`), and the unhashed name only exists in the working tree
+    between a build and a cache-bust. Resolving the stem rather than the exact name
+    means this runs in either state - the first version hardcoded the plain name and
+    failed with "missing site/assets/shots/hero-bg.jpg" the moment it had.
+    """
+    for ext in exts:
+        plain = os.path.join(SHOTS, stem + ext)
+        if os.path.exists(plain):
+            return plain
+    if os.path.isdir(SHOTS):
+        for f in sorted(os.listdir(SHOTS)):
+            for ext in exts:
+                if f.startswith(stem + '.') and f.endswith(ext) and not f.endswith('.bak'):
+                    return os.path.join(SHOTS, f)
+    return None
+
+
+def load_font(size):
+    from PIL import ImageFont
     for path in FONT_CANDIDATES:
         if not os.path.exists(path):
             continue
@@ -163,45 +145,125 @@ def load(size):
     return ImageFont.load_default()
 
 
-# ── the mark and the wordmark ────────────────────────────────────────────────
-mark = Image.open(MARK).convert('RGBA').resize((MARK_SIZE, MARK_SIZE), Image.LANCZOS)
-base.paste(mark, (X, Y_MARK), mark)
+def build(spec):
+    """Compose one card. Returns None, or a string describing the failure."""
+    from PIL import Image, ImageDraw
 
-f_name = load(NAME_SIZE)
-f_sub = load(SUB_SIZE)
-f_claim = load(CLAIM_SIZE)
-f_fact = load(FACT_SIZE)
+    wall = resolve('hero-bg')
+    if not wall:
+        return 'no hero-bg in %s' % SHOTS
+    if not os.path.exists(MARK):
+        return 'no %s' % MARK
 
-draw.text((X + MARK_SIZE + 18, Y_NAME), 'LumaWall', font=f_name, fill=(247, 248, 250))
-draw.text((X + MARK_SIZE + 18, Y_SUB), 'Wallpaper hidup untuk Windows',
-          font=f_sub, fill=(168, 176, 186))
+    out = spec['out']
 
-# ── the claim ────────────────────────────────────────────────────────────────
-#
-# Two lines, and both start at X. The second line is the brand colour, which is what
-# carries the eye from the white line into the benefit.
-draw.text((X, Y_CLAIM), 'Wallpaper bergerak,', font=f_claim, fill=(247, 248, 250))
-draw.text((X, Y_CLAIM_2), 'komputer tetap tenang', font=f_claim, fill=(255, 74, 100))
+    # The wallpaper is graded, then the plate is applied as a full-height horizontal
+    # gradient: solid on the left where the text is, clearing to the right where the
+    # subject is. The first version's plate faded to nothing by x=864 and left the type
+    # on bare wallpaper - which is why a review said the card "relies entirely on the
+    # dark void".
+    grade = (
+        f'scale={W}:{H}:force_original_aspect_ratio=increase,'
+        f'crop={W}:{H},'
+        'eq=brightness=-0.14:contrast=1.12:saturation=0.92,'
+        'vignette=PI/4'
+    )
+    r = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-y', '-i', wall, '-vf', grade, '-frames:v', '1',
+         out + '.base.png'],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return 'ffmpeg: %s' % (r.stderr.strip()[:200] or 'unknown error')
 
-# ── the facts ────────────────────────────────────────────────────────────────
-#
-# Set at FACT_SIZE, which is 30px - readable at 400px wide, where the first version's
-# 21px was not. Each fact gets a coloured tick so the three read as a list at a
-# glance rather than as three lines of prose.
-facts = [
-    ('5.000+ wallpaper', (58, 208, 224)),
-    ('CPU di bawah 1%', (53, 224, 122)),
-    ('Gratis, tanpa iklan', (255, 176, 32)),
-]
+    base = Image.open(out + '.base.png').convert('RGB')
 
-y = Y_FACTS
-for text, colour in facts:
-    # The tick: a short bright bar, which reads as a bullet at any size.
-    draw.rounded_rectangle([X, y + 8, X + 6, y + 30], radius=3, fill=colour)
-    draw.text((X + 22, y), text, font=f_fact, fill=(214, 220, 228))
-    y += FACT_STEP
+    # ── the plate ────────────────────────────────────────────────────────────
+    #
+    # A gradient rather than a fading strip. Solid to x=0.62W, then clearing. The
+    # subject lives right of 0.72W, so it is never covered.
+    plate = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    pd = ImageDraw.Draw(plate)
+    for x in range(W):
+        f = x / float(W)
+        if f <= 0.62:
+            a = 214
+        else:
+            k = (f - 0.62) / 0.38
+            a = int(214 * (1 - k) ** 1.25)
+        pd.line([(x, 0), (x, H)], fill=(8, 9, 13, a))
+    base = Image.alpha_composite(base.convert('RGBA'), plate).convert('RGB')
 
-base.save(OUT, 'PNG', optimize=True)
-os.remove(OUT + '.base.png')
+    draw = ImageDraw.Draw(base)
 
-print('  %s  (%d bytes, %dx%d)' % (OUT, os.path.getsize(OUT), W, H))
+    # ── the mark and the wordmark ────────────────────────────────────────────
+    mark = Image.open(MARK).convert('RGBA').resize((MARK_SIZE, MARK_SIZE), Image.LANCZOS)
+    base.paste(mark, (X, Y_MARK), mark)
+
+    draw.text((X + MARK_SIZE + 18, Y_NAME), spec['name'], font=load_font(NAME_SIZE),
+              fill=(247, 248, 250))
+    draw.text((X + MARK_SIZE + 18, Y_SUB), spec['sub'], font=load_font(SUB_SIZE),
+              fill=(168, 176, 186))
+
+    # ── the claim ────────────────────────────────────────────────────────────
+    #
+    # Two lines, both starting at X. The second line is the brand colour, which is what
+    # carries the eye from the white line into the benefit.
+    claim_size = (CLAIM_SIZE if len(spec['claim2']) <= CLAIM_LONG_THRESHOLD
+                  else CLAIM_SIZE_LONG)
+    draw.text((X, Y_CLAIM), spec['claim1'], font=load_font(CLAIM_SIZE),
+              fill=(247, 248, 250))
+    draw.text((X, Y_CLAIM_2), spec['claim2'], font=load_font(claim_size),
+              fill=(255, 74, 100))
+
+    # ── the facts ────────────────────────────────────────────────────────────
+    #
+    # Set at FACT_SIZE, which is 30px - readable at 400px wide, where the first
+    # version's 21px was not. Each fact gets a coloured tick so the three read as a list
+    # at a glance rather than as three lines of prose.
+    colours = [(58, 208, 224), (53, 224, 122), (255, 176, 32)]
+    y = Y_FACTS
+    for text, colour in zip(spec['facts'], colours):
+        draw.rounded_rectangle([X, y + 8, X + 6, y + 30], radius=3, fill=colour)
+        draw.text((X + 22, y), text, font=load_font(FACT_SIZE), fill=(214, 220, 228))
+        y += FACT_STEP
+
+    base.save(out, 'PNG', optimize=True)
+    os.remove(out + '.base.png')
+    return None
+
+
+def main():
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        print('  Pillow is needed for the text overlay')
+        return 1
+
+    langs = ['id', 'en']
+    if '--lang' in sys.argv:
+        langs = [sys.argv[sys.argv.index('--lang') + 1]]
+
+    print()
+    failed = 0
+    for lang in langs:
+        spec = CARDS[lang]
+        err = build(spec)
+        if err:
+            print('    %-3s  FAILED: %s' % (lang, err))
+            failed += 1
+            continue
+        print('    %-3s  %-30s %dx%d  %.0f KB'
+              % (lang, os.path.basename(spec['out']), W, H,
+                 os.path.getsize(spec['out']) / 1024))
+
+    print()
+    if failed:
+        print('  %d card(s) failed' % failed)
+        return 1
+    print('  both share cards built')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

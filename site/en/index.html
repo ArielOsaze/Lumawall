@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LumaWall - Live Wallpaper for Windows</title>
+<meta name="description" content="Video wallpaper on every monitor, decoded on the GPU so the CPU stays under 1%. Pauses itself when a game goes fullscreen. Free, 5,000+ wallpapers.">
+<meta name="theme-color" content="#080a0c">
+<link rel="canonical" href="https://lumawall.xinet.id/en/">
+<link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/">
+<link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/">
+<link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/">
+
+<!-- ── sharing ────────────────────────────────────────────────────────────────
+     Every URL here is absolute. A relative og:image is resolved against the
+     crawler's own base rather than the page's, so the preview silently falls back
+     to a bare link with no thumbnail. That was the bug: og:image was
+     "assets/shots/wallpaper-i14.png".
+     The image is 1200x630, which is the size every platform crops from. -->
+<meta property="og:site_name" content="LumaWall">
+<meta property="og:title" content="LumaWall - Live Wallpaper for Windows">
+<meta property="og:description" content="Video wallpaper decoded on the GPU, not the CPU. Pauses itself when a game goes fullscreen, resumes the moment it closes. 5,000+ wallpapers, free, no ads.">
+<meta property="og:image" content="https://lumawall.xinet.id/assets/shots/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LumaWall: wallpaper hidup di setiap monitor, tanpa membebani komputer">
+<meta property="og:url" content="https://lumawall.xinet.id/en/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LumaWall - Live Wallpaper for Windows">
+<meta name="twitter:description" content="Wallpaper video diproses chip grafis, bukan CPU. Berhenti otomatis saat game fullscreen, jalan lagi begitu game ditutup.">
+<meta name="twitter:image" content="https://lumawall.xinet.id/assets/shots/og-card.png">
+
+<link rel="icon" href="/assets/logo/app.ico">
+<link rel="apple-touch-icon" href="/assets/logo/logo-150.png">
+<link rel="preload" href="/assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/fonts.ad37d8582b.css">
+<link rel="stylesheet" href="/assets/css/style.635ef7e069.css">
+
+<!-- Structured data, so a search result can show the app rather than a plain
+     link. Every field here is verifiable: the version and the file size come from
+     the package that is actually served. -->
+<!-- seo-schema:start -->
+<!-- seo-schema:end -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"LumaWall","applicationCategory":"UtilitiesApplication","operatingSystem":"Windows 10, Windows 11","softwareVersion":"4.0.1","fileSize":"15.2MB","description":"Wallpaper hidup untuk Windows. Video diproses chip grafis, jadi CPU tetap di bawah 1%, dan wallpaper berhenti otomatis saat ada aplikasi fullscreen.","url":"https://lumawall.xinet.id/","downloadUrl":"https://lumawall.xinet.id/assets/downloads/LumaWall-Setup-4.0.1.exe","image":"https://lumawall.xinet.id/assets/shots/og-card.png","license":"https://github.com/ArielOsaze/Lumawall/blob/master/LICENSE","offers":{"@type":"Offer","price":"0","priceCurrency":"IDR"},"publisher":{"@type":"Organization","name":"Xinet Group","url":"https://xinet.id"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"en-EN","mainEntity":[{"@type":"Question","name":"Does LumaWall weigh down my computer?","acceptedAnswer":{"@type":"Answer","text":"No. Video is decoded on the GPU, not the CPU. With three 1080p wallpapers running at once, LumaWall's main process stays under 1% CPU. It also stops decoding when the screen is locked, the display is off, or the machine is on battery."}},{"@type":"Question","name":"What happens when I open a fullscreen game?","acceptedAnswer":{"@type":"Answer","text":"The wallpaper on the monitor the game covers stops immediately, and runs again the moment the game closes or is minimised. Pause works per screen, so your other monitors keep animating as usual."}},{"@type":"Question","name":"Can I still click my desktop icons?","acceptedAnswer":{"@type":"Answer","text":"Yes. LumaWall puts the wallpaper on Windows' desktop layer, directly beneath the icons. It is not an overlay window, so it never steals a click, never appears in Alt+Tab, and blocks nothing."}},{"@type":"Question","name":"Can I use my own videos?","acceptedAnswer":{"@type":"Answer","text":"Bisa. Klik Tambah lalu pilih file video atau gambar milikmu: mp4, m4v, wmv, avi, mov, webm, jpg, png, atau bmp. Untuk setiap unduhan dari katalog, LumaWall juga menyimpan file .license.txt berisi informasi kreator dan lisensinya."}},{"@type":"Question","name":"Is LumaWall free?","acceptedAnswer":{"@type":"Answer","text":"Free, with no ads and no paid tier. There is no limit on the number of wallpapers or monitors."}},{"@type":"Question","name":"How do I uninstall it?","acceptedAnswer":{"@type":"Answer","text":"Through Settings › Apps, like any Windows application, or through the uninstaller in the install folder. Every file lives in one folder and can be removed completely, with nothing left in the registry."}},{"@type":"Question","name":"How many monitors can I use at once?","acceptedAnswer":{"@type":"Answer","text":"There is no limit on the app's side. Every monitor Windows detects gets its own wallpaper, its own settings and its own pause state, and the arrangement can be saved as a profile."}},{"@type":"Question","name":"What if Explorer restarts or crashes?","acceptedAnswer":{"@type":"Answer","text":"LumaWall checks its own health every two seconds. If the desktop window disappears, the wallpaper is rebuilt and reapplied automatically in under four seconds, without restarting the app."}},{"@type":"Question","name":"Are there ads or tracking?","acceptedAnswer":{"@type":"Answer","text":"No ads, no account, no telemetry. The only internet connection happens when you yourself download a wallpaper from the catalog."}},{"@type":"Question","name":"Which languages are supported?","acceptedAnswer":{"@type":"Answer","text":"The interface is available in English, Bahasa Indonesia, 简体中文 and 日本語. You can switch at any time from the language picker in the top bar."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"LumaWall","alternateName":"LumaWall - Live Wallpaper for Windows","url":"https://lumawall.xinet.id/en/","inLanguage":"en-EN","publisher":{"@type":"Organization","name":"Xinet Group","url":"https://xinet.id"}}</script>
+</head>
+<body>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">
+      <img src="/assets/logo/logo-150.png" alt="" class="brand-mark">
+      <span class="brand-text">LumaWall</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Feature</a>
+      <a href="#performance">Performance</a>
+      <a href="#video">Video</a>
+      <a href="#screens">Screens</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a href="#download" class="btn btn-primary btn-sm">Download</a>
+  </div>
+</header>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero" id="top">
+  <div class="hero-bg">
+    <!-- The poster is a still from the loop, graded the same way, so there is
+         something to see before the video decodes and nothing shifts when it
+         starts. `muted` and `playsinline` are what let it autoplay; `loop` makes
+         it endless. The loop is cut with its own tail cross-faded into its head,
+         so the join is not visible.
+         `aria-hidden` because it is decoration: the same information is in the
+         heading beside it. -->
+    <video
+      class="hero-video"
+      poster="assets/shots/hero-bg.6609e553d0.jpg"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+      tabindex="-1">
+      <source src="/assets/video/hero-loop.371c6cc05a.mp4" type="video/mp4">
+    </video>
+    <!-- A real still rather than only the video's poster attribute: a poster is
+         not painted when the video is display:none, which is the reduced-motion
+         case. -->
+    <img class="hero-poster" src="/assets/shots/hero-bg.6609e553d0.jpg" alt="" aria-hidden="true">
+    <div class="hero-scrim"></div>
+  </div>
+  <div class="wrap hero-in">
+    <h1 class="h1" data-reveal>Live wallpaper on every monitor.<br>
+      <span class="accent">Without weighing down your PC.</span>
+    </h1>
+    <p class="lead" data-reveal>Video decoded on the GPU, so the CPU stays under 1%.<br>Open a fullscreen game, and the wallpaper on that screen stops on its own.</p>
+    <div class="hero-cta" data-reveal>
+      <a href="#download" class="btn btn-primary btn-lg">
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg> Download free </a>
+      <a href="#video" class="btn btn-ghost btn-lg">See how it works</a>
+    </div>
+    <div class="hero-meta" data-reveal>
+      <div><b>5.000+</b><span>wallpapers ready to use</span></div>
+      <div><b>11%</b><span>one core, three wallpapers</span></div>
+      <div><b>Per screen</b><span>automatic pause</span></div>
+      <div><b>Free</b><span>no ads</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ STRIP ═══════════════ -->
+<section class="strip">
+  <div class="wrap strip-in">
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> GPU hardware decoding </span>
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Pause per monitor</span>
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Profil multi-display</span>
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Pemulihan otomatis</span>
+    <span><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> 4 bahasa</span>
+  </div>
+</section>
+
+<!-- ═══════════════ FEATURES ═══════════════ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Why LumaWall</span>
+      <h2 class="h2">Built to be used for years</h2>
+      <p class="lead">Six reasons people give up on live wallpaper: a hot CPU, games that stutter, desktop icons you can no longer click.</p>
+    </div>
+
+    <div class="grid grid-3">
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+        </div>
+        <h3 class="h3">Video decoded on the graphics chip</h3>
+        <p>Video is handled by a dedicated block on the graphics chip (NVDEC or DXVA2), then composited through DWM. With three 1080p wallpapers running at once, LumaWall's main process stays under 1% CPU.</p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="14" rx="1.5"/><rect x="13" y="5" width="8" height="14" rx="1.5"/><path d="M11 12h2"/></svg>
+        </div>
+        <h3 class="h3">Stops only on the screen it covers</h3>
+        <p>A fullscreen game on your second monitor stops the second monitor's wallpaper and nothing else. The others keep animating. No more wallpapers dying because of an app on the screen next door.</p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13H11l-.5 9L19 11h-6.5z"/></svg>
+        </div>
+        <h3 class="h3">Reacts in hundreds of milliseconds</h3>
+        <p>Pause and resume are driven by Windows' own system events. Close the game and the wallpaper is animating again within hundreds of milliseconds, with no click and no touch.</p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3 class="h3">A different setup for every screen</h3>
+        <p>Put a different video on each monitor, then save the whole arrangement as a profile and restore it in one click. If your monitor layout changes, LumaWall adapts on its own.</p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        </div>
+        <h3 class="h3">A catalog of 5,000+ wallpapers</h3>
+        <p>
+          Cari berdasarkan karakter atau suasana, lihat pratinjau, lalu unduh
+          langsung dari dalam aplikasi. Setiap unduhan menyertakan file
+          <code>.license.txt</code> berisi kreator, lisensi, dan tautan sumbernya.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3 class="h3">It does not get in the desktop's way</h3>
+        <p>The wallpaper sits on Windows' desktop layer, directly beneath the icons. It is not an overlay window, so your icons stay clickable, it never appears in Alt+Tab, and it blocks nothing.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PERFORMANCE ═══════════════ -->
+<section class="sec sec-alt" id="performance">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Measured performance</span>
+      <h2 class="h2">Numbers, not claims</h2>
+      <p class="lead">Measured on three 1080p monitors with three video wallpapers running at once. Both bars show the load on a single core, so the comparison is like for like.</p>
+    </div>
+
+    <!--
+      The comparison is CPU before versus CPU after. An earlier version drew a
+      full-width red bar labelled "GPU" to mean "the work moved to the GPU", but
+      a filled red bar reads as "GPU is at 100%". the opposite of the message.
+      The GPU row is a plain statement with chips, and the two bars compare the
+      same thing: CPU load.
+    -->
+    <div class="perf" data-reveal>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Without LumaWall</b>
+          <span>Video decoded in software, all of it on the CPU core</span>
+        </div>
+        <div class="bar"><div class="bar-fill bad" style="--w:100%"><span>60%</span></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>With LumaWall</b>
+          <span>Decoding moved to a dedicated block on the graphics chip</span>
+        </div>
+        <div class="bar"><div class="bar-fill good" style="--w:18%"><span>11%</span></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Video decoding</b>
+          <span>Handled by a dedicated block on the GPU, not the CPU core</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip">NVDEC</span>
+          <span class="chip">DXVA2</span>
+          <span class="chip">D3D11</span>
+        </div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">
+          <b>Resume after a game closes</b>
+          <span>From the game closing to the wallpaper running again</span>
+        </div>
+        <!-- A comparison, not a lone figure. "141 ms" on its own says nothing
+             about whether it is fast; paired with what the polling build took,
+             it says everything. Both numbers are measured, not estimated. -->
+        <div class="perf-pair">
+          <div class="perf-pair-col">
+            <span class="perf-pair-tag">Older version</span>
+            <b class="was">2.806<span>ms</span></b>
+            <em>Polls every 2 seconds</em>
+          </div>
+          <div class="perf-pair-arrow" aria-hidden="true">→</div>
+          <div class="perf-pair-col">
+            <span class="perf-pair-tag now">Current version</span>
+            <b class="is">141<span>ms</span></b>
+            <em>Driven by Windows events</em>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="perf-notes">
+      <div class="note" data-reveal data-delay="1">
+        <b>Static wallpapers, no WebView</b>
+        <span>Still images render directly, saving about 75 MB of RAM per monitor.</span>
+      </div>
+      <div class="note" data-reveal data-delay="2">
+        <b>Saves when the screen is not visible</b>
+        <span>Screen locked, display off, or running on battery: decoding stops on its own.</span>
+      </div>
+      <div class="note" data-reveal data-delay="3">
+        <b>Loop transitions without a flicker</b>
+        <span>Loop transitions are built to be seamless, with no black frame between them.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ VIDEO ═══════════════ -->
+<section class="sec" id="video">
+  <div class="wrap">
+    <div class="sec-head sec-head-center" data-reveal>
+      <span class="eyebrow">See how it works</span>
+      <h2 class="h2">LumaWall in 52 seconds</h2>
+      <p class="lead">Everything in this video is captured from the app you download, not a mockup.</p>
+    </div>
+    <div class="video-frame" data-reveal>
+      <video
+        id="promo"
+        controls
+        muted
+        playsinline
+        loop
+        autoplay
+        preload="auto"
+        poster="assets/shots/poster-promo-en.759c8626ec.png">
+        <source src="/assets/video/lumawall-promo-en.7c57995b0b.mp4" type="video/mp4">Your browser does not support video playback.</video>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SCREENS ═══════════════ -->
+<section class="sec sec-alt" id="screens">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Native display</span>
+      <h2 class="h2">Everything you need, in one window</h2>
+      <p class="lead">Captured straight from the app, not from a design.</p>
+    </div>
+
+    <div class="shots">
+      <figure class="shot shot-wide" data-reveal>
+        <img src="/assets/shots/ui-discover.46e675312a.png" alt="Katalog LumaWall dengan grid wallpaper">
+        <figcaption>
+          <b>Catalog</b>
+          <span>Search, filter and download from 5,000+ wallpapers without leaving the app</span>
+        </figcaption>
+      </figure>
+      <figure class="shot" data-reveal data-delay="1">
+        <img src="/assets/shots/ui-library.e76fbdf122.png" alt="Pustaka wallpaper LumaWall">
+        <figcaption>
+          <b>Pustaka</b>
+          <span>Everything you have collected, in one place</span>
+        </figcaption>
+      </figure>
+      <figure class="shot" data-reveal data-delay="2">
+        <img src="/assets/shots/ui-displays.af181b7f2c.png" alt="Pengaturan monitor LumaWall">
+        <figcaption>
+          <b>Layar</b>
+          <span>Set each monitor's wallpaper and save it as a profile</span>
+        </figcaption>
+      </figure>
+      <figure class="shot" data-reveal data-delay="1">
+        <img src="/assets/shots/ui-performance.c9c3dd7138.png" alt="Telemetri performa LumaWall">
+        <figcaption>
+          <b>Performance</b>
+          <span>Watch CPU, RAM and FPS live</span>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ COMPARE ═══════════════ -->
+<section class="sec" id="compare">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Perbandingan</span>
+      <h2 class="h2">Side by side with what Windows ships</h2>
+      <p class="lead">Windows' own wallpaper handles still images well. With video, there are things it simply cannot do.</p>
+    </div>
+    <div class="table-wrap" data-reveal>
+      <table class="cmp">
+        <thead>
+          <tr><th>Feature</th><th class="us">LumaWall</th><th>Windows wallpaper</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Video wallpaper on every monitor</td><td class="us yes">Yes</td><td class="no">No</td></tr>
+          <tr><td>GPU hardware decoding</td><td class="us yes">NVDEC / DXVA2</td><td class="no">&ndash;</td></tr>
+          <tr><td>Per-monitor pause when fullscreen</td><td class="us yes">Automatic</td><td class="no">No</td></tr>
+          <tr><td>A different wallpaper per screen</td><td class="us yes">Yes</td><td class="no">Limited</td></tr>
+          <tr><td>Multi-display layout profiles</td><td class="us yes">One click</td><td class="no">No</td></tr>
+          <tr><td>Built-in wallpaper catalog</td><td class="us yes">5.000+</td><td class="no">No</td></tr>
+          <tr><td>Automatic recovery after an Explorer restart</td><td class="us yes">2,7 detik</td><td class="no">&ndash;</td></tr>
+          <tr><td>Price</td><td class="us yes">Free</td><td class="no">Free</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="method" data-reveal>Performance figures were measured on Windows 11 build 26200, Ryzen 5 5600, GeForce GTX 1080, with three 1080p monitors running three H.264 wallpapers at once. CPU was read from Performance Monitor; resume time from the app's own log, which records every playback state change.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ DOWNLOAD ═══════════════ -->
+<section class="sec sec-alt" id="download">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Download</span>
+      <h2 class="h2">Installed in a minute</h2>
+      <p class="lead">The app is identical in all three formats. Only the way you install it differs.</p>
+    </div>
+
+    <div class="dl-grid">
+      <article class="dl-card featured" data-reveal>
+        <span class="dl-tag">Easiest</span>
+        <h3 class="h3">Installer</h3>
+        <p class="dl-desc">For everyday use. Installs like any Windows application, with a Start Menu shortcut and the option to start automatically when Windows does.</p>
+        <div class="dl-meta"><span>14,5 MB</span><span>.exe</span><span>Windows x64</span></div>
+        <a class="btn btn-primary btn-block" href="/assets/downloads/LumaWall-Setup-4.0.1.exe" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg> Download installer </a>
+      </article>
+
+      <article class="dl-card" data-reveal data-delay="1">
+        <span class="dl-tag">Microsoft Store</span>
+        <h3 class="h3">MSIX package</h3>
+        <p class="dl-desc">If you would rather Windows manage it: install from the Microsoft Store or sideload it, and updates and removal are handled by the system.</p>
+        <div class="dl-meta"><span>13,7 MB</span><span>.msix</span><span>x64</span></div>
+        <a class="btn btn-ghost btn-block" href="/assets/downloads/LumaWall_4.0.1.0_x64.msix" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg> Download MSIX </a>
+      </article>
+
+      <article class="dl-card" data-reveal data-delay="2">
+        <span class="dl-tag">No installation</span>
+        <h3 class="h3">Portable</h3>
+        <p class="dl-desc">To try it without changing anything, or to carry on a flash drive. Extract it anywhere and run it; nothing is written to the registry.</p>
+        <div class="dl-meta"><span>13,0 MB</span><span>.zip</span><span>no registry</span></div>
+        <a class="btn btn-ghost btn-block" href="/assets/downloads/LumaWall-portable-4.0.1.zip" download>
+          <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg> Download portable </a>
+      </article>
+    </div>
+
+    <div class="req" data-reveal>
+      <b>System requirements</b>
+      <ul>
+        <li>Windows 10 version 1809 or newer, or Windows 11</li>
+        <li>Windows and a 64-bit processor (x64)</li>
+        <li>WebView2 Runtime, already present on Windows 11 and up-to-date Windows 10</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">Questions</span>
+      <h2 class="h2">Questions we get most</h2>
+    </div>
+    <div class="faq-list" data-reveal>
+      <details class="faq" open>
+        <summary>Does LumaWall weigh down my computer?</summary>
+        <p>No. Video is decoded on the GPU, not the CPU. With three 1080p wallpapers running at once, LumaWall's main process stays under 1% CPU. It also stops decoding when the screen is locked, the display is off, or the machine is on battery.</p>
+      </details>
+      <details class="faq">
+        <summary>What happens when I open a fullscreen game?</summary>
+        <p>The wallpaper on the monitor the game covers stops immediately, and runs again the moment the game closes or is minimised. Pause works per screen, so your other monitors keep animating as usual.</p>
+      </details>
+      <details class="faq">
+        <summary>Can I still click my desktop icons?</summary>
+        <p>Yes. LumaWall puts the wallpaper on Windows' desktop layer, directly beneath the icons. It is not an overlay window, so it never steals a click, never appears in Alt+Tab, and blocks nothing.</p>
+      </details>
+      <details class="faq">
+        <summary>Can I use my own videos?</summary>
+        <p>
+          Bisa. Klik Tambah lalu pilih file video atau gambar milikmu: mp4, m4v,
+          wmv, avi, mov, webm, jpg, png, atau bmp. Untuk setiap unduhan dari
+          katalog, LumaWall juga menyimpan file <code>.license.txt</code> berisi
+          informasi kreator dan lisensinya.
+        </p>
+      </details>
+      <details class="faq">
+        <summary>Is LumaWall free?</summary>
+        <p>Free, with no ads and no paid tier. There is no limit on the number of wallpapers or monitors.</p>
+      </details>
+      <details class="faq">
+        <summary>How do I uninstall it?</summary>
+        <p>Through Settings › Apps, like any Windows application, or through the uninstaller in the install folder. Every file lives in one folder and can be removed completely, with nothing left in the registry.</p>
+      </details>
+      <details class="faq">
+        <summary>How many monitors can I use at once?</summary>
+        <p>There is no limit on the app's side. Every monitor Windows detects gets its own wallpaper, its own settings and its own pause state, and the arrangement can be saved as a profile.</p>
+      </details>
+      <details class="faq">
+        <summary>What if Explorer restarts or crashes?</summary>
+        <p>LumaWall checks its own health every two seconds. If the desktop window disappears, the wallpaper is rebuilt and reapplied automatically in under four seconds, without restarting the app.</p>
+      </details>
+      <details class="faq">
+        <summary>Are there ads or tracking?</summary>
+        <p>No ads, no account, no telemetry. The only internet connection happens when you yourself download a wallpaper from the catalog.</p>
+      </details>
+      <details class="faq">
+        <summary>Which languages are supported?</summary>
+        <p>The interface is available in English, Bahasa Indonesia, 简体中文 and 日本語. You can switch at any time from the language picker in the top bar.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FINAL CTA ═══════════════ -->
+<section class="sec cta-final">
+  <!-- A wallpaper running behind the last call to action: the final thing a
+       visitor sees is the product doing its job, not a black band. -->
+  <img src="/assets/shots/wallpaper-acheron.png" alt="" aria-hidden="true" class="cta-bg">
+  <div class="wrap">
+    <img src="/assets/logo/logo-150.png" alt="" class="cta-mark" data-reveal>
+    <h2 class="h2" data-reveal>Wallpaper that moves, a computer that stays quiet</h2>
+    <p class="lead" data-reveal>Free, no ads, and you will forget it is running.</p>
+    <div data-reveal>
+      <a href="/assets/downloads/LumaWall-Setup-4.0.1.exe" class="btn btn-primary btn-lg" download>
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg> Download for Windows </a>
+      <span class="cta-note">Version 4.0.1 · Windows 10 / 11 · x64 · 14.5 MB</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div class="foot-col foot-about">
+      <div class="foot-brand">
+        <img src="/assets/logo/logo-50.png" alt="Logo LumaWall">
+        <span>LumaWall</span>
+      </div>
+      <p>Live wallpaper for Windows. Video is decoded on the GPU, and the wallpaper pauses itself when you open a fullscreen app.</p>
+      <!-- The group mark, where a reader looking for who made this will find
+           it. A link rather than plain text: "part of" is a claim about a
+           relationship, and a claim should be checkable. -->
+      <a class="foot-group" href="https://xinet.id" target="_blank" rel="noopener">
+        <span>Bagian dari</span>
+        <b>Xinet Group</b>
+      </a>
+    </div>
+
+    <div class="foot-col">
+      <h4>Produk</h4>
+      <ul>
+        <li><a href="#features">Feature</a></li>
+        <li><a href="#performance">Performance</a></li>
+        <li><a href="#screens">Screens</a></li>
+        <li><a href="#download">Download</a></li>
+      </ul>
+    </div>
+
+    <div class="foot-col">
+      <h4>Bantuan</h4>
+      <ul>
+        <li><a href="#faq">Questions</a></li>
+        <li><a href="https://github.com/ArielOsaze/Lumawall" target="_blank" rel="noopener">Source code</a></li>
+        <li><a href="https://github.com/ArielOsaze/Lumawall/issues" target="_blank" rel="noopener">Report an issue</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="wrap foot-bottom">
+    <span>&copy; <span id="yr">2026</span> Xinet Group</span>
+    <span class="foot-legal">LumaWall is free and open-source software.</span>
+  </div>
+</footer>
+
+<script src="/assets/js/main.9d1f69de0a.js"></script>
+</body>
+</html>

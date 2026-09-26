@@ -14,6 +14,7 @@
 // Every tile is at the clip's own aspect ratio. Nothing is cropped.
 
 import React from 'react';
+import { t as tx } from '../copy.js';
 import { Surface, Type, Eyebrow, Wallpaper, FONT } from '../Kit.jsx';
 import { seg, easeOut, easeOutQuint } from '../anim.js';
 
@@ -106,14 +107,10 @@ export default function SceneLibrary({ t, global, variant = 0 }) {
           maxWidth: 660,
         }}
       >
-        <Eyebrow color="#a06bff" style={{ marginBottom: 20, opacity: head }}>
-          Pustaka
-        </Eyebrow>
+        <Eyebrow color="#a06bff" style={{ marginBottom: 20, opacity: head }}>{tx('Pustaka')}</Eyebrow>
         <Type size={58} style={{ opacity: head, transform: `translateY(${(1 - head) * 22}px)` }}>
-          Ribuan wallpaper,
-          <br />
-          semuanya hidup.
-        </Type>
+          {tx('Ribuan wallpaper,')}
+          <br />{tx('semuanya hidup.')}</Type>
         <div
           style={{
             marginTop: 28,
@@ -124,9 +121,7 @@ export default function SceneLibrary({ t, global, variant = 0 }) {
             maxWidth: 540,
             opacity: easeOut(seg(t, 0.7, 1.5)),
           }}
-        >
-          Setiap pratinjau di pustaka berjalan sungguhan — bukan gambar diam.
-        </div>
+        >{tx('Setiap pratinjau di pustaka berjalan sungguhan — bukan gambar diam.')}</div>
 
         <div
           style={{
@@ -138,9 +133,9 @@ export default function SceneLibrary({ t, global, variant = 0 }) {
           }}
         >
           {[
-            { n: '5.000+', l: 'wallpaper' },
-            { n: '4K', l: 'siap pakai' },
-            { n: '0', l: 'langganan' },
+            { n: tx('5.000+'), l: tx('wallpaper') },
+            { n: '4K', l: tx('siap pakai') },
+            { n: '0', l: tx('langganan') },
           ].map((s) => (
             <div key={s.l}>
               <div style={{ fontFamily: FONT, fontSize: 38, fontWeight: 800, letterSpacing: '-.03em', color: '#fff' }}>
