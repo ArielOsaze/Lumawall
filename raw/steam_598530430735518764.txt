@@ -1,0 +1,327 @@
+High CPU usage for Video Wallpaper :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ damoose1 
+
+ View Profile 
+ View Posts 
+
+ 24 Jun, 2025 @ 1:53pm 
+
+   Report this post 
+
+ High CPU usage for Video Wallpaper 
+
+ Why does Wallpaper Engine have such a high CPU usage playing back a video Wallpaper?
+
+I took a video that is 120fps 4K and when setting it as a wallpaper, Wallpaper Engine uses 45% CPU on my R9 5900x. When I play the same video in VLC, it uses less than 0.8% CPU.
+
+This is even a re-render. I playback the original 240fps video in VLC and CPU is still between 0.6% and 0.8%, But Wallpaper Engine cannot even play it and shows like 2 seconds of it before basically pausing it.
+
+I have change the setting in Wallpaper Engine and no combination really affects the performance of video wallpapers. 
+
+Sure, I can re-render the video at 60fps, but I do not see why that is a solution where normal video playback does not have such an issue. Is this just a limitation of how it renders videos as a background that introduces a ton of overhead? Or is there something I can do to change this? 
+
+ The author of this topic has marked a post as the answer to their question.
+
+ Click here to jump to that post. 
+
+ Originally posted by Tim :
+
+ Try switching to LAV with DirectShow, it may be that the Windows component that Wallpaper Engine relies on cannot handle your video format (encoder or bitrate would probably the issue) properly and it falls back on to the CPU:
+
+ https://help.wallpaperengine.io/videos/lav.html 
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Capt.Luke 
+
+ View Profile 
+ View Posts 
+
+ 24 Jun, 2025 @ 3:32pm 
+
+   Report this post 
+
+ first of all it should use your gpu not your cpu
+so there is a problem right there 
+
+ Last edited by Capt.Luke ;
+ 24 Jun, 2025 @ 3:32pm 
+
+ #1 
+
+ damoose1 
+
+ View Profile 
+ View Posts 
+
+ 25 Jun, 2025 @ 1:15pm 
+
+   Report this post 
+
+ Originally posted by Capt.Luke :
+first of all it should use your gpu not your cpu
+so there is a problem right there 
+Yeah, it is barely touching my GPU. Other video wallpapers I download barely affect performance on any component. It is just this 4K 120fps file, and I cannot find others in the workshop to test.
+
+I assume it is something to do with the encode I made that is causing Wallpaper Engine to render with the CPU rather than the GPU. Just not sure what it is as I do not know the limitations of Wallpaper Engine.
+
+Here is proof: https://imgur.com/a/TklmD72 
+
+ #2 
+
+ The author of this thread has indicated that this post answers the original topic. 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 25 Jun, 2025 @ 2:23pm 
+
+   Report this post 
+
+ Try switching to LAV with DirectShow, it may be that the Windows component that Wallpaper Engine relies on cannot handle your video format (encoder or bitrate would probably the issue) properly and it falls back on to the CPU:
+
+ https://help.wallpaperengine.io/videos/lav.html 
+
+ #3 
+
+ damoose1 
+
+ View Profile 
+ View Posts 
+
+ 26 Jun, 2025 @ 6:35am 
+
+   Report this post 
+
+ Thank you, Tim. That did the trick. I really appreciate all the efforts here. 
+
+ #4 
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 24 Jun, 2025 @ 1:53pm 
+ Posts: 4 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

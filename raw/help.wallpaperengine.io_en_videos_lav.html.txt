@@ -1,0 +1,94 @@
+ws 
+ 32-Bit & 64-Bit Version 
+ Hibernation / Screensavers do not work 
+ Playlist Causes focus loss / minimizes games 
+ Centering wallpaper with monitors of different resolutions 
+ Windows 7: Aero cannot be enabled 
+ Wallpaper Engine on the Windows lock screen 
+ Windows N: mfplat.dll missing 
+ Reverting to an older version of Wallpaper Engine 
+
+ Steam - Downloads / Uploads 
+ Steam Wallpaper Download Issues 
+ Steamworks is unavailable 
+ Steam redownloading wallpapers 
+ "Content file locked" / Disk Write Error 
+ Backup Steam Workshop 
+ Uploads get stuck at 45% 
+ Steam always shows "in-game" 
+ Wallpaper Engine missing in Steam Library 
+
+ Android 
+ Android - Frequent Questions and Problems 
+ Pairing Mobile Device with Windows 
+ Mobile Pairing Problem Solving 
+
+ Wallpapers not showing 
+ Wallpapers not visible 
+ Videos Black / Not Playing Properly 
+
+ Crashes 
+ Wallpaper Engine crashing 
+ System crash / System Freeze 
+ "DirectX 10 not supported" crash 
+ BattlEye anti-cheat terminating Wallpaper Engine 
+
+ Wallpaper Browser 
+ Wallpaper Engine window not displayed correctly 
+ Preview images / search results not showing 
+ Exclude certain wallpapers from the search 
+
+ Video Wallpapers 
+ Using LAV and DirectShow 1. Install LAV 
+ 2. Enable DirectShow 
+ Enabling WebM Hardware Acceleration 
+
+ Videos Black / Not Playing Properly 
+ Video freezes / stuttering / bad performance 
+ Video wallpapers look wrong 
+ Red Line on screen 
+ Windows N: mfplat.dll missing 
+
+ Audio 
+ Album Cover & Media Data Feature 
+ Audio visualizers do not work / no sound detected 
+ No Sound Playing / Audio Output Problems 
+ Sound / audio turns on and off intermittently 
+ Limiting audio visualizers to music players 
+
+ Performance 
+ High GPU usage misconception 
+ Performance issues / low FPS with certain games or applications 
+ Wrong Refresh Rates of Monitors 
+ Desktops with Integrated and Dedicated GPU Perform Poorly (dwm.exe) 
+
+ Error Analysis & Contact 
+ Use the Wallpaper Engine analysis tool to create a debug log 
+ Fully Resetting Wallpaper Engine 
+ Contact 
+
+ # Using LAV and DirectShow
+ If you have issues related to broken video codecs or want to use additional video formats on your system, you can try to install LAV and enable DirectShow in the Wallpaper Engine settings. This should enable better support for 4K and HEVC videos on Windows 7 and allow opening of .mkv files.
+ For legal reasons, we cannot bundle LAV with Wallpaper Engine which means you need to download and install it yourself. After you have installed LAV, you also need to configure Wallpaper Engine to use DirectShow:
+ # 1. Install LAV
+ Download the x86 AND x64 versions of LAV Filters:
+ Mirror #1: Github 
+
+ Mirror #2: Fosshub 
+
+ Install LAV, make sure your Windows user has admin rights
+ Restart Wallpaper Engine.
+ # 2. Enable DirectShow
+ Open the Wallpaper Engine settings and navigate to the "General" tab
+ Change the Video framework option to Prefer DirectShow 
+ Restart the application and try using your video wallpaper again
+ # Enabling WebM Hardware Acceleration
+ If you are experiencing stutters at the end of your video wallpapers, you can use .webm files which do not suffer from the same issue. It's best if you also enable hardware acceleration for .webm videos which will reduce the CPU usage for them significantly and still allows video wallpapers to loop without a notable cut after the last frame. This is a continuation of the steps above, make sure you have installed LAV and enabled DirectShow as instructed in the previous section.
+ Open the Wallpaper Engine settings and navigate to the "General" tab
+ Change the WebM framework option to Prefer Native 
+ Restart the application and try using your video wallpaper again
+ Check if the LAV system tray icon shows up and if the CPU usage is nearly zero, then your .webm content is now hardware accelerated. If it does not seem to work, make sure all options are configured correctly and LAV is correctly installed.
+
+ Cannot fix your problem? Contact us!
+
+ Imprint

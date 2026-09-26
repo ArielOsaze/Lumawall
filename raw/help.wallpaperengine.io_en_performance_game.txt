@@ -1,0 +1,104 @@
+Wallpaper Engine - Troubleshooting & FAQ 
+
+ General 
+ Screensavers with Wallpaper Engine 
+ Automatic start-up at boot 
+ RGB hardware support (iCUE & Chroma) 
+ Restoring deleted default wallpapers 
+ Exporting wallpapers as GIF / video 
+ Hiding the Wallpaper Engine tray icon 
+ Editing Downloaded Wallpapers 
+ Wallpaper Engine on Linux or Mac OS 
+ Fix issues with specific apps or games 
+ Select wallpapers per application 
+ Command Line Controls 
+
+ Windows 
+ 32-Bit & 64-Bit Version 
+ Hibernation / Screensavers do not work 
+ Playlist Causes focus loss / minimizes games 
+ Centering wallpaper with monitors of different resolutions 
+ Windows 7: Aero cannot be enabled 
+ Wallpaper Engine on the Windows lock screen 
+ Windows N: mfplat.dll missing 
+ Reverting to an older version of Wallpaper Engine 
+
+ Steam - Downloads / Uploads 
+ Steam Wallpaper Download Issues 
+ Steamworks is unavailable 
+ Steam redownloading wallpapers 
+ "Content file locked" / Disk Write Error 
+ Backup Steam Workshop 
+ Uploads get stuck at 45% 
+ Steam always shows "in-game" 
+ Wallpaper Engine missing in Steam Library 
+
+ Android 
+ Android - Frequent Questions and Problems 
+ Pairing Mobile Device with Windows 
+ Mobile Pairing Problem Solving 
+
+ Wallpapers not showing 
+ Wallpapers not visible 
+ Videos Black / Not Playing Properly 
+
+ Crashes 
+ Wallpaper Engine crashing 
+ System crash / System Freeze 
+ "DirectX 10 not supported" crash 
+ BattlEye anti-cheat terminating Wallpaper Engine 
+
+ Wallpaper Browser 
+ Wallpaper Engine window not displayed correctly 
+ Preview images / search results not showing 
+ Exclude certain wallpapers from the search 
+
+ Video Wallpapers 
+ Using LAV and DirectShow 
+ Videos Black / Not Playing Properly 
+ Video freezes / stuttering / bad performance 
+ Video wallpapers look wrong 
+ Red Line on screen 
+ Windows N: mfplat.dll missing 
+
+ Audio 
+ Album Cover & Media Data Feature 
+ Audio visualizers do not work / no sound detected 
+ No Sound Playing / Audio Output Problems 
+ Sound / audio turns on and off intermittently 
+ Limiting audio visualizers to music players 
+
+ Performance 
+ High GPU usage misconception 
+ Performance issues / low FPS with certain games or applications Application Rule 
+ Conflicts with screen-recording tools or overlays 
+
+ Wrong Refresh Rates of Monitors 
+ Desktops with Integrated and Dedicated GPU Perform Poorly (dwm.exe) 
+
+ Error Analysis & Contact 
+ Use the Wallpaper Engine analysis tool to create a debug log 
+ Fully Resetting Wallpaper Engine 
+ Contact 
+
+ # Performance issues / low FPS with certain games or applications
+ By default, Wallpaper Engine pauses itself while you are in-game. You can configure this behavior in the Performance tab of the Wallpaper Engine settings.
+ If you are having performance issues with individual games or applications, you can further tweak this behavior. Usually performance issues mean that your system is running out of RAM or Video RAM (the memory on your graphics card). You can configure Wallpaper Engine to free up any memory when in-game by changing the Other application fullscreen option to Stop (free memory) in the Performance tab of the Wallpaper Engine settings.
+ # Application Rule
+ If you only have issues with a particular game or software, you can also configure this just for the sofware that you are having problems with by creating an Application Rule :
+ Open the Performance tab in the Wallpaper Engine settings
+ Click on the Edit button next to Application rules 
+ In the pop-up that appears, click on Create new rule 
+ Create a new rule with the following settings:
+ Application name: "game.exe" (replace this with the actual .exe file of your game) 
+ Condition: "Is running"
+ Wallpaper playback: "Stop (free memory)"
+
+ Confirm by clicking on Create 
+ Wallpaper Engine will now completely remove all wallpapers from memory when the .exe you configured is launched.
+ # Conflicts with screen-recording tools or overlays
+ If you are using any game streaming, game recording or software with overlays, make sure they are not accidentally recording Wallpaper Engine in the background. This can also be the case if you use any game streaming functionalities from your graphics card drivers (Nvidia ShadowPlay, Nvidia Share or AMD ReLive for example).
+
+ Cannot fix your problem? Contact us!
+
+ Imprint

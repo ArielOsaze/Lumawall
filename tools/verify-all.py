@@ -61,6 +61,8 @@ CHECKS = [
      ['python', 'tools/check_frames.py', '--expect', str(TOTAL_SECONDS)]),
     ('hardware claims match the machine',
      ['python', 'tools/verify-hardware-claims.py']),
+    ('the site is discoverable and previews correctly',
+     ['python', 'tools/check-seo.py']),
     ('page behaviour: autoplay, crop, reveals, copy',
      ['node', 'tools/check-page.mjs']),
     ('page at every viewport size',

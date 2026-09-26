@@ -1,0 +1,363 @@
+Wallpaper Engine doesn't stop when applications are maximized. :: Wallpaper Engine Problem Solving 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ Chud Grease 
+
+ View Profile 
+ View Posts 
+
+ 7 Jun, 2018 @ 10:26pm 
+
+   Report this post 
+
+ Wallpaper Engine doesn't stop when applications are maximized. 
+
+ Title pretty much says it all. I set it to stop completely when applications are maximized to prevent performance loss when gaming, but it does not stop. Is there anything I can do? 
+
+ < 
+
+ > 
+
+ Showing 1 - 8 of 8 comments 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 8 Jun, 2018 @ 7:15am 
+
+   Report this post 
+
+ With which wallpapers and how many monitors do you have? Are you checking with the task manager whether it stopped or alt-tab or something else perhaps? 
+
+ #1 
+
+ Chud Grease 
+
+ View Profile 
+ View Posts 
+
+ 8 Jun, 2018 @ 1:12pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+With which wallpapers and how many monitors do you have? Are you checking with the task manager whether it stopped or alt-tab or something else perhaps? I did check in task manager to see if it did stop, but the usage on my GPU stayed the same during gaming. And I have 2 monitors, but the wallpaper I use in WE is only on my main monitor. The wallpaper is also an animated one. I'd link it to you, but I'm not quite sure how. 
+
+ #2 
+
+ Chud Grease 
+
+ View Profile 
+ View Posts 
+
+ 8 Jun, 2018 @ 1:14pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+With which wallpapers and how many monitors do you have? Are you checking with the task manager whether it stopped or alt-tab or something else perhaps? I'm also noticing a new issue just now. I have it set to 'Keep running' when applications are just fullscreened (such as Chrome) but it's stopping completely when I fullscreen Chrome, but it keeps running when I maximize games even though I have it set to stop on that. What a weird issue... 
+
+ #3 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 8 Jun, 2018 @ 1:32pm 
+
+   Report this post 
+
+ If you have two monitors, can you set the stock car wallpaper to both of them and set fullscreen/maximize to 'Stop'? That should easily allow checking if it stops when you start a game.
+
+There is no difference between games or applications, if anything is fullscreen, the respective option should be triggered. 
+
+ #4 
+
+ Chud Grease 
+
+ View Profile 
+ View Posts 
+
+ 8 Jun, 2018 @ 1:51pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+If you have two monitors, can you set the stock car wallpaper to both of them and set fullscreen/maximize to 'Stop'? That should easily allow checking if it stops when you start a game.
+
+There is no difference between games or applications, if anything is fullscreen, the respective option should be triggered. I'll be sure to try it on both monitors for sure. I am confused on the fullscreen/maximize thing though. If there's no difference between fullscreen and maximize, then how come there's separate options for them? I'm not really following :/ 
+
+ #5 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 8 Jun, 2018 @ 2:05pm 
+
+   Report this post 
+
+ A maximized window will still show the task bar, i.e. it doesn't actually cover the entire screen like fullscreen windows do, does that help? 
+
+ #6 
+
+ Chud Grease 
+
+ View Profile 
+ View Posts 
+
+ 8 Jun, 2018 @ 2:11pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+A maximized window will still show the task bar, i.e. it doesn't actually cover the entire screen like fullscreen windows do, does that help? Ahh, yes I get it now. I think I've solved my issue now. I had "Maxmize" and "Fullscreen" backwards. If I set Maximized applications to "Keep running" and fullscreen applications to "Stop", it does what I want. It keeps running when Chrome is fullscreened, and it stops when I launch games now. I feel pretty dumb about it though. 
+
+ Last edited by Chud Grease ;
+ 8 Jun, 2018 @ 2:11pm 
+
+ #7 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 8 Jun, 2018 @ 3:41pm 
+
+   Report this post 
+
+ I could disable the keep running option for fullscreen if maximized is set to pause/stop, I can't really think of a scenario where that would be useful anyway and then there is less confusion about it. 
+
+ #8 
+
+ < 
+
+ > 
+
+ Showing 1 - 8 of 8 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ Date Posted: 7 Jun, 2018 @ 10:26pm 
+ Posts: 8 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

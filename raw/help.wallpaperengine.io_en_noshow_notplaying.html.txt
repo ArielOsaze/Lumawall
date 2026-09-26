@@ -1,0 +1,100 @@
+ 
+
+ Steam - Downloads / Uploads 
+ Steam Wallpaper Download Issues 
+ Steamworks is unavailable 
+ Steam redownloading wallpapers 
+ "Content file locked" / Disk Write Error 
+ Backup Steam Workshop 
+ Uploads get stuck at 45% 
+ Steam always shows "in-game" 
+ Wallpaper Engine missing in Steam Library 
+
+ Android 
+ Android - Frequent Questions and Problems 
+ Pairing Mobile Device with Windows 
+ Mobile Pairing Problem Solving 
+
+ Wallpapers not showing 
+ Wallpapers not visible 
+ Videos Black / Not Playing Properly Clean graphics card driver re-installation 
+ Codec Tweak Tool 
+ Additional video codecs 
+
+ Crashes 
+ Wallpaper Engine crashing 
+ System crash / System Freeze 
+ "DirectX 10 not supported" crash 
+ BattlEye anti-cheat terminating Wallpaper Engine 
+
+ Wallpaper Browser 
+ Wallpaper Engine window not displayed correctly 
+ Preview images / search results not showing 
+ Exclude certain wallpapers from the search 
+
+ Video Wallpapers 
+ Using LAV and DirectShow 
+ Videos Black / Not Playing Properly Clean graphics card driver re-installation 
+ Codec Tweak Tool 
+ Additional video codecs 
+
+ Video freezes / stuttering / bad performance 
+ Video wallpapers look wrong 
+ Red Line on screen 
+ Windows N: mfplat.dll missing 
+
+ Audio 
+ Album Cover & Media Data Feature 
+ Audio visualizers do not work / no sound detected 
+ No Sound Playing / Audio Output Problems 
+ Sound / audio turns on and off intermittently 
+ Limiting audio visualizers to music players 
+
+ Performance 
+ High GPU usage misconception 
+ Performance issues / low FPS with certain games or applications 
+ Wrong Refresh Rates of Monitors 
+ Desktops with Integrated and Dedicated GPU Perform Poorly (dwm.exe) 
+
+ Error Analysis & Contact 
+ Use the Wallpaper Engine analysis tool to create a debug log 
+ Fully Resetting Wallpaper Engine 
+ Contact 
+
+ # Videos Black / Not Playing Properly
+ Black screens and other issues with wallpapers of the type Video are always caused by either faulty graphics card drivers or faulty video codecs. Try the following steps in the exact order. If you follow this guide from top to bottom, the problem will be solved:
+ Please note
+ This topic is about the Wallpaper Engine wallpapers being black or not playing properly. If your Wallpaper Engine interface is black you need to go here: Wallpaper Engine User Interface is Black .
+
+ # Clean graphics card driver re-installation
+ For the majority of users, a clean re-installation of the graphics card drivers will fix most type of issues related to video wallpapers. This includes black screens and users whose wallpapers are shown in a separate window (titled "ActiveMovie Window" ).
+ Download the latest graphics card drivers for your graphics card (or all of them if you have two, for example Nvidia and Intel):
+ Nvidia GeForce 
+
+ AMD Radeon 
+
+ Intel Graphics 
+
+ Uninstall your current graphics card drivers completely and delete all existing settings if asked. Nvidia drivers have a checkbox which says "Perform clean re-installation" which also works.
+ You can also use Display Driver Uninstaller ("DDU") 
+
+ if you are unsure on how to do that.
+ Install the drivers you have just downloaded in step 1.
+ Restart your PC again, see if it works now.
+ TIP
+ It's very important that you do a clean re-installation - this means your current graphics card drivers and driver settings have to be completely deleted before you install the new drivers, otherwise it will not work.
+
+ # Codec Tweak Tool
+ If it does not work after doing a clean re-installation of your graphics card drivers, try resetting your video codecs:
+ Download the Codec Tweak Tool: Click here 
+
+ Make sure that all checkboxes in the "Media Foundation" menu are not checked, then apply the settings:
+
+ Restart the PC and try the affected wallpapers again.
+ # Additional video codecs
+ If affected video wallpapers still do not work after the previous steps, download LAV and use DirectShow as described in this guide:
+ Using LAV and DirectShow .
+
+ Cannot fix your problem? Contact us!
+
+ Imprint

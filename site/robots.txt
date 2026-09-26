@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# The installer and the portable build are downloads, not pages.
+Disallow: /assets/downloads/
+
+Sitemap: https://lumawall.xinet.id/sitemap.xml

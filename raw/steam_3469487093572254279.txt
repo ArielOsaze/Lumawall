@@ -1,0 +1,357 @@
+My video wallpaper is lagging :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ T-TaaN 
+
+ View Profile 
+ View Posts 
+
+ 29 Oct, 2022 @ 7:59am 
+
+   Report this post 
+
+ My video wallpaper is lagging 
+
+ What should I do to minimize or defeat lagging without lowering video quality? I can play this video in MPC-BE in 4x speed (4x required perfomance) and don't see ANY lagging (only sound dissapears sometimes). In the Wallpaper Engine this video can lag for 1-2 seconds and have many micro-freezes. How can I fix it? 
+
+ < 
+
+ > 
+
+ Showing 1 - 6 of 6 comments 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 29 Oct, 2022 @ 8:17am 
+
+   Report this post 
+
+ Wallpaper Engine uses your graphics card to decode the video because this is much more efficient when it comes to power usage while MPC will use your CPU. It is likely that your GPU is hitting some sort of limitation with decoding the video file. You can try to switch to LAV and DirectShow as explained here, it might be more efficient for your special use-case:
+
+ https://help.wallpaperengine.io/en/videos/lav.html 
+
+Alternatively, you can also disable the "Video hardware acceleration" option in the "General" tab of the Wallpaper Engine settings. I do not recommend this because it will put load on your CPU but it might help in your case. Try the LAV solution first, make sure to follow all the steps as explained on the page I linked above. 
+
+ #1 
+
+ butcho 
+
+ View Profile 
+ View Posts 
+
+ 29 Oct, 2022 @ 9:51am 
+
+   Report this post 
+
+ Just a small side note: MPC Black Edition uses DXVA2 gpu hardware decoding by default. You can see that on the lower right when playing a video. There's a label that says "GPU" while playing a video. ^^ 
+
+ #2 
+
+ T-TaaN 
+
+ View Profile 
+ View Posts 
+
+ 1 Nov, 2022 @ 1:52pm 
+
+   Report this post 
+
+ Originally posted by Tim :
+Wallpaper Engine uses your graphics card to decode the video because this is much more efficient when it comes to power usage while MPC will use your CPU. It is likely that your GPU is hitting some sort of limitation with decoding the video file. You can try to switch to LAV and DirectShow as explained here, it might be more efficient for your special use-case:
+
+ https://help.wallpaperengine.io/en/videos/lav.html 
+
+Alternatively, you can also disable the "Video hardware acceleration" option in the "General" tab of the Wallpaper Engine settings. I do not recommend this because it will put load on your CPU but it might help in your case. Try the LAV solution first, make sure to follow all the steps as explained on the page I linked above. It helps with the lags, but now it heavyly load a CPU (25-70%) and a bit of GPU (2-25% * 2)¹ althrough I enabled hardware acceleration. Can I do something for it load mostly GPU?
+¹ Both dwm.exe and wallpaper64 uses about the same amount of GPU, like in sync. 
+
+ #3 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 1 Nov, 2022 @ 5:23pm 
+
+   Report this post 
+
+ I can take a look if I can spot anything in your system logs, sometimes it can point to an issue, could you run our analysis tool and share the log file it creates as outlined here:
+
+ https://help.wallpaperengine.io/en/debug/scantool.html 
+
+Aside from that, keep in mind that Windows Task Manager is very unreliable for GPU usage:
+
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+
+Usually high load on DWM.exe points to more of a driver or hardware issue, though. 
+
+ #4 
+
+ T-TaaN 
+
+ View Profile 
+ View Posts 
+
+ 3 Nov, 2022 @ 4:11am 
+
+   Report this post 
+
+ Originally posted by Tim :
+I can take a look if I can spot anything in your system logs, sometimes it can point to an issue, could you run our analysis tool and share the log file it creates as outlined here:
+
+ https://help.wallpaperengine.io/en/debug/scantool.html 
+
+Aside from that, keep in mind that Windows Task Manager is very unreliable for GPU usage:
+
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+
+Usually high load on DWM.exe points to more of a driver or hardware issue, though. https://cloud.mail.ru/public/Yyja/5zA7moFKS 
+by GPU-Z i see that GPU and VRAM clock is minimal [cloud.mail.ru] 
+
+ Last edited by T-TaaN ;
+ 3 Nov, 2022 @ 4:19am 
+
+ #5 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 4 Nov, 2022 @ 6:04am 
+
+   Report this post 
+
+ The CPU usage is too high for a video wallpaper, I think Windows is unable to use hardware acceleration on your video file for some reason. The fact that you have sound stuttering in MPC is also a pretty good give-away that the file is hitting some hardware or driver threshold. The config file mentions multiple files so I am not sure which one you are having issues with but I would probably try to just re-encode the file(s) with Handbrake. You can very likely improve the file without affecting visual fidelity significantly by re-encoding the file as an .mp4 file with H.264 encoding and a reasonable bitrate. Check out Handbrake here:
+
+ https://handbrake.fr/ 
+
+ #6 
+
+ < 
+
+ > 
+
+ Showing 1 - 6 of 6 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 29 Oct, 2022 @ 7:59am 
+ Posts: 6 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.
