@@ -108,7 +108,40 @@ if ($decode -ge 0.05) {
     exit 0
 }
 
-Write-Host '  VERDICT: no video decode at all.'
+# No decode. That is either a real fault or the app correctly pausing every monitor
+# because every screen is covered - and those need opposite responses, so this
+# distinguishes them instead of calling both a failure.
+#
+# The test is the app's own pause state: if the app says every monitor is paused and
+# the GPU is doing nothing, the two agree and nothing is wrong. It only becomes a bug
+# when the app believes a wallpaper is PLAYING and the decoder is still idle.
+$appSaysAllPaused = $false
+if (Test-Path $log) {
+    $last = Get-Content $log -Tail 400 | Where-Object { $_ -match 'Playback updated' } | Select-Object -Last 1
+    if ($last -match 'paused \[([^\]]*)\]') {
+        $pausedList = $Matches[1].Trim()
+        # Count the monitors the app knows about from its own resume/pause lines.
+        $known = @()
+        Get-Content $log -Tail 800 | Where-Object { $_ -match 'Wallpaper renderer ready' } |
+            ForEach-Object { if ($_ -match '(\S+DISPLAY\d+)') { $known += $Matches[1] } }
+        $known = $known | Sort-Object -Unique
+        if ($known.Count -gt 0 -and $pausedList) {
+            $pausedCount = ($pausedList -split ',').Count
+            if ($pausedCount -ge $known.Count) { $appSaysAllPaused = $true }
+        }
+    }
+}
+
+if ($appSaysAllPaused) {
+    Write-Host '  VERDICT: every monitor is paused, so no decode is expected.'
+    Write-Host '           The app''s own log says all displays are paused, and the GPU'
+    Write-Host '           agrees by doing nothing. This is the pause feature working,'
+    Write-Host '           not a fault - uncover a screen and the decode returns.'
+    Write-Host ''
+    exit 0
+}
+
+Write-Host '  VERDICT: no video decode while the app believes a wallpaper is playing.'
 if ($renderers.Count -le 1 -and $pids.Count -gt 2) {
     Write-Host '           One renderer for several monitors is the signature of'
     Write-Host '           --process-per-site, which collapsed the pages together and'

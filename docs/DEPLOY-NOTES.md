@@ -10,6 +10,41 @@ That script is the only supported path. It refuses the wrong Vercel account,
 deploys `site/` to production, then fetches the public domain and moves the alias
 itself if the domain is not serving the new deployment.
 
+## Never run the real installer with a redirected /DIR
+
+This cost the user their Start Menu entry, and the mechanism is worth understanding
+because the damage is invisible until they go looking for the app.
+
+To prove that the installer contained the fixed binary, it was run once with:
+
+```
+LumaWall-Setup-4.0.1.exe /VERYSILENT /DIR=<temporary folder>
+```
+
+The proof worked. The side effects were not considered:
+
+- Inno Setup rewrote the Start Menu group, the uninstall registry entry and the
+  `HKCU\...\Run` key to point at the **temporary folder**
+- the temporary folder was then deleted, so every one of those became a dead
+  reference
+- Inno Setup also **remembers** the last install location and offers it as the
+  default on the next run, so a later silent repair reinstalled to the temporary
+  folder again and recreated it
+
+The user's app looked like it had vanished. Its files were untouched the whole time
+in `%LOCALAPPDATA%\Programs\LumaWall`.
+
+**To inspect an installer, extract it - do not run it.** Copy the files out of an
+existing install, or unpack the payload without executing the setup. Running it
+writes to the registry and the Start Menu wherever you point it.
+
+If it has already happened, `tools/reset-install-location.ps1` clears the remembered
+location, the uninstall entry, the Run key, the Start Menu group and the temporary
+folder - and keeps the real install and `%LOCALAPPDATA%\LumaWall` (settings,
+wallpapers, logs). Then `tools/repair-install.ps1` reinstalls to the default location.
+`tools/diagnose-install.ps1` reports which of those six places are broken, and is the
+first thing to run when the app "disappears".
+
 ## Vercel: check the account first
 
 This machine has two Vercel logins:

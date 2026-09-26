@@ -74,6 +74,8 @@ CHECKS = [
      ['python', 'tools/check-deploy-config.py']),
     ('the downloads are the build we just made',
      ['python', 'tools/verify-live-downloads.py']),
+    ('the installer was built from the current binary',
+     ['python', 'tools/verify-installer-payload.py']),
     ('every promo string is translated and fits',
      ['python', 'tools/check-promo-copy.py']),
     ('page behaviour: autoplay, crop, reveals, copy',
