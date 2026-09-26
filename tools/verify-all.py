@@ -37,6 +37,8 @@ CHECKS = [
      ['python', 'tools/check-pacing.py']),
     ('no screenshot is cropped, and not every shot is a wallpaper',
      ['python', 'tools/check-layout.py']),
+    ('every element a scene places is inside the frame',
+     ['python', 'tools/check-scene-layout.py']),
     ('every promo beat has content in it',
      ['python', 'tools/check-promo-scenes.py']),
     ('every promo beat keeps its content in frame',

@@ -59,9 +59,9 @@ export default function SceneProblem({ t, global }) {
         }}
       >
         {/* ── the statement ─────────────────────────────────────────────────── */}
-        <div style={{ width: 640, flexShrink: 0 }}>
+        <div style={{ width: 560, flexShrink: 0 }}>
           <Eyebrow style={{ marginBottom: 22, opacity: head }}>Masalahnya</Eyebrow>
-          <Type size={62} style={{ opacity: head, transform: `translateY(${(1 - head) * 26}px)` }}>
+          <Type size={56} style={{ opacity: head, transform: `translateY(${(1 - head) * 26}px)` }}>
             Wallpaper hidup
             <br />
             biasanya makan
@@ -70,12 +70,12 @@ export default function SceneProblem({ t, global }) {
           </Type>
           <div
             style={{
-              marginTop: 30,
+              marginTop: 28,
               fontFamily: FONT,
-              fontSize: 23,
+              fontSize: 22,
               lineHeight: 1.55,
               color: '#a8aeb8',
-              maxWidth: 560,
+              maxWidth: 520,
               opacity: body,
             }}
           >
@@ -87,7 +87,12 @@ export default function SceneProblem({ t, global }) {
         {/* ── the readout, drawn rather than screenshotted ──────────────────── */}
         <div
           style={{
-            flex: 1,
+            // A fixed width rather than `flex: 1`, so the readout cannot grow until its
+            // right column runs off the frame. A review of the previous render found
+            // the window cropped at the right edge, and `flex: 1` in a 1920 frame with
+            // a 640px sibling was the reason.
+            width: 900,
+            flexShrink: 0,
             opacity: body,
             transform: `translateY(${(1 - body) * 40}px)`,
           }}
