@@ -14,7 +14,32 @@ import { seg, easeOut, parallax } from '../anim.js';
 const TOTAL = 52;
 const FONT = '"Plus Jakarta Sans", sans-serif';
 
-export default function SceneIntro({ t, global }) {
+export default function SceneIntro({ t, global, rt}) {
+  // The raw shot clock, before the retime below scales it. The idle motion
+  // runs on this, so it is smooth at the same rate in every scene whatever factor
+  // that scene was retimed by.
+  const rawT = t;
+  // ── idle motion ────────────────────────────────────────────────────────
+  // This scene's animation finishes after a second or two, and the shot runs
+  // for four. A frame that stops moving and then waits to be cut is a slide -
+  // which is what the whole piece was being described as. So the scene keeps
+  // drifting and breathing for its entire life.
+  //
+  // Small on purpose: 10px of travel and 0.6% of scale over the shot. The eye
+  // should not read it as a move; it should simply never see the same frame
+  // twice.
+  const idle = {
+    x: Math.sin(rawT * 1.7) * 5 + rawT * 2.5,
+    y: Math.cos(rawT * 2.1) * 3.5 - rawT * 1.6,
+    s: 1 + 0.006 * (1 - Math.cos(rawT * 1.35)) / 2 + rawT * 0.0015,
+  };
+
+  // Animation clock, scaled to this shot's new length. The delays in
+  // this scene were authored for a 7.2s shot; it is now 3.4s, so the whole
+  // internal timeline runs 0.47x faster. Without this the animation either
+  // never finishes inside the shot or never starts.
+  t = t * 0.4722;
+
   // The wallpaper drifts on a deeper plane than the type, so it moves less.
   const bg = parallax(global, TOTAL, 0.35, 46);
 
@@ -22,7 +47,14 @@ export default function SceneIntro({ t, global }) {
   const subIn = easeOut(seg(t, 1.75, 2.55));
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate3d(${idle.x.toFixed(2)}px, ${idle.y.toFixed(2)}px, 0) scale(${idle.s.toFixed(4)})`,
+          willChange: 'transform',
+        }}
+      >
       {/* A real wallpaper, playing. This is the product, not a mockup.
           Driven by the render clock through WallpaperStage, not a <video>:
           a video element plays from the wall clock, so its content would be

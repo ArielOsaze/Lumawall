@@ -23,18 +23,15 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
+from shotlist import windows as shot_windows, midpoints as shot_midpoints
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # Shots from Direction.jsx.
-BEATS = [
-    ('intro',    0.0,   6.4),
-    ('problem',  6.4,  13.4),
-    ('catalog', 13.4,  21.0),
-    ('monitors', 21.0, 28.4),
-    ('pause',   28.4,  36.4),
-    ('perf',    36.4,  44.4),
-    ('outro',   44.4,  52.0),
-]
+# The shot windows come from Direction.jsx, so this can never describe a
+# cut list that no longer exists. It used to carry its own copy, and a
+# stale copy does not fail - it samples the wrong moments and reports
+# about a piece that is not there.
+BEATS = shot_windows()
 
 # A frame is sampled from the middle of each shot, away from the cuts.
 SAMPLES_PER_BEAT = 3

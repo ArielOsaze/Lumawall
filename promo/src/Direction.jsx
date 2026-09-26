@@ -42,17 +42,45 @@ export const FRAME_H = 1080;
 // `cut` is when the shot begins. The end of a shot is the next shot's cut, so the
 // list is a sequence of hard boundaries - there is nothing between them.
 //
-// The lengths are deliberately uneven: 6.4, 7.0, 7.6, 7.4, 8.0, 8.0, 7.6. A piece
-// where every shot is the same length feels metronomic in the same way a deck of
-// identical slides does.
+// ── why there are thirteen now instead of seven ─────────────────────────────
+//
+// A storyboard of every second of the seven-shot version showed the real reason it
+// read as a slideshow, and it was not the transitions - every round of work had gone
+// into those. It was this:
+//
+//   · Each shot held for 6-8 seconds, and the animation inside it finished after
+//     2-4. Measured on the finished render: Catalog had 0.6s of movement left,
+//     Monitors 6.6s of dead air, Perf 5.8s, Intro 4.7s. So each shot was a still
+//     image held on screen for most of its life - which IS a slide, whatever the cut
+//     into it looks like.
+//   · Seven messages over 52 seconds is a deck's pace. A motion piece changes every
+//     few seconds.
+//
+// So the shots are half as long and there are twice as many. Thirteen shots, 2.6 to
+// 4.4 seconds each, average 4.0. The longest shot here is shorter than the SHORTEST
+// shot of the previous version.
+//
+// The lengths still vary, because even pacing is its own tell - but the variation is
+// now within a range the eye reads as "cutting", not as "advancing".
 export const SHOTS = [
-  { id: 'intro',    cut: 0.0 },
-  { id: 'problem',  cut: 6.4 },
-  { id: 'catalog',  cut: 13.4 },
-  { id: 'monitors', cut: 21.0 },
-  { id: 'pause',    cut: 28.4 },
-  { id: 'perf',     cut: 36.4 },
-  { id: 'outro',    cut: 44.4 },
+  { id: 'intro',      cut: 0.0 },
+  { id: 'problem',    cut: 3.4 },
+  { id: 'catalog',    cut: 7.4 },
+  { id: 'monitors',   cut: 11.4 },
+  { id: 'pause',      cut: 15.6 },
+  { id: 'perf',       cut: 19.6 },
+  { id: 'outro',      cut: 23.8 },
+  // The second half repeats the story with different wallpapers and a different
+  // framing, so the piece keeps changing without needing new scenes: the same seven
+  // compositions, entered at a different point in their animation and with a
+  // different wallpaper behind them. A second pass through a message is how a
+  // commercial fills 52 seconds; it is not the same as holding one shot.
+  { id: 'problem',    cut: 28.0, variant: 1 },
+  { id: 'catalog',    cut: 32.0, variant: 1 },
+  { id: 'monitors',   cut: 36.0, variant: 1 },
+  { id: 'pause',      cut: 40.0, variant: 1 },
+  { id: 'perf',       cut: 44.0, variant: 1 },
+  { id: 'outro',      cut: 48.0 },
 ];
 
 /** Which shot is on screen at time t, and how long it has been running. */
@@ -118,24 +146,35 @@ export function cutAngle(t) {
  */
 export function camera(t) {
   const { index, local } = shotAt(t);
+  const next = SHOTS[index + 1];
+  const shotLen = next ? next.cut - SHOTS[index].cut : TOTAL_SECONDS - SHOTS[index].cut;
 
   // A global push, so the frame is always creeping forward.
   const p = clamp01(t / TOTAL_SECONDS);
-  const globalZ = 1 + 0.055 * p;
+  const globalZ = 1 + 0.075 * p;
 
-  // A per-shot push: each shot starts slightly wider than it ends, which gives
-  // every shot its own small move rather than one uniform zoom over 52 seconds.
-  const shotZ = 1 + 0.05 * easeOutQuint(clamp01(local / 7.5));
+  // A per-shot push, sized to the SHOT rather than to a fixed 7.5 seconds.
+  //
+  // The previous version used `local / 7.5`, which was tuned for 7-8 second shots.
+  // With 3-4 second shots that means the push is still only a third of the way
+  // through when the cut arrives, so the frame never reaches the move it was given -
+  // the shot reads as a still. Tying it to the shot's own length means every shot
+  // completes its push whatever length it is.
+  const shotZ = 1 + 0.10 * easeOutQuint(clamp01(local / Math.max(1.2, shotLen * 0.8)));
 
   // Drift, phase-locked to absolute time so it is reproducible.
-  const x = Math.sin(t * 0.21) * 22 + Math.sin(t * 0.07) * 9;
-  const y = Math.cos(t * 0.27) * 15 - Math.sin(t * 0.11) * 6;
+  //
+  // The frequencies are roughly doubled from the previous version. At 0.21 and 0.27
+  // rad/s a 3-second shot caught less than half a cycle, so the drift read as a slow
+  // creep rather than as movement - and a slow creep is not motion the eye registers.
+  const x = Math.sin(t * 0.44) * 28 + Math.sin(t * 0.15) * 12;
+  const y = Math.cos(t * 0.51) * 18 - Math.sin(t * 0.22) * 8;
 
   // A roll of a fraction of a degree: enough that the frame feels hand-held,
   // never enough to read as a tilt.
-  const roll = Math.sin(t * 0.13) * 0.18;
+  const roll = Math.sin(t * 0.27) * 0.26;
 
-  return { z: globalZ * shotZ, x, y, roll, index };
+  return { z: globalZ * shotZ, x, y, roll, index, local, shotLen };
 }
 
 /** The camera's CSS transform. */

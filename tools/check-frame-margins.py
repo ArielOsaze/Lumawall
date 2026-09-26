@@ -21,15 +21,14 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
+from shotlist import windows as shot_windows, midpoints as shot_midpoints
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # One sample in the middle of each shot, from Direction.jsx.
 #   intro 0-6.4  problem 6.4-13.4  catalog 13.4-21.0  monitors 21.0-28.4
 #   pause 28.4-36.4  perf 36.4-44.4  outro 44.4-52
-SAMPLES = [
-    (3.2, 'intro'), (9.6, 'problem'), (17.2, 'catalog'),
-    (25.0, 'monitors'), (33.0, 'pause'), (41.5, 'perf'), (48.5, 'outro'),
-]
+# Sample points from the shot list in Direction.jsx, one per shot.
+SAMPLES = shot_midpoints()
 
 # The scenes pad between 110 and 150 px. Allow for the camera's own drift, which
 # moves content by up to about 40 px, and for a scene that centres its content.

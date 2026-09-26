@@ -7,6 +7,7 @@ import React from 'react';
 import SplitText from '../SplitText.jsx';
 import CountUp from '../CountUp.jsx';
 import BrandStage from '../BrandStage.jsx';
+import WallpaperStage from '../WallpaperStage.jsx';
 import { seg, easeOut, parallax } from '../anim.js';
 
 const TOTAL = 52;
@@ -67,12 +68,48 @@ function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
   );
 }
 
-export default function ScenePerf({ t, global }) {
+export default function ScenePerf({ t, global, variant = 0, rt}) {
+  // The raw shot clock, before the retime below scales it. The idle motion
+  // runs on this, so it is smooth at the same rate in every scene whatever factor
+  // that scene was retimed by.
+  const rawT = t;
+  // ── idle motion ────────────────────────────────────────────────────────
+  // This scene's animation finishes after a second or two, and the shot runs
+  // for four. A frame that stops moving and then waits to be cut is a slide -
+  // which is what the whole piece was being described as. So the scene keeps
+  // drifting and breathing for its entire life.
+  //
+  // Small on purpose: 10px of travel and 0.6% of scale over the shot. The eye
+  // should not read it as a move; it should simply never see the same frame
+  // twice.
+  const idle = {
+    x: Math.sin(rawT * 1.7) * 5 + rawT * 2.5,
+    y: Math.cos(rawT * 2.1) * 3.5 - rawT * 1.6,
+    s: 1 + 0.006 * (1 - Math.cos(rawT * 1.35)) / 2 + rawT * 0.0015,
+  };
+
+  // Animation clock, scaled to this shot's new length. The delays in
+  // this scene were authored for a 8.0s shot; it is now 4.2s, so the whole
+  // internal timeline runs 0.53x faster. Without this the animation either
+  // never finishes inside the shot or never starts.
+  t = t * 0.5250;
+
   const head = parallax(global, TOTAL, 0.95, 26);
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
-      {/* A wallpaper playing behind the numbers, heavily dimmed, so even the
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate3d(${idle.x.toFixed(2)}px, ${idle.y.toFixed(2)}px, 0) scale(${idle.s.toFixed(4)})`,
+          willChange: 'transform',
+        }}
+      >
+      
+      {/* The wallpaper behind this shot. Which one depends on the variant, so
+          the second pass through this message shows a different image. */}
+      <WallpaperStage clip={variant ? 'albedo' : 'i14'} t={global} offset={variant ? 4 : 1} mode="fill" width="100%" radius={0} />
+{/* A wallpaper playing behind the numbers, heavily dimmed, so even the
           statistics beat shows the product working. */}
       {/* The brand surface: these are measured figures, and the figures are the
           only thing that should be competing for attention. */}

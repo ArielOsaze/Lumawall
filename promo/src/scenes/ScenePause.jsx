@@ -14,7 +14,32 @@ import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
 const TOTAL = 52;
 const FONT = '"Plus Jakarta Sans", sans-serif';
 
-export default function ScenePause({ t, global }) {
+export default function ScenePause({ t, global, variant = 0, rt}) {
+  // The raw shot clock, before the retime below scales it. The idle motion
+  // runs on this, so it is smooth at the same rate in every scene whatever factor
+  // that scene was retimed by.
+  const rawT = t;
+  // ── idle motion ────────────────────────────────────────────────────────
+  // This scene's animation finishes after a second or two, and the shot runs
+  // for four. A frame that stops moving and then waits to be cut is a slide -
+  // which is what the whole piece was being described as. So the scene keeps
+  // drifting and breathing for its entire life.
+  //
+  // Small on purpose: 10px of travel and 0.6% of scale over the shot. The eye
+  // should not read it as a move; it should simply never see the same frame
+  // twice.
+  const idle = {
+    x: Math.sin(rawT * 1.7) * 5 + rawT * 2.5,
+    y: Math.cos(rawT * 2.1) * 3.5 - rawT * 1.6,
+    s: 1 + 0.006 * (1 - Math.cos(rawT * 1.35)) / 2 + rawT * 0.0015,
+  };
+
+  // Animation clock, scaled to this shot's new length. The delays in
+  // this scene were authored for a 8.0s shot; it is now 4.0s, so the whole
+  // internal timeline runs 0.50x faster. Without this the animation either
+  // never finishes inside the shot or never starts.
+  t = t * 0.5000;
+
   const head = parallax(global, TOTAL, 0.95, 26);
   const stage = parallax(global, TOTAL, 0.6, 34);
 
@@ -32,7 +57,14 @@ export default function ScenePause({ t, global }) {
   const stageT = covered ? 3.4 : global;
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate3d(${idle.x.toFixed(2)}px, ${idle.y.toFixed(2)}px, 0) scale(${idle.s.toFixed(4)})`,
+          willChange: 'transform',
+        }}
+      >
       {/* The monitor on the right is the subject. This is a second wallpaper far
           behind it so the beat is not floating on black. */}
       <div
@@ -43,7 +75,7 @@ export default function ScenePause({ t, global }) {
           transform: `translate3d(${head.x * 0.5}px, ${head.y * 0.5}px, 0) scale(1.1)`,
         }}
       >
-        <WallpaperStage clip="astra" t={global} offset={2.5} mode="fill" width="100%" radius={0} />
+        <WallpaperStage clip={variant ? 'raiden' : 'astra'} t={global} offset={2.5} mode="fill" width="100%" radius={0} />
       </div>
       <div
         style={{

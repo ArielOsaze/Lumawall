@@ -25,6 +25,8 @@ CHECKS = [
      ['python', 'tools/verify-hover.py']),
     ('every boundary is a cut, on the cut frame',
      ['python', 'tools/check-cuts.py']),
+    ('the promo is cut like a commercial, not held like a deck',
+     ['python', 'tools/check-pacing.py']),
     ('every promo beat shows a wallpaper',
      ['python', 'tools/check-promo-scenes.py']),
     ('every promo beat keeps its content in frame',

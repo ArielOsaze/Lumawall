@@ -61,6 +61,11 @@ def main():
 
     problems = []
 
+    # The names come from the source. A hardcoded list of seven went stale
+    # the moment the piece gained a sixth shot, and a checker that names the
+    # wrong shot is a checker nobody can act on.
+    shot_names = [m.group(1) for m in re.finditer(r"id:\s*'([a-z]+)'", src)]
+
     # ── 1. the whip window, from the source ──────────────────────────────────
     m = re.search(r'export function cutWhip\(t,\s*window\s*=\s*([0-9.]+)\)', src)
     if not m:
@@ -120,8 +125,7 @@ def main():
                 note = 'PEAK' if w > 0.95 else 'not at peak'
                 if w <= 0.95:
                     problems.append('the whip does not peak on the cut at %.1fs (%.2f)' % (cut, w))
-            print('  %5d   %-12s  %5.2f   %s' % (f, ['intro', 'problem', 'catalog', 'monitors',
-                                                    'pause', 'perf', 'outro'][shot_index(t)], w, note))
+            print('  %5d   %-12s  %5.2f   %s' % (f, shot_names[shot_index(t)], w, note))
         print()
 
         # The whip has to be gone quickly: the incoming shot must be readable.

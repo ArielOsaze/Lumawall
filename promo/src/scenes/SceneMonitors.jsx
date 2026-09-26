@@ -18,12 +18,44 @@ const MONITORS = [
   { clip: 'albedo', label: 'DISPLAY 3', delay: 1.3, depth: 1.05 },
 ];
 
-export default function SceneMonitors({ t, global }) {
+export default function SceneMonitors({ t, global, variant = 0, rt}) {
+  // The raw shot clock, before the retime below scales it. The idle motion
+  // runs on this, so it is smooth at the same rate in every scene whatever factor
+  // that scene was retimed by.
+  const rawT = t;
+  // ── idle motion ────────────────────────────────────────────────────────
+  // This scene's animation finishes after a second or two, and the shot runs
+  // for four. A frame that stops moving and then waits to be cut is a slide -
+  // which is what the whole piece was being described as. So the scene keeps
+  // drifting and breathing for its entire life.
+  //
+  // Small on purpose: 10px of travel and 0.6% of scale over the shot. The eye
+  // should not read it as a move; it should simply never see the same frame
+  // twice.
+  const idle = {
+    x: Math.sin(rawT * 1.7) * 5 + rawT * 2.5,
+    y: Math.cos(rawT * 2.1) * 3.5 - rawT * 1.6,
+    s: 1 + 0.006 * (1 - Math.cos(rawT * 1.35)) / 2 + rawT * 0.0015,
+  };
+
+  // Animation clock, scaled to this shot's new length. The delays in
+  // this scene were authored for a 8.2s shot; it is now 4.2s, so the whole
+  // internal timeline runs 0.51x faster. Without this the animation either
+  // never finishes inside the shot or never starts.
+  t = t * 0.5122;
+
   const head = parallax(global, TOTAL, 0.95, 26);
   const bg = parallax(global, TOTAL, 0.26, 44);
 
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate3d(${idle.x.toFixed(2)}px, ${idle.y.toFixed(2)}px, 0) scale(${idle.s.toFixed(4)})`,
+          willChange: 'transform',
+        }}
+      >
       {/* The three monitors are the subject; this is a fourth wallpaper far
           behind them, so the beat is not floating on black. */}
       <div
@@ -34,7 +66,7 @@ export default function SceneMonitors({ t, global }) {
           transform: `translate3d(${bg.x}px, ${bg.y}px, 0) scale(${1.12 * bg.scale})`,
         }}
       >
-        <WallpaperStage clip="i14" t={global} offset={5} mode="fill" width="100%" radius={0} />
+        <WallpaperStage clip={variant ? 'albedo' : 'i14'} t={global} offset={5} mode="fill" width="100%" radius={0} />
       </div>
       <div
         style={{

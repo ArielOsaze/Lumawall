@@ -67,6 +67,7 @@ export default function Timeline() {
   // CPU bars in the finished render read "NaN%" for exactly this reason.
   const shot = shotAt(time);
   const C = SCENES[shot.id];
+  const entry = SHOTS[shot.index];
 
   // The whip at a cut. It peaks on the cut frame and clears fast, so the incoming
   // shot is readable almost immediately.
@@ -107,9 +108,20 @@ export default function Timeline() {
       >
         {/* Only the current shot is mounted. A cut means one shot replaces another
             on a single frame - there is no moment where two are both visible, which
-            is exactly what a crossfade is and exactly what this removes. */}
-        <SceneBoundary id={shot.id}>
-          <C t={shot.local} global={time} start={shot.cut} end={TOTAL_SECONDS} />
+            is exactly what a crossfade is and exactly what this removes.
+
+            `variant` is passed through so the second pass of a message can differ
+            from the first: a different wallpaper behind the same composition, and a
+            different offset into its animation. Repeating a message is not the same
+            as holding a shot. */}
+        <SceneBoundary id={shot.id + (entry.variant ? '-v' + entry.variant : '')}>
+          <C
+            t={shot.local}
+            global={time}
+            start={shot.cut}
+            end={TOTAL_SECONDS}
+            variant={entry.variant || 0}
+          />
         </SceneBoundary>
       </div>
 
