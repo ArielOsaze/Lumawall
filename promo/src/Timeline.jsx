@@ -26,22 +26,33 @@ import {
 import MotionFilters from './MotionFilters.jsx';
 import SceneBoundary from './SceneBoundary.jsx';
 
-import SceneIntro from './scenes/SceneIntro.jsx';
+import SceneHook from './scenes/SceneHook.jsx';
 import SceneProblem from './scenes/SceneProblem.jsx';
-import SceneCatalog from './scenes/SceneCatalog.jsx';
-import SceneMonitors from './scenes/SceneMonitors.jsx';
+import SceneBrowse from './scenes/SceneBrowse.jsx';
+import SceneApply from './scenes/SceneApply.jsx';
+import SceneMulti from './scenes/SceneMulti.jsx';
 import ScenePause from './scenes/ScenePause.jsx';
+import SceneGpu from './scenes/SceneGpu.jsx';
 import ScenePerf from './scenes/ScenePerf.jsx';
-import SceneOutro from './scenes/SceneOutro.jsx';
+import SceneQuality from './scenes/SceneQuality.jsx';
+import SceneLibrary from './scenes/SceneLibrary.jsx';
+import SceneClose from './scenes/SceneClose.jsx';
 
+// One entry per shot, and every id in SHOTS has one. There is no scene here that
+// appears twice: the previous revision cut the same seven scenes twice, and a
+// review caught the repeat by eye.
 const SCENES = {
-  intro: SceneIntro,
+  hook: SceneHook,
   problem: SceneProblem,
-  catalog: SceneCatalog,
-  monitors: SceneMonitors,
+  browse: SceneBrowse,
+  apply: SceneApply,
+  multi: SceneMulti,
   pause: ScenePause,
+  gpu: SceneGpu,
   perf: ScenePerf,
-  outro: SceneOutro,
+  quality: SceneQuality,
+  library: SceneLibrary,
+  close: SceneClose,
 };
 
 export { TOTAL_SECONDS, FPS };
@@ -63,11 +74,16 @@ export default function Timeline() {
 
   // `shotAt` returns the shot AND how long it has been running. Reading `local` off
   // SHOTS[index] instead gives `undefined`, because SHOTS entries only carry
-  // { id, cut } - and an undefined time makes every number in the scene NaN. The
-  // CPU bars in the finished render read "NaN%" for exactly this reason.
+  // { id, cut } - and an undefined time makes every number in the scene NaN.
   const shot = shotAt(time);
   const C = SCENES[shot.id];
   const entry = SHOTS[shot.index];
+
+  // A missing scene is a blank shot in the finished video, and nothing would fail -
+  // so it is made loud here instead.
+  if (!C) {
+    throw new Error(`no scene is registered for shot id "${shot.id}" at ${time.toFixed(2)}s`);
+  }
 
   // The whip at a cut. It peaks on the cut frame and clears fast, so the incoming
   // shot is readable almost immediately.
@@ -108,13 +124,8 @@ export default function Timeline() {
       >
         {/* Only the current shot is mounted. A cut means one shot replaces another
             on a single frame - there is no moment where two are both visible, which
-            is exactly what a crossfade is and exactly what this removes.
-
-            `variant` is passed through so the second pass of a message can differ
-            from the first: a different wallpaper behind the same composition, and a
-            different offset into its animation. Repeating a message is not the same
-            as holding a shot. */}
-        <SceneBoundary id={shot.id + (entry.variant ? '-v' + entry.variant : '')}>
+            is exactly what a crossfade is and exactly what this removes. */}
+        <SceneBoundary id={shot.id}>
           <C
             t={shot.local}
             global={time}

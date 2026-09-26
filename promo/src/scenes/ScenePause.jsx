@@ -1,91 +1,39 @@
-// ScenePause — the auto-pause feature, shown on a wallpaper that is playing.
+// ScenePause — pausing the wallpaper without closing it.
 //
-// A window grows to cover the screen, the wallpaper underneath freezes and
-// desaturates, a GPU meter drops to zero, then the window closes and the
-// wallpaper resumes. The point of the feature — "it stops costing you anything
-// when you are not looking at it" — is shown rather than asserted.
+// ── what this scene argues, and why it is shaped this way ───────────────────
+//
+// The previous version showed this with a screenshot and a caption, which is a claim
+// rather than a demonstration. The point of the feature is that the wallpaper STOPS
+// while everything else carries on - so the scene has to show something that would be
+// moving and then show it not moving.
+//
+// That is done by freezing the wallpaper's frame clock at the instant of the click
+// and letting the rest of the frame continue: the status light keeps pulsing and the
+// panel keeps drifting. The stillness of the wallpaper is the evidence, so nothing
+// else in the frame is allowed to stop with it.
+//
+// The wallpaper sits inside a panel at its own aspect ratio. Nothing is cropped.
 
 import React from 'react';
-import Aurora from '../Aurora.jsx';
-import SplitText from '../SplitText.jsx';
-import WallpaperStage from '../WallpaperStage.jsx';
-import { seg, easeOut, easeOutExpo, parallax } from '../anim.js';
+import { Surface, Shot, Type, Eyebrow, Cursor, Wallpaper, FONT } from '../Kit.jsx';
+import { seg, easeOut, easeOutQuint, loop } from '../anim.js';
 
-const TOTAL = 52;
-const FONT = '"Plus Jakarta Sans", sans-serif';
+export default function ScenePause({ t, global, variant = 0 }) {
+  const CLICK = 1.5;
 
-export default function ScenePause({ t, global, variant = 0, rt}) {
-  // The raw shot clock, before the retime below scales it. The idle motion
-  // runs on this, so it is smooth at the same rate in every scene whatever factor
-  // that scene was retimed by.
-  const rawT = t;
-  // ── idle motion ────────────────────────────────────────────────────────
-  // This scene's animation finishes after a second or two, and the shot runs
-  // for four. A frame that stops moving and then waits to be cut is a slide -
-  // which is what the whole piece was being described as. So the scene keeps
-  // drifting and breathing for its entire life.
-  //
-  // Small on purpose: 10px of travel and 0.6% of scale over the shot. The eye
-  // should not read it as a move; it should simply never see the same frame
-  // twice.
-  const idle = {
-    x: Math.sin(rawT * 1.7) * 5 + rawT * 2.5,
-    y: Math.cos(rawT * 2.1) * 3.5 - rawT * 1.6,
-    s: 1 + 0.006 * (1 - Math.cos(rawT * 1.35)) / 2 + rawT * 0.0015,
-  };
+  const head = easeOutQuint(seg(t, 0.1, 0.95));
+  const panel = easeOutQuint(seg(t, 0.3, 1.2));
 
-  // Animation clock, scaled to this shot's new length. The delays in
-  // this scene were authored for a 8.0s shot; it is now 4.0s, so the whole
-  // internal timeline runs 0.50x faster. Without this the animation either
-  // never finishes inside the shot or never starts.
-  t = t * 0.5000;
+  // The wallpaper's clock stops dead at the click. Everything else keeps running.
+  const clicked = t >= CLICK;
+  const frozenAt = CLICK;
 
-  const head = parallax(global, TOTAL, 0.95, 26);
-  const stage = parallax(global, TOTAL, 0.6, 34);
-
-  // The window opens at 1.1s, covers by 1.75s, closes at 5.4s.
-  const openK = easeOutExpo(seg(t, 1.1, 1.75));
-  const closeK = easeOutExpo(seg(t, 5.4, 6.0));
-  const cover = openK * (1 - closeK);
-  const covered = cover > 0.985;
-
-  const gpu = 21 - 21 * easeOut(seg(t, 1.85, 2.5)) + 21 * easeOut(seg(t, 5.6, 6.2));
-  const gpuGood = gpu < 10.5;
-
-  // The wallpaper holds one frame while covered, which is what "paused" looks
-  // like: the same picture stays on screen instead of advancing.
-  const stageT = covered ? 3.4 : global;
+  const statusK = easeOut(seg(t, CLICK + 0.15, CLICK + 0.7));
+  const idle = loop(t, 30, 0);
 
   return (
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          transform: `translate3d(${idle.x.toFixed(2)}px, ${idle.y.toFixed(2)}px, 0) scale(${idle.s.toFixed(4)})`,
-          willChange: 'transform',
-        }}
-      >
-      {/* The monitor on the right is the subject. This is a second wallpaper far
-          behind it so the beat is not floating on black. */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: '-6%',
-          opacity: 0.42,
-          transform: `translate3d(${head.x * 0.5}px, ${head.y * 0.5}px, 0) scale(1.1)`,
-        }}
-      >
-        <WallpaperStage clip={variant ? 'raiden' : 'astra'} t={global} offset={2.5} mode="fill" width="100%" radius={0} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'radial-gradient(78% 68% at 50% 50%, rgba(7,7,10,.58) 0%, rgba(7,7,10,.78) 100%)',
-        }}
-      />
-      <Aurora t={t} accent="#ff3b57" accent2="#3ad0e0" intensity={0.15} />
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <Surface t={global} intensity={0.95} warmSide={variant ? 'right' : 'left'} />
 
       <div
         style={{
@@ -93,205 +41,110 @@ export default function ScenePause({ t, global, variant = 0, rt}) {
           inset: 0,
           display: 'flex',
           alignItems: 'center',
-          padding: '0 120px',
-          gap: 68,
+          gap: 70,
+          padding: '0 108px',
         }}
       >
-        <div
-          style={{
-            width: 505,
-            flexShrink: 0,
-            transform: `translate3d(${head.x}px, ${head.y}px, 0)`,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: FONT,
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '.22em',
-              textTransform: 'uppercase',
-              color: '#ff3b57',
-              marginBottom: 16,
-              opacity: seg(t, 0, 0.5),
-            }}
-          >
-            Pause otomatis
-          </div>
-          <div
-            style={{
-              fontFamily: FONT,
-              fontSize: 56,
-              fontWeight: 800,
-              lineHeight: 1.08,
-              letterSpacing: '-.035em',
-              color: '#fff',
-            }}
-          >
-            <SplitText text="Berhenti" t={t} delay={0.15} stagger={0.028} y={36} />
+        {/* ── the argument ───────────────────────────────────────────────────── */}
+        <div style={{ width: 600, flexShrink: 0 }}>
+          <Eyebrow color="#ffb020" style={{ marginBottom: 20, opacity: head }}>
+            Pause
+          </Eyebrow>
+          <Type size={54} style={{ opacity: head, transform: `translateY(${(1 - head) * 22}px)` }}>
+            Berhenti tanpa
             <br />
-            <SplitText text="saat tak terlihat." t={t} delay={0.85} stagger={0.032} y={36} />
-          </div>
+            menutup apa pun.
+          </Type>
           <div
             style={{
-              marginTop: 24,
+              marginTop: 26,
               fontFamily: FONT,
               fontSize: 22,
               lineHeight: 1.55,
               color: '#a8aeb8',
-              maxWidth: 460,
-              opacity: seg(t, 1.5, 2.2),
-              transform: `translateY(${(1 - easeOut(seg(t, 1.5, 2.2))) * 16}px)`,
+              maxWidth: 540,
+              opacity: easeOut(seg(t, 0.65, 1.35)),
             }}
           >
-            Buka game fullscreen — wallpaper di layar itu berhenti, decode GPU turun ke
-            nol. Tutup game, animasinya langsung jalan lagi.
+            Wallpaper yang berat tidak perlu dihapus — cukup dijeda saat kamu butuh
+            tenaganya.
           </div>
+
           <div
             style={{
-              marginTop: 28,
+              marginTop: 34,
               display: 'flex',
-              alignItems: 'baseline',
+              alignItems: 'center',
               gap: 14,
-              opacity: seg(t, 2.4, 2.9),
+              opacity: statusK,
+              transform: `translateY(${(1 - statusK) * 14}px)`,
             }}
           >
             <span
               style={{
-                fontFamily: FONT,
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: '.16em',
-                color: '#7a838c',
-                textTransform: 'uppercase',
+                width: 11,
+                height: 11,
+                borderRadius: '50%',
+                background: '#ffb020',
+                boxShadow: `0 0 0 ${4 + 3 * Math.sin(t * 5)}px rgba(255,176,32,.16)`,
               }}
-            >
-              Decode GPU
-            </span>
-            <span
-              style={{
-                fontFamily: FONT,
-                fontSize: 42,
-                fontWeight: 800,
-                letterSpacing: '-.03em',
-                color: gpuGood ? '#35e07a' : '#ff3b57',
-                lineHeight: 1,
-              }}
-            >
-              {Math.round(gpu)}%
+            />
+            <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 600, color: '#e6e9ee' }}>
+              Wallpaper dijeda — aplikasi tetap jalan
             </span>
           </div>
         </div>
 
+        {/* ── the app, with the wallpaper inside it ─────────────────────────── */}
         <div
           style={{
-            position: 'relative',
             flex: 1,
-            // Sized from the wallpaper's own 16:9, so `object-fit: cover` in
-            // WallpaperStage has nothing to crop.
-            //
-            // It was 640 tall while a 16:9 frame at this width is 623 - a 3% mismatch,
-            // which cover resolves by trimming the sides. Small, but it is the same
-            // class of mistake as the catalogue frame and it is free to avoid.
-            height: 623,
-            opacity: easeOut(seg(t, 0.4, 1.4)),
-            transform: `translate3d(${stage.x + (1 - easeOut(seg(t, 0.4, 1.4))) * 50}px, ${stage.y}px, 0)
-                        scale(${stage.scale})`,
+            opacity: panel,
+            transform: `translateY(${(1 - panel) * 34}px) translateX(${idle * 6}px)`,
           }}
         >
-          <WallpaperStage
-            clip="i14"
-            t={stageT}
-            offset={2}
-            mode="fill"
-            width="100%"
-            radius={14}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              border: '2px solid #24262c',
-              boxShadow: '0 40px 80px -30px rgba(0,0,0,.9)',
-              filter: covered ? 'saturate(.55) brightness(.7)' : 'none',
-            }}
-            overlay={
-              <>
-                {/* The fullscreen window that opens over the desktop.
-                    It is a DARKENED view of the wallpaper, not a black rectangle.
-                    Filling it with flat #0d0f13 made the right third of the frame an
-                    empty dark box for the 3.6 seconds the window is up - a review of
-                    the render called it "confusing, it just looks like a blank
-                    screen", and it was right: the shot is about the wallpaper
-                    FREEZING, so the wallpaper has to stay visible while it is frozen.
-                    Dimming it says "behind the game" and still shows the product. */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%,-50%)',
-                    width: `${cover * 100}%`,
-                    height: `${cover * 100}%`,
-                    background: 'rgba(9,10,14,.42)',
-                    backdropFilter: 'blur(3px) saturate(.7)',
-                    border: '1px solid rgba(255,255,255,.07)',
-                    borderRadius: cover > 0.99 ? 0 : 12,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: cover > 0.01 ? 1 : 0,
-                  }}
-                >
-                  {cover > 0.4 && (
-                    <div
-                      style={{
-                        textAlign: 'center',
-                        fontFamily: FONT,
-                        opacity: Math.max(0, (cover - 0.55) / 0.45),
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          letterSpacing: '.24em',
-                          color: '#7a838c',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Aplikasi fullscreen
-                      </div>
-                      <div style={{ marginTop: 10, fontSize: 28, fontWeight: 700, color: '#e6e9ed' }}>
-                        Wallpaper dijeda
-                      </div>
-                    </div>
-                  )}
-                </div>
+          <Shot src="./shots/ui-performance.png" width={880} radius={15}>
+            <div
+              style={{
+                position: 'absolute',
+                left: '8.5%',
+                right: '8.5%',
+                top: '15%',
+                borderRadius: 10,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,.12)',
+              }}
+            >
+              <Wallpaper clip={variant ? 'albedo' : 'i14'} t={clicked ? frozenAt : t} width="100%" radius={0} />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: 12,
+                  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  letterSpacing: '.06em',
+                  color: clicked ? '#ffb020' : '#35e07a',
+                  background: 'rgba(0,0,0,.66)',
+                  border: `1px solid ${clicked ? 'rgba(255,176,32,.42)' : 'rgba(53,224,122,.42)'}`,
+                  borderRadius: 6,
+                  padding: '5px 11px',
+                }}
+              >
+                {clicked ? 'PAUSED' : 'PLAYING'}
+              </div>
+            </div>
 
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 18,
-                    right: 18,
-                    fontFamily: FONT,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: '.18em',
-                    color: '#35e07a',
-                    border: '1px solid rgba(53,224,122,.4)',
-                    background: 'rgba(53,224,122,.10)',
-                    borderRadius: 999,
-                    padding: '6px 14px',
-                    textTransform: 'uppercase',
-                    opacity: covered ? 1 : 0,
-                    transform: `scale(${covered ? 1 : 0.9})`,
-                  }}
-                >
-                  Dijeda
-                </div>
-              </>
-            }
-          />
+            <Cursor
+              t={t}
+              from={[880 * 0.66, 500]}
+              to={[880 * 0.80, 236]}
+              start={0.4}
+              dur={0.9}
+              clickAt={CLICK}
+            />
+          </Shot>
         </div>
       </div>
     </div>

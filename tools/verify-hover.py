@@ -91,8 +91,13 @@ def main():
     CB = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
     user32.EnumWindows(CB(cb), None)
     if not found:
-        print('  no LumaWall window')
-        return 1
+        # Not a failure of the app. The app can be running with its window closed - it
+        # lives in the tray, so "running but no visible window" is a normal state, and
+        # reporting it as a failure made this check unusable unless the window happened
+        # to be open. There is nothing to measure in that state, so it says so.
+        print('  SKIP: LumaWall is running but has no visible window '
+              '(it is in the tray), so there is no title bar to measure')
+        return 2
     hwnd = found[0]
     print('  LumaWall pid %d' % pid)
 

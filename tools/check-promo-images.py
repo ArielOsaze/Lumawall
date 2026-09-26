@@ -109,14 +109,27 @@ def main():
 
     os.makedirs('build/imgcheck', exist_ok=True)
 
-    # The catalogue shot is where the app screenshot fills a panel on the right. If
-    # staging worked, that region has the detail of a UI. If it did not, the region
-    # is a flat dark rectangle.
+    # The scenes where an app screenshot is the subject. If staging worked, that
+    # region has the detail of a UI; if it did not, the region is a flat dark
+    # rectangle - which is what happened once, and nothing failed, because a missing
+    # image is not an error.
     #
-    # The catalogue shot runs 13.4-21.0; sample inside it, away from the cut.
+    # The times come from the cut list. The previous version named the catalogue shot
+    # at 17.0s and 19.0s, which were inside it when the piece had seven shots; after
+    # the re-cut those times were in a different scene entirely.
+    from shotlist import windows
+    W = dict((n, (a, b)) for n, a, b in windows())
+
+    def inside(name, frac=0.5):
+        """A time inside `name`, away from either cut."""
+        a, b = W[name]
+        return round(a + (b - a) * frac, 1)
+
+    # The region to sample, per scene: where the screenshot sits in that layout.
     checks = [
-        ('catalog', 17.0, (1000, 100, 1900, 900), 8.0),
-        ('catalog', 19.0, (1000, 100, 1900, 900), 8.0),
+        ('browse',  inside('browse', 0.55),  (430, 250, 1500, 830), 8.0),
+        ('apply',   inside('apply', 0.30),   (760, 300, 1780, 800), 8.0),
+        ('pause',   inside('pause', 0.55),   (900, 260, 1700, 800), 8.0),
     ]
 
     for name, t, (x0, y0, x1, y1), min_std in checks:

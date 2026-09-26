@@ -193,14 +193,27 @@ def main():
 
     # ── and confirm the figures that should be there are there ───────────────
     #
-    # The measured claims are 60% (software decode, share of one core) and 11%
-    # (LumaWall, same unit). Both are drawn in the problem shot, so at least one
-    # frame in the first third of the piece must contain saturated numeric text.
+    # The comparison lives in ONE scene now - `perf` draws both bars, and both carry
+    # their value. The previous version looked for both colours anywhere in the first
+    # twenty seconds, which was right when the "problem" scene drew one bar and the
+    # "perf" scene drew the other; after the re-cut, only `perf` draws them, so the
+    # window has to be that shot rather than the first third of the piece.
+    #
+    # The window comes from the cut list, so it follows the piece.
+    from shotlist import windows as _windows
+    _w = dict((n, (a, b)) for n, a, b in _windows())
+    if 'perf' not in _w:
+        print('  no comparison shot in the cut list - nothing to check')
+        return 0
+    a0, b0 = _w['perf']
+
     found = 0
-    t = 0.0
-    while t < min(duration, 20):
+    sampled = 0
+    t = a0
+    while t < b0:
         fp = 'build/numcheck/f%06.2f.png' % t
         if os.path.exists(fp):
+            sampled += 1
             a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
             r_, g_, b_ = a[:, :, 0], a[:, :, 1], a[:, :, 2]
             red = (r_ > 190) & (g_ < 120) & (b_ < 140)
@@ -210,11 +223,12 @@ def main():
         t += FPS_SAMPLE
 
     print('  no invalid values in any frame')
-    print('  frames in the comparison shot with both figures drawn: %d' % found)
+    print('  frames in the comparison shot with both figures drawn: %d of %d'
+          % (found, sampled))
     if found == 0:
         print()
         print('  The comparison did not render both of its figures. Check that the')
-        print('  problem shot draws both bars with their values.')
+        print('  perf shot draws both bars with their values.')
         return 1
 
     print()

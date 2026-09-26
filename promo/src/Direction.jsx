@@ -12,8 +12,7 @@
 //      the eye can watch happening is a transition effect, and transition effects
 //      are what presentation software has. Professional work does not animate
 //      between shots. It CUTS, and the cut lands on movement so the eye follows the
-//      motion instead of noticing the join. Ninety percent of the cuts in a
-//      broadcast commercial are invisible because nothing was animated across them.
+//      motion instead of noticing the join.
 //
 //   2. EVERY SHOT WAS THE SAME SHAPE. Headline on the left, picture on the right,
 //      seven times. That is a slide template. It does not matter how good the
@@ -27,12 +26,28 @@
 //     the one transition technique here, it is what a whip-pan cut is, and it lasts
 //     0.17s - short enough that it reads as the camera moving rather than as an
 //     effect playing.
-//   · Shots are timed unevenly and are not all the same length. Even spacing is the
-//     clearest tell of a slideshow.
+//   · Shots are timed unevenly and are not all the same length.
+//
+// ── why this revision has eleven shots and no repeats ──────────────────────
+//
+// The previous revision answered "it still looks like slides" by cutting the same
+// seven scenes twice as fast - thirteen shots, but only seven ideas, and the second
+// half was the first half again with a different wallpaper. A review caught it:
+// "the frame at 0-3s is repeated at 24-27s and 50-51s". Halving the shot length does
+// not add anything to watch if the content is a repeat.
+//
+// So this version has ELEVEN distinct scenes and no scene appears twice. It is
+// slightly shorter, and every second of it is new. Two of the eleven did not exist
+// before: the pipeline scene, which draws the GPU path rather than claiming it, and
+// the quality scene, which shows a file going through untouched.
+//
+// The shot lengths are set by what each scene has to do, not by a target average:
+// the pipeline and the measured comparison need longer to be read, the wall of
+// previews is a mood and can be shorter.
 
 import { clamp01, lerp, seg, easeInOut, easeOut, easeOutQuint } from './anim.js';
 
-export const TOTAL_SECONDS = 52.0;
+export const TOTAL_SECONDS = 46.4;
 export const FPS = 30;
 export const FRAME_W = 1920;
 export const FRAME_H = 1080;
@@ -41,46 +56,18 @@ export const FRAME_H = 1080;
 //
 // `cut` is when the shot begins. The end of a shot is the next shot's cut, so the
 // list is a sequence of hard boundaries - there is nothing between them.
-//
-// ── why there are thirteen now instead of seven ─────────────────────────────
-//
-// A storyboard of every second of the seven-shot version showed the real reason it
-// read as a slideshow, and it was not the transitions - every round of work had gone
-// into those. It was this:
-//
-//   · Each shot held for 6-8 seconds, and the animation inside it finished after
-//     2-4. Measured on the finished render: Catalog had 0.6s of movement left,
-//     Monitors 6.6s of dead air, Perf 5.8s, Intro 4.7s. So each shot was a still
-//     image held on screen for most of its life - which IS a slide, whatever the cut
-//     into it looks like.
-//   · Seven messages over 52 seconds is a deck's pace. A motion piece changes every
-//     few seconds.
-//
-// So the shots are half as long and there are twice as many. Thirteen shots, 2.6 to
-// 4.4 seconds each, average 4.0. The longest shot here is shorter than the SHORTEST
-// shot of the previous version.
-//
-// The lengths still vary, because even pacing is its own tell - but the variation is
-// now within a range the eye reads as "cutting", not as "advancing".
 export const SHOTS = [
-  { id: 'intro',      cut: 0.0 },
-  { id: 'problem',    cut: 3.4 },
-  { id: 'catalog',    cut: 7.4 },
-  { id: 'monitors',   cut: 11.4 },
-  { id: 'pause',      cut: 15.6 },
-  { id: 'perf',       cut: 19.6 },
-  { id: 'outro',      cut: 23.8 },
-  // The second half repeats the story with different wallpapers and a different
-  // framing, so the piece keeps changing without needing new scenes: the same seven
-  // compositions, entered at a different point in their animation and with a
-  // different wallpaper behind them. A second pass through a message is how a
-  // commercial fills 52 seconds; it is not the same as holding one shot.
-  { id: 'problem',    cut: 28.0, variant: 1 },
-  { id: 'catalog',    cut: 32.0, variant: 1 },
-  { id: 'monitors',   cut: 36.0, variant: 1 },
-  { id: 'pause',      cut: 40.0, variant: 1 },
-  { id: 'perf',       cut: 44.0, variant: 1 },
-  { id: 'outro',      cut: 48.0 },
+  { id: 'hook',     cut: 0.0 },    // 4.0s  the product, playing
+  { id: 'problem',  cut: 4.0 },    // 4.0s  what it usually costs
+  { id: 'browse',   cut: 8.0 },    // 4.0s  the catalogue, being used
+  { id: 'apply',    cut: 12.0 },   // 3.8s  pick it, and it lands
+  { id: 'multi',    cut: 15.8 },   // 4.2s  one screen at a time
+  { id: 'pause',    cut: 20.0 },   // 4.0s  stopping it without closing it
+  { id: 'gpu',      cut: 24.0 },   // 4.8s  the pipeline
+  { id: 'perf',     cut: 28.8 },   // 4.4s  the measurement
+  { id: 'quality',  cut: 33.2 },   // 4.2s  the file, untouched
+  { id: 'library',  cut: 37.4 },   // 4.0s  the scale of it
+  { id: 'close',    cut: 41.4 },   // 5.0s  the mark and where to get it
 ];
 
 /** Which shot is on screen at time t, and how long it has been running. */
@@ -120,7 +107,7 @@ export function cutWhip(t, window = 0.17) {
   return 0;
 }
 
-/** The direction the whip travels, alternating so six cuts do not all go one way. */
+/** The direction the whip travels, alternating so the cuts do not all go one way. */
 export function cutAngle(t) {
   for (let i = 1; i < SHOTS.length; i++) {
     if (t >= SHOTS[i].cut - 0.17 && t <= SHOTS[i].cut + 0.17) {
@@ -140,9 +127,6 @@ export function cutAngle(t) {
  * One continuous move from the first frame to the last, never reset. It pushes in
  * slowly and drifts, so no shot is ever a still image - which is the other half of
  * not looking like a deck. A slide can be static; a camera cannot.
- *
- * The drift is per-shot as well as global, so a shot that is held for eight seconds
- * still has somewhere to go.
  */
 export function camera(t) {
   const { index, local } = shotAt(t);
@@ -153,20 +137,11 @@ export function camera(t) {
   const p = clamp01(t / TOTAL_SECONDS);
   const globalZ = 1 + 0.075 * p;
 
-  // A per-shot push, sized to the SHOT rather than to a fixed 7.5 seconds.
-  //
-  // The previous version used `local / 7.5`, which was tuned for 7-8 second shots.
-  // With 3-4 second shots that means the push is still only a third of the way
-  // through when the cut arrives, so the frame never reaches the move it was given -
-  // the shot reads as a still. Tying it to the shot's own length means every shot
-  // completes its push whatever length it is.
+  // A per-shot push, sized to the SHOT rather than to a fixed duration. Tying it to
+  // the shot's own length means every shot completes its push whatever length it is.
   const shotZ = 1 + 0.10 * easeOutQuint(clamp01(local / Math.max(1.2, shotLen * 0.8)));
 
   // Drift, phase-locked to absolute time so it is reproducible.
-  //
-  // The frequencies are roughly doubled from the previous version. At 0.21 and 0.27
-  // rad/s a 3-second shot caught less than half a cycle, so the drift read as a slow
-  // creep rather than as movement - and a slow creep is not motion the eye registers.
   const x = Math.sin(t * 0.44) * 28 + Math.sin(t * 0.15) * 12;
   const y = Math.cos(t * 0.51) * 18 - Math.sin(t * 0.22) * 8;
 
@@ -189,11 +164,8 @@ export function cameraTransform(t) {
 /**
  * Motion blur radius in pixels, from the camera's own speed.
  *
- * Kept from the earlier versions because it was the one part that worked: a blur
- * has to follow how far the content actually moves between two captured frames or
- * it reads as two half-scenes instead of one smear. The fixed 26px blur during a
- * 1920px move did not, which is why that attempt still looked like a slide with
- * soft edges.
+ * A blur has to follow how far the content actually moves between two captured
+ * frames or it reads as two half-scenes instead of one smear.
  */
 export function motionBlur(t, fps = FPS) {
   // How fast the push is moving, in screen pixels per frame, near the frame edge.

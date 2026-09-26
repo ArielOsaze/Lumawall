@@ -25,8 +25,7 @@ from shotlist import windows as shot_windows, midpoints as shot_midpoints
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'site/assets/video/lumawall-promo.mp4')
 
 # One sample in the middle of each shot, from Direction.jsx.
-#   intro 0-6.4  problem 6.4-13.4  catalog 13.4-21.0  monitors 21.0-28.4
-#   pause 28.4-36.4  perf 36.4-44.4  outro 44.4-52
+#   The windows come from shotlist.windows(), so they follow the cut list.
 # Sample points from the shot list in Direction.jsx, one per shot.
 SAMPLES = shot_midpoints()
 

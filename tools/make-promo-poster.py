@@ -24,20 +24,32 @@ from promo_path import promo_video
 VIDEO = promo_video() or 'site/assets/video/lumawall-promo.mp4'
 OUT = 'site/assets/shots/poster-promo.png'
 
-# The shots, from Direction.jsx:
-#   intro 0-6.4   problem 6.4-13.4   catalog 13.4-21.0   monitors 21.0-28.4
-#   pause 28.4-36.4   perf 36.4-44.4   outro 44.4-52
-#
-# The outro's call-to-action frame is the right poster. It carries the mark, the
+# The shots, read from the cut list so the times follow the piece. The previous
+# version hardcoded seven windows, and after the piece was re-cut to eleven shots
+# every one of those times landed in the wrong scene - including the poster time,
+# which pointed past the end of a 47.5s render.
+from shotlist import windows
+
+_W = dict((n, (a, b)) for n, a, b in windows())
+
+
+def _at(name, frac):
+    """A time inside `name`, at `frac` of the way through it."""
+    a, b = _W[name]
+    return round(a + (b - a) * frac, 2)
+
+
+# The close's call-to-action frame is the right poster. It carries the mark, the
 # headline and the URL, so a visitor whose browser blocks autoplay sees what the
-# product is and where to get it. An in-video frame from the monitor or catalog beat
-# is prettier but has no branding at all - a review of exactly that choice scored it
-# 5/10 and pointed out that nothing on it said "LumaWall".
+# product is and where to get it. A frame from the middle of the piece is prettier
+# but has no branding at all - a review of exactly that choice scored it 5/10 and
+# pointed out that nothing on it said "LumaWall".
 CANDIDATES = [
-    (49.0, 'outro',    'the call-to-action frame: mark, headline, download button'),
-    (47.5, 'outro',    'a moment earlier, before the button changes state'),
-    (25.0, 'monitors', 'three screens, three wallpapers - no branding'),
-    (17.0, 'catalog',  'the app UI with its wallpaper grid'),
+    (_at('close', 0.80), 'close',   'the call-to-action frame: mark, headline, download button'),
+    (_at('close', 0.60), 'close',   'a moment earlier, as the button arrives'),
+    (_at('close', 0.35), 'close',   'the mark and the wordmark, before the button'),
+    (_at('multi', 0.55), 'multi',   'three screens, three wallpapers - no branding'),
+    (_at('browse', 0.55), 'browse', 'the app UI with its wallpaper grid'),
 ]
 
 
@@ -74,11 +86,11 @@ def main():
         print('  no frames could be read')
         return 1
 
-    # The outro frame wins because it carries the branding, and branding is the one
+    # The close frame wins because it carries the branding, and branding is the one
     # thing a poster cannot do without. The rest are fallbacks.
-    pick = next((f for f in frames if f[1] == 'outro' and f[5] > 0.06), None)
+    pick = next((f for f in frames if f[1] == 'close' and f[5] > 0.06), None)
     if pick is None:
-        pick = next((f for f in frames if f[1] == 'monitors' and 25 < f[4] < 140), None)
+        pick = next((f for f in frames if f[1] == 'multi' and 25 < f[4] < 140), None)
     if pick is None:
         pick = max(frames, key=lambda f: f[5])
     t, beat, why, im, mean, lit = pick

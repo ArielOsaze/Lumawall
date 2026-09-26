@@ -33,10 +33,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from promo_path import promo_video
 VIDEO = sys.argv[1] if len(sys.argv) > 1 else (promo_video() or 'build/livevid/promo.mp4')
 
-BEATS = [
-    ('intro', 3.0), ('problem', 10.5), ('catalog', 17.5),
-    ('monitors', 25.5), ('pause', 34.0), ('perf', 41.5), ('outro', 48.5),
-]
+# The beats come from the cut list rather than from a copy of it. The previous
+# version hardcoded seven (name, time) pairs, and after the piece was re-cut to
+# eleven shots every one of those times landed in the wrong scene - so the check
+# was measuring the wrong frames and reporting on them as if they were right.
+from shotlist import midpoints
+BEATS = midpoints()
 
 # A text run this short in a 1080p frame is unreadable on anything but a desktop.
 MIN_GLYPH_HEIGHT = 16
