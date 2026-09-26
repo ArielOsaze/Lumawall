@@ -179,10 +179,18 @@ export default function ScenePause({ t, global }) {
               inset: 0,
               border: '2px solid #24262c',
               boxShadow: '0 40px 80px -30px rgba(0,0,0,.9)',
-              filter: covered ? 'saturate(.3) brightness(.45)' : 'none',
+              filter: covered ? 'saturate(.55) brightness(.7)' : 'none',
             }}
             overlay={
               <>
+                {/* The fullscreen window that opens over the desktop.
+                    It is a DARKENED view of the wallpaper, not a black rectangle.
+                    Filling it with flat #0d0f13 made the right third of the frame an
+                    empty dark box for the 3.6 seconds the window is up - a review of
+                    the render called it "confusing, it just looks like a blank
+                    screen", and it was right: the shot is about the wallpaper
+                    FREEZING, so the wallpaper has to stay visible while it is frozen.
+                    Dimming it says "behind the game" and still shows the product. */}
                 <div
                   style={{
                     position: 'absolute',
@@ -191,7 +199,9 @@ export default function ScenePause({ t, global }) {
                     transform: 'translate(-50%,-50%)',
                     width: `${cover * 100}%`,
                     height: `${cover * 100}%`,
-                    background: '#0d0f13',
+                    background: 'rgba(9,10,14,.42)',
+                    backdropFilter: 'blur(3px) saturate(.7)',
+                    border: '1px solid rgba(255,255,255,.07)',
                     borderRadius: cover > 0.99 ? 0 : 12,
                     overflow: 'hidden',
                     display: 'flex',

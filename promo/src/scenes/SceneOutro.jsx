@@ -115,17 +115,23 @@ export default function SceneOutro({ t, global }) {
             style={{
               position: 'relative',
               overflow: 'hidden',
-              padding: '19px 52px',
-              borderRadius: 13,
+              // The button is the whole point of the closing shot, and at 19px of
+              // padding with 25px type it was a small control in the middle of a
+              // large frame. A review of the render called it "small and static" -
+              // the size part was right. It is now the largest interactive element
+              // in the piece, with a slow pulse so it reads as live rather than as a
+              // picture of a button.
+              padding: '26px 74px',
+              borderRadius: 16,
               background: clicked
                 ? 'linear-gradient(180deg,#35e07a,#22a85c)'
                 : 'linear-gradient(180deg,#ff4a63,#d92b45)',
               boxShadow: clicked
-                ? '0 16px 44px -12px rgba(53,224,122,.65)'
-                : '0 16px 44px -12px rgba(255,59,87,.6)',
+                ? '0 20px 56px -12px rgba(53,224,122,.7)'
+                : '0 20px 56px -12px rgba(255,59,87,.68)',
               opacity: easeOut(seg(t, 1.4, 2.1)),
               transform: `translateY(${(1 - easeOut(seg(t, 1.4, 2.1))) * 26}px)
-                          scale(${1 + hover * 0.025})`,
+                          scale(${(1 + hover * 0.025) * (1 + 0.012 * Math.sin(t * 3.1))})`,
             }}
           >
             <div
@@ -144,7 +150,7 @@ export default function SceneOutro({ t, global }) {
               style={{
                 position: 'relative',
                 fontFamily: FONT,
-                fontSize: 25,
+                fontSize: 31,
                 fontWeight: 700,
                 color: '#fff',
                 letterSpacing: '-.01em',

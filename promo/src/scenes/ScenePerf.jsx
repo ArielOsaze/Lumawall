@@ -49,16 +49,20 @@ function Stat({ t, label, to, decimals, suffix, color, delay, sub }) {
       <div
         style={{
           fontFamily: FONT,
-          fontSize: 42,
+          // The figures ARE the claim. At 42px they were 3.9% of the frame height
+          // - smaller than the headline above them, and easy to skim past in a
+          // promo whose whole argument is how little this costs. 60px is 5.6%,
+          // which makes each number the largest thing in its card.
+          fontSize: 60,
           fontWeight: 800,
-          letterSpacing: '-.03em',
+          letterSpacing: '-.035em',
           color,
           lineHeight: 1,
         }}
       >
         <CountUp to={to} t={t} delay={delay} dur={1.3} decimals={decimals} suffix={suffix} />
       </div>
-      <div style={{ marginTop: 10, fontFamily: FONT, fontSize: 15, color: '#8b9099' }}>{sub}</div>
+      <div style={{ marginTop: 10, fontFamily: FONT, fontSize: 17, color: '#9aa0a9' }}>{sub}</div>
     </div>
   );
 }
