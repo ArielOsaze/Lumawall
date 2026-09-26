@@ -211,7 +211,14 @@ def main():
     sampled = 0
     t = a0
     while t < b0:
-        fp = 'build/numcheck/f%06.2f.png' % t
+        # Read the frame here rather than looking for one in the cache. The cache is
+        # written by the scan above with a name formatted to two decimals, and the
+        # times in this loop are not all two-decimal - so the lookup missed most of
+        # them and the check reported "0 of 0 frames", which reads as a failure of the
+        # video when it was a failure of the filename.
+        fp = os.path.join('build', '_numbers_perf.png')
+        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', video,
+                        '-frames:v', '1', '-y', fp], capture_output=True)
         if os.path.exists(fp):
             sampled += 1
             a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
