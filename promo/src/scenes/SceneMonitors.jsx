@@ -66,7 +66,7 @@ export default function SceneMonitors({ t, global }) {
           <div
             style={{
               fontFamily: FONT,
-              fontSize: 14,
+              fontSize: 17,
               fontWeight: 700,
               letterSpacing: '.22em',
               textTransform: 'uppercase',

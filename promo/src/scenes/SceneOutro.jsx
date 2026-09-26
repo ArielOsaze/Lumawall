@@ -181,9 +181,13 @@ export default function SceneOutro({ t, global }) {
         <div
           style={{
             fontFamily: FONT,
-            fontSize: 15,
-            fontWeight: 600,
-            letterSpacing: '.14em',
+            // The URL is the one thing a viewer has to be able to read if they want
+            // the product. At 15px it was a footnote under a button - legible in a
+            // frame grab and not on a phone. 22px with wider tracking makes it a
+            // line of the composition rather than a caption on it.
+            fontSize: 22,
+            fontWeight: 700,
+            letterSpacing: '.16em',
             color: '#35e07a',
             opacity: done,
             textTransform: 'uppercase',

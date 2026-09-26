@@ -82,8 +82,12 @@ function Bar({ t, delay, to, max, color, label, sub, suffix = '%', decimals = 0 
         style={{
           marginTop: 12,
           fontFamily: FONT,
-          fontSize: 15,
-          color: '#b6bec6',
+          // 15px was 1.4% of the frame height - the smallest text in the piece, on
+          // the shot that carries the product's central claim. This is the line
+          // that explains WHY the two numbers differ, so it has to be read, not
+          // just seen.
+          fontSize: 18,
+          color: '#c3cad2',
           opacity: seg(t, delay + 0.4, delay + 0.9),
         }}
       >
