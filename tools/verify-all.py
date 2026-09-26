@@ -39,6 +39,8 @@ CHECKS = [
      ['python', 'tools/check-layout.py']),
     ('every element a scene places is inside the frame',
      ['python', 'tools/check-scene-layout.py']),
+    ('the camera never crops the frame it is showing',
+     ['python', 'tools/check-camera-crop.py']),
     ('every promo beat has content in it',
      ['python', 'tools/check-promo-scenes.py']),
     ('every promo beat keeps its content in frame',

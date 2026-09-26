@@ -102,6 +102,15 @@ export default function SceneMulti({ t, global, variant = 0 }) {
           bottom: '16%',
           perspective: `${PERSPECTIVE}px`,
           perspectiveOrigin: '18% 50%',
+          // The row is pushed down and right so the headline's band across the top is
+          // clear. Without the camera's zoom the first monitor sits higher than it used
+          // to, and its bright wallpaper reached into the text: measured, the background
+          // under the headline hit 0.88 luminance against a 0.30 limit, and the scene
+          // was reported as having unreadable type. The scene's own layout put the text
+          // at the top-left, so the row moves out of the way rather than the text being
+          // given a heavier scrim - a scrim over a wallpaper this bright would have to
+          // be nearly opaque, which would hide the product.
+          transform: 'translateY(74px)',
         }}
       >
         <div

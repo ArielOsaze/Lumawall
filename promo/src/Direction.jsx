@@ -124,32 +124,55 @@ export function cutAngle(t) {
 /**
  * The camera for the whole piece.
  *
- * One continuous move from the first frame to the last, never reset. It pushes in
- * slowly and drifts, so no shot is ever a still image - which is the other half of
- * not looking like a deck. A slide can be static; a camera cannot.
+ * ── why there is no zoom here ────────────────────────────────────────────────
+ *
+ * The camera used to push in twice over: a global 1 + 0.075t and a per-shot
+ * 1 + 0.10, which compounded to a maximum of 1.183 by the end of the piece. The
+ * visitor's note was "efek zoom nya jadi ngecrop gambar teks juga" - the zoom crops
+ * the picture, and the text too. That was exact, and measurable:
+ *
+ *   At z = 1.183 with a 1920-wide frame and origin at the centre, the visible window
+ *   into the composition is x = 167..1742. Every scene lays its text out at x = 74
+ *   to x = 132. So by the end of a shot, content the scene placed at x = 104 (the
+ *   library headline) was at screen x = -44: off the left edge. The quality scene's
+ *   headline at x = 116 ended at -24. They were not "a bit tight" - they were gone.
+ *
+ * A push-in is a real technique and it does not have to crop: a camera that zooms
+ * also moves, so the subject stays in frame. This one zoomed without moving the
+ * subject, which is the one way to zoom that always crops.
+ *
+ * So the zoom is gone, and what is left is the drift - which is what the zoom was
+ * for. The note it was answering was "no shot is ever a still image", and drift alone
+ * answers that: the frame is always moving, just not getting closer.
+ *
+ * The drift is scaled to 0.45 of what it was. At full strength it moved the frame 40px
+ * at the extremes, which is enough to lose the same 74px of margin the zoom was
+ * eating - measured: the safe window was x = 35..1884, and a scene's 74px margin was
+ * inside it only by 39px. At 0.45 the safe window is 16..1904, so every scene's own
+ * margins are visible for the whole piece with room to spare.
+ *
+ * The roll is kept. It is a fraction of a degree, it rotates about the centre, and it
+ * costs 4px at the corners.
  */
 export function camera(t) {
   const { index, local } = shotAt(t);
   const next = SHOTS[index + 1];
   const shotLen = next ? next.cut - SHOTS[index].cut : TOTAL_SECONDS - SHOTS[index].cut;
 
-  // A global push, so the frame is always creeping forward.
-  const p = clamp01(t / TOTAL_SECONDS);
-  const globalZ = 1 + 0.075 * p;
+  // No zoom. The camera holds its distance for the whole piece.
+  const z = 1;
 
-  // A per-shot push, sized to the SHOT rather than to a fixed duration. Tying it to
-  // the shot's own length means every shot completes its push whatever length it is.
-  const shotZ = 1 + 0.10 * easeOutQuint(clamp01(local / Math.max(1.2, shotLen * 0.8)));
-
-  // Drift, phase-locked to absolute time so it is reproducible.
-  const x = Math.sin(t * 0.44) * 28 + Math.sin(t * 0.15) * 12;
-  const y = Math.cos(t * 0.51) * 18 - Math.sin(t * 0.22) * 8;
+  // Drift, phase-locked to absolute time so it is reproducible. Scaled to 0.45: see
+  // the note above - at full strength it alone cropped the scenes' margins.
+  const DRIFT = 0.45;
+  const x = (Math.sin(t * 0.44) * 28 + Math.sin(t * 0.15) * 12) * DRIFT;
+  const y = (Math.cos(t * 0.51) * 18 - Math.sin(t * 0.22) * 8) * DRIFT;
 
   // A roll of a fraction of a degree: enough that the frame feels hand-held,
   // never enough to read as a tilt.
   const roll = Math.sin(t * 0.27) * 0.26;
 
-  return { z: globalZ * shotZ, x, y, roll, index, local, shotLen };
+  return { z, x, y, roll, index, local, shotLen };
 }
 
 /** The camera's CSS transform. */

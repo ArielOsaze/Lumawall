@@ -1,245 +1,148 @@
-"""check-numbers.py — no invalid value is drawn as text in the promo.
+"""check-numbers.py — is any invalid value drawn as text in the promo?
 
 Why this exists:
 
-The finished render showed "NaN%" where "60%" and "11%" belong, in the CPU
+The finished render once showed "NaN%" where "60%" and "11%" belong, in the CPU
 comparison - the piece's central claim. It survived every check that was running,
-because none of them asked whether the figures on screen were valid: the frame was
-the right size, the text was legible, every scene was present, and NaN is perfectly
-legible text.
+because none of them asked whether the figures on screen were valid: the frame was the
+right size, the text was legible, every scene was present, and NaN is perfectly legible
+text. The cause was one property read off the wrong object, which made a scene's time
+undefined and every derived number NaN.
 
-The cause was one property read off the wrong object (`SHOTS[index].local`, when
-only `shotAt()` returns `local`), which made the scene's time undefined and every
-derived number NaN.
+── why this reads the DOM and not the pixels ───────────────────────────────
 
-Reading text needs OCR, and requiring an OCR binary means the check silently cannot
-run where it is not installed - which is how a check stops protecting anything. So
-this looks at the pixels instead, which needs nothing extra:
+The first four versions of this check tried to find the shape of "NaN" in the rendered
+video, and every one of them failed on real frames:
 
-  · "NaN" is a specific SHAPE: three glyphs of near-equal width, the first and last
-    the same letter. A percentage is digits, which are narrower and uneven.
-  · More directly: any figure in this piece is either two digits or a two-to-three
-    digit number, so a run of three same-width glyphs where a number should be is
-    the tell.
+  1. Three equal-width glyphs in a short line. That is what NaN looks like - N, a and N
+     in different cases, the same advance width. It reported the word "sama" at 30.0s:
+     three glyphs, near-equal width, a compact mark after them, short for their height.
+     Every condition was satisfied by a word.
 
-The second half is the positive one: the figures that MUST appear are checked to be
-there. A missing number and an invalid number are different bugs with the same
-symptom - nothing readable where a value belongs.
+  2. Require the following glyph to be markedly narrower, reasoning that a percent sign
+     is narrower than a letter. The full stop after "sama" is narrower too.
 
-Run:  python tools/check-numbers.py [video]
+  3. Require the follower to be a percent sign by vertical position - its dot sits high
+     where a full stop sits on the baseline. True, and fragile: a lowercase "i" has a
+     high tittle too, and this leans on rendering details a font change would break.
+
+  4. Count digits in every value-shaped run. This reported the orange badge dot in
+     `pause`, the small print in `apply` and the link text in `close`, and each one
+     would have needed its own size threshold. Worse, the first version of it accepted
+     only 3-4 glyphs per figure, so "41.2%" - five glyphs - was never examined at all
+     while the check reported a pass.
+
+All four were trying to read text from pixels. But the text is not in the pixels - it is
+in the scene, and the renderer computes it from JavaScript. So this asks the scene
+directly: promo/numbers-probe.mjs renders every scene at five moments and reads back
+every string of text in the DOM, plus every number inside a transform.
+
+That is exact. A "NaN" cannot hide from it, and a word cannot be mistaken for one.
+
+It also checks the positive: the figures that MUST appear are confirmed to be there,
+because a missing number and an invalid number are different bugs with the same symptom.
+
+Usage:
+    python tools/check-numbers.py
 """
 
-import glob
+import json
 import os
 import subprocess
 import sys
 
-import numpy as np
-from PIL import Image
+PROBE = 'promo/numbers-probe.mjs'
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from promo_path import promo_video
+# The values that must appear somewhere in the piece, with the scene that draws them.
+# These are the claims the promo makes; if one silently becomes a zero or an empty
+# string the piece still renders and still passes every other check.
+REQUIRED = {
+    'perf':    ['41.2%', '2.4%'],
+    'problem': ['40.9%'],
+    'quality': ['3840×2160'],
+}
 
-FPS_SAMPLE = 2          # one frame every 2 seconds
-
-
-def glyph_runs(mask):
-    """Widths of the horizontal runs of set pixels in a mask, left to right."""
-    cols = mask.any(axis=0)
-    runs = []
-    start = None
-    for x, on in enumerate(cols):
-        if on and start is None:
-            start = x
-        elif not on and start is not None:
-            runs.append((start, x - 1))
-            start = None
-    if start is not None:
-        runs.append((start, len(cols) - 1))
-    return runs
+INVALID = ('NaN', 'undefined', 'Infinity', 'null')
 
 
 def main():
-    video = sys.argv[1] if len(sys.argv) > 1 else promo_video()
-    if not video or not os.path.exists(video):
-        print('  no promo video found')
+    print()
+    print('  numbers: does every figure on screen come out as a real number?')
+    print()
+
+    if not os.path.exists(PROBE):
+        print('  %s is missing' % PROBE)
         return 1
 
-    os.makedirs('build/numcheck', exist_ok=True)
+    r = subprocess.run(['node', 'numbers-probe.mjs'], capture_output=True, text=True,
+                       timeout=300, cwd='promo')
+    if r.returncode != 0 or not r.stdout.strip():
+        print('  could not render the scenes:')
+        print('    %s' % (r.stderr or r.stdout or '')[:400])
+        return 1
 
-    r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
-                        '-of', 'csv=p=0', video], capture_output=True, text=True)
     try:
-        duration = float(r.stdout.strip())
-    except ValueError:
-        print('  cannot read the video duration')
+        data = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        print('  the probe did not return JSON')
+        print('    %s' % r.stdout[:400])
         return 1
+
+    results = data['results']
+    print('    %d scene samples rendered (every scene, five moments each)' % len(results))
 
     problems = []
-    checked = 0
 
-    # ── scan for the NaN shape ───────────────────────────────────────────────
-    #
-    # NaN renders as three glyphs of very similar width, where a percentage is two
-    # digits (narrow, often different widths) plus a small % sign. Looking for three
-    # near-equal-width glyphs in a row, in a bright colour on a dark field, is
-    # specific enough to avoid flagging ordinary words - and it is exactly the
-    # pattern the bug produced.
-    t = 0.0
-    while t < duration:
-        fp = 'build/numcheck/f%06.2f.png' % t
-        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', video,
-                        '-frames:v', '1', '-y', fp], capture_output=True)
-        t += FPS_SAMPLE
-        if not os.path.exists(fp):
+    # ── 1. no invalid value, in text or in a transform ───────────────────────
+    bad = []
+    for r_ in results:
+        if r_.get('error'):
+            problems.append('%s at %.2fs threw: %s' % (r_['id'], r_['t'], r_['error']))
             continue
-        checked += 1
-
-        a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
-        r_, g_, b_ = a[:, :, 0], a[:, :, 1], a[:, :, 2]
-
-        # The figures in this piece are red, green or cyan on a dark surface. Look
-        # only at saturated, bright pixels so ordinary white body text is excluded.
-        bright = (r_ + g_ + b_) > 330
-        sat = (np.maximum(np.maximum(r_, g_), b_) - np.minimum(np.minimum(r_, g_), b_)) > 60
-        mask = bright & sat
-
-        if mask.sum() < 40:
-            continue
-
-        # Group into text lines, then look at the glyph runs on each line.
-        rows = mask.any(axis=1)
-        lines = []
-        start = None
-        for y, on in enumerate(rows):
-            if on and start is None:
-                start = y
-            elif not on and start is not None:
-                lines.append((start, y - 1))
-                start = None
-        if start is not None:
-            lines.append((start, len(rows) - 1))
-
-        for y0, y1 in lines:
-            if y1 - y0 < 14 or y1 - y0 > 90:
-                continue
-            runs = glyph_runs(mask[y0:y1 + 1])
-            # Three or four glyphs, each at least 8px wide.
-            runs = [r for r in runs if r[1] - r[0] >= 8]
-            if len(runs) < 3:
-                continue
-
-            # ── a value is a SHORT line, not a sentence ───────────────────────
-            #
-            # The figure this check exists to protect is "60%" - three glyphs and a
-            # percent sign. A wordmark or a headline is a dozen. Without this, every
-            # run of equal-width capitals in a long line was a candidate, and
-            # "LUMAWALL.XINET.ID" was reported as NaN twice: the trio "WAL" is
-            # followed by the dot, which is small enough to pass for a percent sign.
-            #
-            # A line carrying a percentage has at most four marks on it.
-            if len(runs) > 4:
-                continue
-
-            widths = [r[1] - r[0] + 1 for r in runs]
-            for i in range(len(widths) - 2):
-                trio = widths[i:i + 3]
-                if min(trio) < 8:
-                    continue
-                # Near-equal width is the NaN tell: N, a and N are the same letter
-                # shape in different cases, so their advance widths match closely.
-                spread = max(trio) - min(trio)
-                if spread > 3 or min(trio) < 12:
-                    continue
-
-                # ── and it has to be a NUMBER, not letters ────────────────────
-                #
-                # Equal-width runs are also what "WAL" in a spaced-out wordmark
-                # looks like, and a run of capital letters was reported as NaN twice
-                # - once on "LUMAWALL.XINET.ID" in the closing shot. A number in this
-                # piece is one or two digits followed by a percent sign, so the run
-                # has to be followed by a small glyph (the %) and the trio itself has
-                # to be narrow.
-                #
-                # Digits are also shorter than capitals at the same size, and a
-                # percent sign is a compact mark rather than a letter shape.
-                after = [w for w in widths[i + 3:i + 4]]
-                if not after or after[0] > min(trio):
-                    continue
-
-                # The glyphs in a number are compact: a digit is narrower than it is
-                # tall, where a capital letter is close to square.
-                tall = y1 - y0 + 1
-                if min(trio) > tall * 0.85:
-                    continue
-
-                problems.append((t, y0, trio))
-                break
+        for s in r_.get('text', []):
+            if any(k in s for k in INVALID):
+                bad.append((r_['id'], r_['t'], s))
+        for s in r_.get('styleNums', []):
+            if any(k in s for k in INVALID):
+                bad.append((r_['id'], r_['t'], 'transform: ' + s))
 
     print()
-    print('  %d frames read' % checked)
+    if bad:
+        print('    INVALID VALUES ON SCREEN: %d' % len(bad))
+        for i, t, s in bad[:12]:
+            print('      %-9s t=%-5.2f  %s' % (i, t, s[:80]))
+        problems.append('%d invalid values are drawn as text' % len(bad))
+    else:
+        print('    no NaN, undefined, Infinity or null in any text or transform')
 
+    # ── 2. the claims are present ────────────────────────────────────────────
+    by_scene = {}
+    for r_ in results:
+        by_scene.setdefault(r_['id'], []).extend(r_.get('text', []))
+
+    print()
+    print('    the figures the piece claims:')
+    for scene, wanted in REQUIRED.items():
+        texts = by_scene.get(scene, [])
+        for w in wanted:
+            # The figure is drawn by a count-up, so it appears at several intermediate
+            # values through the shot; the final value is the one that must be present.
+            ok = any(w in t for t in texts)
+            print('      %-9s %-14s %s' % (scene, w, 'ok' if ok else 'MISSING'))
+            if not ok:
+                problems.append('%s never draws %s' % (scene, w))
+
+    print()
     if problems:
+        print('  %d problem(s):' % len(problems))
+        for p in problems:
+            print('    · %s' % p)
         print()
-        print('  THREE EQUAL-WIDTH GLYPHS WHERE A NUMBER BELONGS:')
-        for t, y, trio in problems[:10]:
-            print('    t=%-6.1f y=%-5d widths %s' % (t, y, trio))
-        print()
-        print('  That is the shape of "NaN". A number is digits, which are narrower')
-        print('  and uneven; three equal-width glyphs in a row is an invalid value')
-        print('  that was drawn as text. Find the value that is undefined at its')
-        print('  source - it is usually one property read off the wrong object.')
+        print('  A value that fails to compute is drawn as "NaN", and a value that is')
+        print('  never reached is simply absent. Both render perfectly.')
         return 1
 
-    # ── and confirm the figures that should be there are there ───────────────
-    #
-    # The comparison lives in ONE scene now - `perf` draws both bars, and both carry
-    # their value. The previous version looked for both colours anywhere in the first
-    # twenty seconds, which was right when the "problem" scene drew one bar and the
-    # "perf" scene drew the other; after the re-cut, only `perf` draws them, so the
-    # window has to be that shot rather than the first third of the piece.
-    #
-    # The window comes from the cut list, so it follows the piece.
-    from shotlist import windows as _windows
-    _w = dict((n, (a, b)) for n, a, b in _windows())
-    if 'perf' not in _w:
-        print('  no comparison shot in the cut list - nothing to check')
-        return 0
-    a0, b0 = _w['perf']
-
-    found = 0
-    sampled = 0
-    t = a0
-    while t < b0:
-        # Read the frame here rather than looking for one in the cache. The cache is
-        # written by the scan above with a name formatted to two decimals, and the
-        # times in this loop are not all two-decimal - so the lookup missed most of
-        # them and the check reported "0 of 0 frames", which reads as a failure of the
-        # video when it was a failure of the filename.
-        fp = os.path.join('build', '_numbers_perf.png')
-        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', video,
-                        '-frames:v', '1', '-y', fp], capture_output=True)
-        if os.path.exists(fp):
-            sampled += 1
-            a = np.asarray(Image.open(fp).convert('RGB')).astype(int)
-            r_, g_, b_ = a[:, :, 0], a[:, :, 1], a[:, :, 2]
-            red = (r_ > 190) & (g_ < 120) & (b_ < 140)
-            grn = (g_ > 170) & (r_ < 130) & (b_ < 170)
-            if red.sum() > 400 and grn.sum() > 400:
-                found += 1
-        t += FPS_SAMPLE
-
-    print('  no invalid values in any frame')
-    print('  frames in the comparison shot with both figures drawn: %d of %d'
-          % (found, sampled))
-    if found == 0:
-        print()
-        print('  The comparison did not render both of its figures. Check that the')
-        print('  perf shot draws both bars with their values.')
-        return 1
-
-    print()
-    print('  every number on screen is a real number')
+    print('  every figure on screen is a real number, and every claim is present')
     return 0
 
 

@@ -130,6 +130,7 @@ def main():
         # the wallpaper behind it reaches its brightest frame.
         worst = 0.0
         worst_t = 0.0
+        worst_box = None
         for frac in (0.35, 0.55, 0.75):
             t = round(a + (b - a) * frac, 2)
             subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', VIDEO,
@@ -146,17 +147,26 @@ def main():
                 if v > worst:
                     worst = v
                     worst_t = t
+                    worst_box = box
+
+        # Which text block, and where in the frame - a bare luminance figure does not
+        # say what to move, and the fix is almost always to move one of the two.
+        where = ''
+        if worst_box:
+            where = (' (the text at x %d-%d, y %d-%d)'
+                     % (int(worst_box[0] * 1920), int(worst_box[2] * 1920),
+                        int(worst_box[1] * 1080), int(worst_box[3] * 1080)))
 
         if worst >= HARD_FAIL:
             problems.append(
                 '%s: the background under its text reaches %.2f luminance at %.1fs - '
-                'white type there is unreadable' % (name, worst, worst_t))
-            print('    %-9s  %.2f  at %.1fs   UNREADABLE' % (name, worst, worst_t))
+                'white type there is unreadable%s' % (name, worst, worst_t, where))
+            print('    %-9s  %.2f  at %.1fs   UNREADABLE%s' % (name, worst, worst_t, where))
         elif worst >= MAX_BG_LUM:
             problems.append(
                 '%s: the background under its text reaches %.2f luminance at %.1fs - '
-                'too bright for comfortable white type' % (name, worst, worst_t))
-            print('    %-9s  %.2f  at %.1fs   too bright' % (name, worst, worst_t))
+                'too bright for comfortable white type%s' % (name, worst, worst_t, where))
+            print('    %-9s  %.2f  at %.1fs   too bright%s' % (name, worst, worst_t, where))
         else:
             print('    %-9s  %.2f  at %.1fs   readable' % (name, worst, worst_t))
 
