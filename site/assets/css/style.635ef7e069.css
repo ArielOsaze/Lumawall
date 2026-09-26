@@ -258,10 +258,19 @@ p { text-wrap: pretty; }
   inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  /* The clip is composed for this slot: subject right of centre, dark ramp on the
-     left for the type, so the anchor is a fixed choice rather than a guess. */
+  /* The clip is composed for this slot: subject right of centre, and the left is the
+     wallpaper's own black. */
   object-position: 62% 46%;
-  opacity: .82;
+  /* NO opacity. It was .82, which composited the wallpaper over the page background
+     at 82% - so a pixel that is (3,1,2) in the artwork arrived on screen as a blend
+     of that and the background, and the "full black" the visitor asked for became a
+     faint wash instead. They described it as a shadow on the wallpaper, and a
+     measured profile of the live page showed the left side reading lighter than the
+     source file.
+
+     A hero background is the product. Show it at full strength; if the type needs
+     help, that is the scrim's job, not a global dim. */
+  opacity: 1;
 }
 .hero-bg video { z-index: 1; }
 .hero-bg img { z-index: 0; }
