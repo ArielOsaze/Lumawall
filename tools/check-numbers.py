@@ -128,6 +128,19 @@ def main():
             runs = [r for r in runs if r[1] - r[0] >= 8]
             if len(runs) < 3:
                 continue
+
+            # ── a value is a SHORT line, not a sentence ───────────────────────
+            #
+            # The figure this check exists to protect is "60%" - three glyphs and a
+            # percent sign. A wordmark or a headline is a dozen. Without this, every
+            # run of equal-width capitals in a long line was a candidate, and
+            # "LUMAWALL.XINET.ID" was reported as NaN twice: the trio "WAL" is
+            # followed by the dot, which is small enough to pass for a percent sign.
+            #
+            # A line carrying a percentage has at most four marks on it.
+            if len(runs) > 4:
+                continue
+
             widths = [r[1] - r[0] + 1 for r in runs]
             for i in range(len(widths) - 2):
                 trio = widths[i:i + 3]
@@ -136,9 +149,32 @@ def main():
                 # Near-equal width is the NaN tell: N, a and N are the same letter
                 # shape in different cases, so their advance widths match closely.
                 spread = max(trio) - min(trio)
-                if spread <= 3 and min(trio) >= 12:
-                    problems.append((t, y0, trio))
-                    break
+                if spread > 3 or min(trio) < 12:
+                    continue
+
+                # ── and it has to be a NUMBER, not letters ────────────────────
+                #
+                # Equal-width runs are also what "WAL" in a spaced-out wordmark
+                # looks like, and a run of capital letters was reported as NaN twice
+                # - once on "LUMAWALL.XINET.ID" in the closing shot. A number in this
+                # piece is one or two digits followed by a percent sign, so the run
+                # has to be followed by a small glyph (the %) and the trio itself has
+                # to be narrow.
+                #
+                # Digits are also shorter than capitals at the same size, and a
+                # percent sign is a compact mark rather than a letter shape.
+                after = [w for w in widths[i + 3:i + 4]]
+                if not after or after[0] > min(trio):
+                    continue
+
+                # The glyphs in a number are compact: a digit is narrower than it is
+                # tall, where a capital letter is close to square.
+                tall = y1 - y0 + 1
+                if min(trio) > tall * 0.85:
+                    continue
+
+                problems.append((t, y0, trio))
+                break
 
     print()
     print('  %d frames read' % checked)
