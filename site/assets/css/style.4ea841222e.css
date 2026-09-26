@@ -275,15 +275,24 @@ p { text-wrap: pretty; }
 
 /* The scrim keeps the headline readable over any wallpaper. A plain vertical
    fade, not a coloured gradient: a coloured one tinted the artwork and fought
-   the accent colour. */
+   the accent colour.
+
+   The horizontal (90deg) layer is REMOVED. It darkened the left 46% so white type
+   would sit on it, which was needed when the hero was Acheron - a wallpaper whose
+   left side measured 92/255. "Girl Behind Curtains" is 3/255 across its whole left
+   half, so the layer was darkening black. Worse, darkening near-black with a
+   gradient is where banding appears: eight-bit colour has only a handful of values
+   between 0 and 8, so the ramp shows as visible steps. That is what the visitor
+   described as a shadow left on the wallpaper.
+
+   The vertical fade stays, because it does a different job - it runs the section
+   into the page background so the hero has no hard bottom edge - and it is applied
+   where the frame is bright (the artwork), not where it is already black. */
 .hero-scrim {
   position: absolute;
   inset: 0;
-  /* Lighter than before, because the image carries its own left-hand ramp. The
-     bottom fade still runs into the page background so the section has no edge. */
   background:
-    linear-gradient(180deg, rgba(8,10,12,.16) 0%, rgba(8,10,12,.42) 64%, var(--base) 100%),
-    linear-gradient(90deg, rgba(8,10,12,.62) 0%, rgba(8,10,12,.22) 46%, rgba(8,10,12,0) 100%);
+    linear-gradient(180deg, rgba(8,10,12,0) 0%, rgba(8,10,12,.18) 62%, var(--base) 100%);
 }
 
 .hero-in { position: relative; z-index: 1; }

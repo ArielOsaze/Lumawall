@@ -35,6 +35,8 @@ CHECKS = [
      ['python', 'tools/check-numbers.py']),
     ('every product image is staged and on screen',
      ['python', 'tools/check-promo-images.py']),
+    ('the hero black matches the wallpaper',
+     ['python', 'tools/check-hero-black.py']),
     ('the promo backgrounds vary',
      ['python', 'tools/measure-promo-backgrounds.py']),
     ('no empty or frozen frames',

@@ -77,14 +77,24 @@ SRC_DURATION = duration_of(SRC)
 # before the end of the main part.
 XFADE_OFFSET = SRC_DURATION - XFADE * 2
 
-# The left-hand darkening, as a smooth alpha ramp. A drawbox left a visible
-# vertical seam on the earlier hero image, so this uses a per-pixel ramp.
-DARKEN = (
-    "format=rgba,"
-    "geq="
-    "r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
-    f"a='255*(0.34+0.66*pow(min(1,max(0,X/{int(W * 0.58)})),1.6))'"
-)
+# The left-hand darkening is REMOVED, and this is the important part of the file.
+#
+# It was a per-pixel alpha ramp that darkened the left 58% of the frame so white type
+# would sit on it. The reasoning was sound for the previous hero (Acheron), whose left
+# side was only 92/255 - but "Girl Behind Curtains" is already 3/255 across its entire
+# left half. The ramp was therefore darkening a surface that was already black, and in
+# doing so it replaced a clean flat black with a gradient.
+#
+# A gradient in near-black is where banding lives. Eight-bit colour has only a few
+# distinct values between 0 and 8, so a smooth ramp across 1100 px produces visible
+# steps - the visitor described it as "masih ada bayangannya" (there is still a
+# shadow), and a zoom of the transition confirmed stepped bands rather than a smooth
+# fade. The fix is not a dither or a blur; it is to stop adding a gradient to a
+# wallpaper that does not need one.
+#
+# If a future hero does need darkening for the type, do it in the page's scrim (CSS,
+# full precision) rather than baked into the video.
+DARKEN = None
 
 # Where the subject sits after the crop. 0.62 keeps her in the right third.
 CROP_ANCHOR = 0.62
@@ -93,10 +103,11 @@ filters = (
     # 1. crop to the hero's aspect, subject kept right
     f'scale={W}:{H}:force_original_aspect_ratio=increase,'
     f'crop={W}:{H}:(iw-{W})*{CROP_ANCHOR}:0,'
-    # 2. a slight grade so the artwork and the accent sit together
-    'eq=brightness=-0.05:contrast=1.08:saturation=0.98,'
-    # 3. the left-hand ramp for the type
-    f'{DARKEN},'
+    # 2. NO grade. The previous version applied brightness -0.05, contrast 1.08 and
+    #    saturation 0.98 "so the artwork and the accent sit together". On a near-black
+    #    wallpaper that mostly means compressing the bottom of the range, which is
+    #    exactly where banding is visible. The wallpaper is the product; show it as
+    #    the app shows it.
     'format=yuv420p'
 )
 
