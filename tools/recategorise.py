@@ -35,6 +35,7 @@ from atomicjson import write_json, read_json
 CATALOG = ROOT / "LumaWall" / "catalog.json"
 MB_STATE = ROOT / "build" / "catalog-scrape" / "done.json"
 DH_STATE = ROOT / "build" / "catalog-desktophut" / "done.json"
+MW_ADOPTED = ROOT / "build" / "catalog-moewalls" / "adopted.json"
 MATURE_SELECTED = ROOT / "mature-audit" / "selected.json"
 
 # Named games. An entry that names one is a game wallpaper even when it also names an anime,
@@ -234,6 +235,17 @@ def load_tags():
         for item in data.get("items", []):
             tags = {t.lower() for t in item.get("_tags", [])}
             by_url[item.get("videoUrl", "")] = tags
+
+    # moewalls has no /media/<id>/ in its urls, so it can only be keyed by url. Its tags
+    # live in the adopter's output because the merger drops private fields before the
+    # catalogue is written - which is why 6792 entries were recategorised from their
+    # titles alone and "Autumn Jiraiya" ended up in Abstract.
+    data = read_json(MW_ADOPTED, None)
+    if isinstance(data, list):
+        for item in data:
+            tags = {str(t).lower() for t in (item.get("_tags") or [])}
+            if tags:
+                by_url[item.get("videoUrl", "")] = tags
 
     return by_id, by_url
 

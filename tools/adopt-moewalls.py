@@ -84,6 +84,19 @@ def safe_url(url):
     return urlunsplit((parts.scheme, parts.netloc, path, query, parts.fragment))
 
 
+def _bare_tag(tag):
+    """A moewalls tag without its curation marker.
+
+    The site writes a trailing -z on some tags ("chainsaw-man-z", "colorful-z"). It is a
+    curation marker rather than part of the name, and leaving it on stops the tag from
+    matching the word lists: "chainsaw-man-z" never equals "chainsaw-man".
+    """
+    t = str(tag).lower().strip()
+    if len(t) > 2 and t.endswith("-z"):
+        t = t[:-2]
+    return t
+
+
 def measure(url, attempts=4):
     """The video's real pixel size, and whether the file is a video at all.
 
@@ -358,6 +371,19 @@ def main():
             "author": "%s community" % e["host"].capitalize(),
             "animation": "",
             "resolution": "%dx%d" % (w, h),
+            # The source's own tags travel with the entry. Without them the next stage
+            # can only guess from the title, and it guessed badly: it moved "Autumn
+            # Jiraiya" and "Bloody Makima" to Abstract and "Chainsaw Devil" to Dynamic
+            # because a moewalls entry carries no /media/<id>/ in its url, so the tag
+            # lookup found nothing and the title was all that was left.
+            #
+            # The site writes a trailing -z on some tags ("chainsaw-man-z", "colorful-z").
+            # It is a curation marker, not part of the name, so it is stripped here.
+            "_tags": sorted({_bare_tag(t) for t in (e.get("tags") or []) if _bare_tag(t)}),
+            # The category computed from the site's own category and tags. The next stage
+            # uses it as evidence in its own right: for these entries it is a real
+            # classification, and it is better than anything the title can suggest.
+            "_source_category": categorise(e, e["tags"], title),
         })
 
     write_json(OUT / "adopted.json", adopted)
