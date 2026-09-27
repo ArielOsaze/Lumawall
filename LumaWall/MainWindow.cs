@@ -3075,7 +3075,10 @@ namespace LumaWall
             }
 
             var image = new DrawingImage(canvas.Drawing);
-            image.Freeze();
+            // Not frozen: a DrawingImage built from a DrawingVisual's Drawing cannot be
+            // frozen - the visual still owns it - and calling Freeze() throws
+            // "This Freezable cannot be frozen" as an unhandled UI exception. The image is
+            // assigned to one card and never shared, so not freezing it costs nothing.
             target.Source = image;
         }
 

@@ -50,19 +50,27 @@ UA = {
     'Referer': 'https://motionbgs.com/',
 }
 
-# The video is .../media/<id>/<slug>.<W>x<H>.mp4 and the still is the same path with the
-# resolution suffix REMOVED and the extension changed: .../media/<id>/<slug>.jpg.
+# The video is .../media/<id>/<slug>.<W>x<H>.mp4. There are TWO still patterns on the
+# live site and an entry uses one or the other - not a mix, a generation difference:
 #
-# Verified against the live site. Keeping the resolution - <slug>.3840x2160.jpg - returns
-# 404, which is the trap: the resolution looks like part of the name and it is not. An
-# earlier attempt that kept it matched only 22% of entries; dropping it matches 78%.
-VIDEO_RE = re.compile(r'^(https?://motionbgs\.com/media/\d+/[^/]+?)\.\d+x\d+\.mp4$')
+#   .../media/<id>/<slug>.jpg                  older entries
+#   .../media/<id>/<slug>.<W>x<H>.jpg          newer entries
+#
+# Verified: for /media/145/eighty-six-episode-22.3840x2160.mp4 the plain .jpg is 404 and
+# the resolution-preserving one is 200 image/jpeg. For /media/5328/2b-nier-automata-
+# fighting-fate.3840x2160.mp4 it is the reverse. Trying only one pattern is why the first
+# pass covered 78% and the second covered 22% - the two passes together cover the set, so
+# every candidate is probed and the first that answers is used.
+VIDEO_RE = re.compile(r'^(https?://motionbgs\.com/media/\d+/[^/]+?)\.(\d+x\d+)\.mp4$')
 
 
-def still_for(video_url):
-    """The still image that belongs to a motionbgs video, or '' if the url is not one."""
+def stills_for(video_url):
+    """Candidate still images for a motionbgs video, most likely first."""
     m = VIDEO_RE.match(video_url or '')
-    return m.group(1) + '.jpg' if m else ''
+    if not m:
+        return []
+    base, res = m.group(1), m.group(2)
+    return [base + '.' + res + '.jpg', base + '.jpg']
 
 
 def probe(url):
@@ -78,6 +86,18 @@ def probe(url):
         return False
 
 
+def first_still(video_url):
+    """The first candidate still that really answers, or '' when none does.
+
+    Returns the URL rather than a boolean because the caller has to store the one that
+    worked - the two patterns are not interchangeable.
+    """
+    for candidate in stills_for(video_url):
+        if probe(candidate):
+            return candidate
+    return ''
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--probe', type=int, default=0, help='check this many before applying')
@@ -90,7 +110,7 @@ def main():
     missing = [e for e in entries if not (e.get('thumbnailUrl') or '').strip()]
     print('  without a thumbnail: %d' % len(missing))
 
-    fixable = [e for e in missing if still_for(e.get('videoUrl'))]
+    fixable = [e for e in missing if stills_for(e.get('videoUrl'))]
     print('  of those, motionbgs with a derivable still: %d' % len(fixable))
 
     if not fixable:
@@ -103,11 +123,11 @@ def main():
         sample = random.sample(fixable, min(args.probe, len(fixable)))
         ok = 0
         with cf.ThreadPoolExecutor(max_workers=8) as ex:
-            for e, good in zip(sample, ex.map(lambda x: probe(still_for(x['videoUrl'])), sample)):
+            for e, good in zip(sample, ex.map(lambda x: first_still(x['videoUrl']), sample)):
                 if good:
                     ok += 1
                 else:
-                    print('    MISS  %s' % still_for(e['videoUrl']))
+                    print('    MISS  %s' % e['videoUrl'])
         print()
         print('  probed %d, served an image: %d (%.0f%%)'
               % (len(sample), ok, 100.0 * ok / len(sample)))
@@ -126,7 +146,7 @@ def main():
 
     # Verify every still before writing it.
     #
-    # The pattern matches 78% of entries, so applying it blindly would leave 22% pointing
+    # Neither pattern is universal, so applying one blindly would leave entries pointing
     # at a 404 - a black tile replaced by a broken image, which is not an improvement. The
     # ones that do not resolve are left with an empty thumbnailUrl, and the app draws its
     # own placeholder for those.
@@ -135,16 +155,16 @@ def main():
     verified = {}
     done = 0
     with cf.ThreadPoolExecutor(max_workers=12) as ex:
-        futures = {ex.submit(probe, still_for(e['videoUrl'])): e for e in fixable}
+        futures = {ex.submit(first_still, e['videoUrl']): e for e in fixable}
         for future in cf.as_completed(futures):
             e = futures[future]
             done += 1
             try:
                 good = future.result()
             except Exception:
-                good = False
+                good = ''
             if good:
-                verified[id(e)] = still_for(e['videoUrl'])
+                verified[id(e)] = good
             if done % 500 == 0:
                 print('    %d/%d  verified %d' % (done, len(fixable), len(verified)))
 
