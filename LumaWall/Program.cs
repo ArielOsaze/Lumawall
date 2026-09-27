@@ -296,6 +296,183 @@ namespace LumaWall
         [DataMember] public string Language = "id";
         [DataMember] public bool ShowMature = false;
         [DataMember] public Dictionary<string, Dictionary<string, string>> DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
+
+        // ── per-display look and playback ────────────────────────────────────
+        //
+        // Keyed by device name. A monitor with no entry uses the defaults, so an
+        // existing config keeps behaving exactly as before this was added.
+        [DataMember] public Dictionary<string, DisplayOptions> Displays = new Dictionary<string, DisplayOptions>(StringComparer.OrdinalIgnoreCase);
+
+        // ── one wallpaper stretched across several monitors ──────────────────
+        //
+        // A separate concept from MonitorVideos, not a special value inside it: a span
+        // group replaces the per-monitor wallpapers for its displays while it is on, and
+        // turning it off has to leave every monitor's own wallpaper untouched.
+        [DataMember] public List<SpanGroup> SpanGroups = new List<SpanGroup>();
+
+        // ── the desktop timer ────────────────────────────────────────────────
+        [DataMember] public TimerConfig Timer = new TimerConfig();
+
+        /// <summary>
+        /// Replaces every null collection with an empty one.
+        ///
+        /// DataContractJsonSerializer does not run a field initializer for a member that
+        /// is absent from the JSON. A config written before a collection existed therefore
+        /// deserializes with that member null - not empty - and the first caller that
+        /// enumerates it throws ArgumentNullException. That is how a saved config from the
+        /// previous build made the Studio page crash on open: SpanGroups was null and the
+        /// page called ToList() on it.
+        ///
+        /// Called after every load, so no caller has to defend against a null collection.
+        /// </summary>
+        public void Normalise()
+        {
+            if (MonitorVideos == null) MonitorVideos = new Dictionary<string, string>();
+            if (Library == null) Library = new List<string>();
+            if (DisplayProfiles == null) DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
+            if (Displays == null) Displays = new Dictionary<string, DisplayOptions>(StringComparer.OrdinalIgnoreCase);
+            if (SpanGroups == null) SpanGroups = new List<SpanGroup>();
+            if (Timer == null) Timer = new TimerConfig();
+            // A group whose device list is null would fail the same way one level deeper.
+            foreach (SpanGroup group in SpanGroups)
+            {
+                if (group == null) continue;
+                if (group.Devices == null) group.Devices = new List<string>();
+                if (group.Path == null) group.Path = "";
+                if (group.Name == null) group.Name = "";
+            }
+        }
+
+        public DisplayOptions OptionsFor(string deviceName)
+        {
+            if (string.IsNullOrEmpty(deviceName)) return new DisplayOptions();
+            DisplayOptions options;
+            if (Displays.TryGetValue(deviceName, out options) && options != null) return options;
+            options = new DisplayOptions();
+            Displays[deviceName] = options;
+            return options;
+        }
+
+        /// <summary>
+        /// The span group a monitor belongs to, or null. Returned rather than a bool so the
+        /// caller can read the group's path and its full device list - which is what the
+        /// wallpaper window needs to know which slice of the picture it is showing.
+        /// </summary>
+        public SpanGroup SpanGroupFor(string deviceName)
+        {
+            foreach (SpanGroup group in SpanGroups)
+            {
+                if (group == null || !group.Enabled) continue;
+                foreach (string device in group.Devices)
+                    if (string.Equals(device, deviceName, StringComparison.OrdinalIgnoreCase)) return group;
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Everything the user can change about how one display's wallpaper looks and plays.
+    ///
+    /// Defaults are the identity: brightness 1, contrast 1, saturation 1, no flip, cover
+    /// fit, rate 1. A display with default options must render byte-identically to the
+    /// build before these existed, which is why every value here is neutral rather than
+    /// merely "reasonable".
+    /// </summary>
+    [DataContract]
+    public sealed class DisplayOptions
+    {
+        // colour
+        [DataMember] public double Brightness = 1.0;   // 0.2 .. 2.0
+        [DataMember] public double Contrast = 1.0;     // 0.2 .. 2.0
+        [DataMember] public double Saturation = 1.0;   // 0 .. 2
+        [DataMember] public double Hue = 0.0;          // -180 .. 180 degrees
+        [DataMember] public double Gamma = 1.0;        // 0.4 .. 2.2
+        [DataMember] public string Filter = "none";    // none | grayscale | sepia | cool | warm | vivid | noir | dream
+
+        // flip
+        [DataMember] public bool FlipHorizontal = false;
+        [DataMember] public bool FlipVertical = false;
+
+        // HDR
+        //
+        // Tone mapping, not HDR output: the source is SDR video and the display may or may
+        // not be HDR, so this is a look (highlight roll-off plus exposure) rather than a
+        // transfer-function change. It is applied in the page's WebGL pass so it costs no
+        // system RAM and does not touch the decoded frames.
+        [DataMember] public bool HdrToneMap = false;
+        [DataMember] public double HdrExposure = 0.0;   // -1 .. 1 stops
+        [DataMember] public double HdrHighlight = 0.7;  // 0 .. 1 roll-off point
+
+        // framing
+        [DataMember] public string Fit = "cover";      // cover | contain | fill | center | tile
+        [DataMember] public double Zoom = 1.0;         // 0.5 .. 3
+        [DataMember] public double OffsetX = 0.0;      // -1 .. 1 of the frame
+        [DataMember] public double OffsetY = 0.0;
+
+        // playback
+        [DataMember] public double PlaybackRate = 1.0; // 0.25 .. 4
+        [DataMember] public bool PingPong = false;     // play forward, then backward
+
+        /// <summary>True when nothing here would change a single pixel.</summary>
+        public bool IsNeutral()
+        {
+            return Math.Abs(Brightness - 1.0) < 0.001
+                && Math.Abs(Contrast - 1.0) < 0.001
+                && Math.Abs(Saturation - 1.0) < 0.001
+                && Math.Abs(Hue) < 0.001
+                && Math.Abs(Gamma - 1.0) < 0.001
+                && (Filter == null || Filter == "none")
+                && !FlipHorizontal && !FlipVertical
+                && !HdrToneMap
+                && (Fit == null || Fit == "cover")
+                && Math.Abs(Zoom - 1.0) < 0.001
+                && Math.Abs(OffsetX) < 0.001 && Math.Abs(OffsetY) < 0.001
+                && Math.Abs(PlaybackRate - 1.0) < 0.001
+                && !PingPong;
+        }
+    }
+
+    /// <summary>
+    /// One wallpaper spanning several adjacent monitors, so a picture wider than any single
+    /// screen reads as one continuous image across the desktop.
+    ///
+    /// The displays are ordered left to right by their screen coordinates rather than by
+    /// the order they were added, because the user's mental model is "the one on the left
+    /// is the left part of the picture" - and device names carry no such meaning.
+    /// </summary>
+    [DataContract]
+    public sealed class SpanGroup
+    {
+        [DataMember] public string Name = "";
+        [DataMember] public string Path = "";
+        [DataMember] public List<string> Devices = new List<string>();
+        [DataMember] public bool Enabled = false;
+    }
+
+    /// <summary>
+    /// The desktop timer: a small always-on-top readout the user can place anywhere.
+    ///
+    /// Shape, size and position are all options rather than a fixed design, because the
+    /// right answer depends on the wallpaper behind it - a bright wallpaper needs a
+    /// different treatment from a dark one, and the corner that is empty is different on
+    /// every desktop.
+    /// </summary>
+    [DataContract]
+    public sealed class TimerConfig
+    {
+        [DataMember] public bool Enabled = false;
+        [DataMember] public string Mode = "countdown";   // countdown | clock | stopwatch
+        [DataMember] public int Seconds = 300;           // countdown length
+        [DataMember] public string Shape = "pill";       // pill | circle | square | bare
+        [DataMember] public int Scale = 100;             // 50 .. 250 percent
+        [DataMember] public string Position = "top-right"; // 9 named positions
+        [DataMember] public int OffsetX = 28;
+        [DataMember] public int OffsetY = 28;
+        [DataMember] public double Opacity = 0.88;       // 0.2 .. 1
+        [DataMember] public string Accent = "#7DD3FC";
+        [DataMember] public string Face = "#0B0E14";
+        [DataMember] public bool ShowSeconds = true;
+        [DataMember] public bool BlinkAtEnd = true;
     }
 
     [DataContract]
@@ -345,9 +522,11 @@ namespace LumaWall
                 {
                     var value = (AppConfig)new DataContractJsonSerializer(typeof(AppConfig)).ReadObject(stream);
                     if (value == null) return new AppConfig();
-                    if (value.MonitorVideos == null) value.MonitorVideos = new Dictionary<string, string>();
-                    if (value.Library == null) value.Library = new List<string>();
-                    if (value.DisplayProfiles == null) value.DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
+                    // One call instead of a growing list of null checks here. A member that
+                    // is absent from the JSON deserializes to null, not to its initializer,
+                    // so every collection added since the file was written needs this - and
+                    // the list only grows. Normalise owns that knowledge.
+                    value.Normalise();
                     return value;
                 }
             }
@@ -358,6 +537,7 @@ namespace LumaWall
                 if (recovered != null)
                 {
                     AppLog.Write("Recovered configuration from config.json.bak");
+                    recovered.Normalise();
                     return recovered;
                 }
                 // Never let a later save silently destroy an unreadable but
@@ -678,6 +858,23 @@ namespace LumaWall
                 if (IsIconic(hwnd)) return true;
                 if (requireZoomed && !IsZoomed(hwnd)) return true;
 
+                // A window that the Desktop Window Manager has cloaked is not on screen,
+                // whatever IsWindowVisible says.
+                //
+                // Windows keeps windows alive after their app is closed: a UWP app the
+                // user dismissed - Settings, Photos, the Store - can leave both its own
+                // window and its ApplicationFrameHost frame behind, still reporting
+                // IsWindowVisible = true and still holding the full-screen rectangle they
+                // had while open. Only DWM knows they are gone, and it says so through
+                // DWMWA_CLOAKED.
+                //
+                // Measured on this machine: a closed Settings window (cloaked = 2, its
+                // process not even responding) and its frame both covered DISPLAY1 by the
+                // app's 98% rule, so the primary monitor's wallpaper was paused
+                // permanently - applied, visible, and frozen - with the log insisting the
+                // pause was correct.
+                if (IsCloaked(hwnd)) return true;
+
                 uint pid;
                 GetWindowThreadProcessId(hwnd, out pid);
                 if (pid == ownPid) return true;
@@ -704,6 +901,37 @@ namespace LumaWall
 
             return covered;
         }
+
+        /// <summary>
+        /// True when the Desktop Window Manager has cloaked this window - that is, it is
+        /// not on screen even though IsWindowVisible says it is.
+        ///
+        /// Cloaking is how Windows hides a window that its application still owns: a UWP
+        /// app the user closed keeps its window and its ApplicationFrameHost frame, both
+        /// reporting themselves visible at full-screen size, and only DWM knows they are
+        /// gone. Without this test such a window is indistinguishable from a maximised
+        /// game, so a wallpaper on that monitor is paused permanently.
+        ///
+        /// The return values are 1 (the application cloaked it), 2 (the system did) and
+        /// 4 (its parent is cloaked). All three mean the same thing here. A window DWM
+        /// does not manage returns a failure code, and that is treated as uncloaked so
+        /// this can never hide a real application window.
+        /// </summary>
+        private static bool IsCloaked(IntPtr hwnd)
+        {
+            try
+            {
+                int cloaked;
+                int hr = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out cloaked, sizeof(int));
+                return hr == 0 && cloaked != 0;
+            }
+            catch { return false; }
+        }
+
+        private const int DWMWA_CLOAKED = 14;
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
 
         /// <summary>
         /// Windows that must never count as "an app covering the screen".
@@ -855,6 +1083,42 @@ namespace LumaWall
         private bool initialCompletionReported;
         private int mediaRequest;
         private string pagePath;
+        // Media asked for before the page could accept a script. Without this the
+        // request was dropped silently and the caller logged success anyway.
+        private string pendingMediaPath;
+        // Set when the page confirms it decoded a frame. Cleared on every new request,
+        // so the watchdog in RetryUnconfirmedMedia knows the difference between "still
+        // loading" and "the page has gone quiet".
+        private bool mediaConfirmed;
+        private int mediaRetryCount;
+        private bool mediaGaveUp;
+        // Set once per media request when the page had to be rebuilt. Keeps the recovery
+        // from turning into a reload loop if the fresh page also fails to answer.
+        private bool pageReloadedForRequest;
+        private DateTime lastMediaAttempt = DateTime.UtcNow;
+        // The periodic "is the page still running script?" check. A minute is frequent
+        // enough to notice a dead page long before a user does, and rare enough that the
+        // probe itself cannot cost anything measurable.
+        private DateTime lastLivenessCheck = DateTime.UtcNow;
+        private bool livenessCheckInFlight;
+        // Consecutive probes that came back empty. Two are needed before a page is rebuilt,
+        // so a single transient answer cannot destroy a page that is working.
+        private int deadPageStrikes;
+        private const int DeadPageStrikes = 2;
+        // How long a page is left alone after a playback command before it is probed.
+        // Long enough for a seek or a play() to settle, short enough that a real fault is
+        // still noticed within the same minute.
+        private const double SettleSeconds = 8;
+        // The video position at the previous reconcile, used to notice an element that is
+        // unpaused but not advancing. Negative means "no reading yet".
+        private double lastSeenTime = -1;
+        private const double LivenessCheckSeconds = 20;
+        // How long to wait for the page to confirm before re-sending, and how many times
+        // to re-send before reporting the wallpaper failed. Five seconds is well beyond
+        // a local file's decode time; three attempts is enough for a transient stall and
+        // short enough that a genuinely broken file surfaces instead of hanging.
+        private const double MediaRetrySeconds = 5;
+        private const int MaxMediaRetries = 3;
         // How often a paused wallpaper has its memory policy re-applied. See
         // MaintainPausedMemory for why a minute and not the health tick's two seconds.
         private const double MemoryMaintenanceSeconds = 60;
@@ -1047,6 +1311,9 @@ namespace LumaWall
                     AppLog.Write("Permanent wallpaper host ready " + screen.DeviceName);
                     FlushPendingPlaybackSync();
                     QueueMedia(mediaPath);
+                    // Anything asked for while the page was loading goes now, and it
+                    // goes after the initial media so the newest request wins.
+                    FlushPendingMedia();
                 };
                 webView.CoreWebView2.Navigate(new Uri(pagePath, UriKind.Absolute).AbsoluteUri);
             }
@@ -1154,16 +1421,217 @@ namespace LumaWall
         {
             return @"<!doctype html><html><head><meta charset='utf-8'><style>
  html,body,#stage{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
- .media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;opacity:1;z-index:1}
- </style></head><body><div id='stage'></div><script>
+ #stage{position:relative}
+ .media{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;opacity:1;z-index:1;
+        object-fit:cover;object-position:50% 50%;transform-origin:50% 50%;backface-visibility:hidden}
+ #tone{position:absolute;width:0;height:0;pointer-events:none}
+</style></head><body><div id='stage'></div><svg id='tone' xmlns='http://www.w3.org/2000/svg'><filter id='lumaTone' color-interpolation-filters='sRGB'><feComponentTransfer><feFuncR id='toneR' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncG id='toneG' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncB id='toneB' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncA id='toneA' type='table' tableValues='0 1'/></feComponentTransfer></filter></svg>
+<script>
  (function(){
   var stage=document.getElementById('stage'),active=null,generation=0,paused=false,muted=true;
+  // The look and playback settings, replaced wholesale by apply(). Kept as one object so
+  // every reader sees a consistent set rather than a half-applied mixture.
+  var opts=null;
+  // Span geometry: when this display is one slice of a picture that continues onto the
+  // next monitor, this is the union size and this display's offset inside it.
+  var span=null;
+  // Playback rate is remembered separately from the element, because a new element
+  // created by prepare() has to be given the rate again - it starts at 1.
+  var rate=1,pingpong=false,ppDir=1,ppArmed=false;
   function report(v){try{window.chrome.webview.postMessage(v)}catch(e){}}
   function remove(el){if(!el)return;try{el.pause()}catch(e){};try{el.removeAttribute('src');el.load()}catch(e){};try{el.remove()}catch(e){}}
-  function firstFrame(el,isImage,ok,fail){var done=false;function ready(){if(done)return;done=true;if(!isImage&&el.requestVideoFrameCallback)el.requestVideoFrameCallback(ok);else requestAnimationFrame(ok)}if(isImage){el.onload=ready;el.onerror=fail}else{el.addEventListener('loadeddata',ready,{once:true});el.addEventListener('canplay',ready,{once:true});el.addEventListener('error',fail,{once:true});if(el.readyState>=2)ready()}}
+
+  // ── the tone curve ────────────────────────────────────────────────────────
+  //
+  // Gamma, exposure and highlight roll-off folded into one lookup table, applied by an
+  // SVG feComponentTransfer. A table rather than the feComponentTransfer 'gamma' type
+  // because the roll-off is not a pure power curve, and one node is cheaper than three.
+  //
+  // The curve is built in JS and written into the filter, so changing a slider costs a
+  // table rebuild - a few hundred arithmetic operations - and no repaint of the video.
+  function toneTable(){
+    var exposure=opts?Number(opts.hdrExposure||0):0;
+    var highlight=opts?Number(opts.hdrHighlight||0.7):0.7;
+    var gamma=opts?Number(opts.gamma||1):1;
+    var hdr=opts&&opts.hdrToneMap;
+    var n=17,values=[];
+    for(var i=0;i<n;i++){
+      var x=i/(n-1);
+      var y=Math.pow(x,gamma);
+      if(hdr){
+        y=y*Math.pow(2,exposure);
+        if(y>highlight&&highlight<1){
+          var over=(y-highlight)/(1-highlight);
+          y=highlight+(1-highlight)*(1-Math.exp(-over));
+        }
+      }
+      values.push(Math.max(0,Math.min(1,y)).toFixed(4));
+    }
+    return values.join(' ');
+  }
+
+  function needsTone(){
+    if(!opts)return false;
+    return !!opts.hdrToneMap||Math.abs(Number(opts.gamma||1)-1)>0.001;
+  }
+
+  function refreshTone(){
+    // All three channels share one table. The ids are toneR/toneG/toneB - looking up a
+    // single node called 'toneTable' found nothing, so the curve was never written and
+    // every tone-mapped wallpaper silently rendered as if the option were off.
+    var table=toneTable();
+    var channels=['toneR','toneG','toneB'];
+    for(var i=0;i<channels.length;i++){
+      var node=document.getElementById(channels[i]);
+      if(node)node.setAttribute('tableValues',table);
+    }
+  }
+
+  // ── the CSS filter chain ──────────────────────────────────────────────────
+  //
+  // Order matters: the tone curve first, because it is the transfer function, then the
+  // colour adjustments, because they are grades applied to the tone-mapped image. A
+  // grade before a transfer function is a different picture, and the one users expect
+  // is tone first.
+  var FILTERS={
+    grayscale:'grayscale(1)',
+    sepia:'sepia(0.85)',
+    cool:'hue-rotate(-12deg) saturate(1.08) brightness(1.02)',
+    warm:'hue-rotate(10deg) saturate(1.12) brightness(1.03)',
+    vivid:'saturate(1.45) contrast(1.08)',
+    noir:'grayscale(1) contrast(1.35) brightness(0.95)',
+    dream:'saturate(1.2) brightness(1.06) contrast(0.92) blur(0.4px)'
+  };
+
+  function buildFilter(){
+    if(!opts)return '';
+    var parts=[];
+    if(needsTone())parts.push('url(#lumaTone)');
+    var extra=FILTERS[opts.filter];
+    if(extra)parts.push(extra);
+    var brightness=Number(opts.brightness);if(isFinite(brightness)&&Math.abs(brightness-1)>0.001)parts.push('brightness('+brightness.toFixed(3)+')');
+    var contrast=Number(opts.contrast);if(isFinite(contrast)&&Math.abs(contrast-1)>0.001)parts.push('contrast('+contrast.toFixed(3)+')');
+    var saturation=Number(opts.saturation);if(isFinite(saturation)&&Math.abs(saturation-1)>0.001)parts.push('saturate('+saturation.toFixed(3)+')');
+    var hue=Number(opts.hue);if(isFinite(hue)&&Math.abs(hue)>0.001)parts.push('hue-rotate('+hue.toFixed(2)+'deg)');
+    return parts.join(' ');
+  }
+
+  function buildTransform(){
+    if(!opts)return '';
+    var parts=[];
+    var zoom=Number(opts.zoom);if(!isFinite(zoom)||zoom<=0)zoom=1;
+    if(Math.abs(zoom-1)>0.001)parts.push('scale('+zoom.toFixed(4)+')');
+    if(opts.flipHorizontal)parts.push('scaleX(-1)');
+    if(opts.flipVertical)parts.push('scaleY(-1)');
+    return parts.join(' ');
+  }
+
+  function buildObjectPosition(){
+    if(!opts)return '50% 50%';
+    var x=Number(opts.offsetX),y=Number(opts.offsetY);
+    if(!isFinite(x))x=0;if(!isFinite(y))y=0;
+    return (50+x*50).toFixed(2)+'% '+(50+y*50).toFixed(2)+'%';
+  }
+
+  function objectFitFor(fit){
+    switch(fit){
+      case 'contain':return 'contain';
+      case 'fill':return 'fill';
+      case 'center':return 'none';
+      case 'stretch':return 'fill';
+      case 'cover':default:return 'cover';
+    }
+  }
+
+  // ── applying the settings ─────────────────────────────────────────────────
+  //
+  // A span changes the element's GEOMETRY rather than its CSS: the picture is drawn at
+  // the size of the whole multi-monitor union and shifted so this monitor shows its own
+  // slice. That is what makes two adjacent screens read as one continuous image - each
+  // window renders the same video, and each shows the part of it that belongs to it.
+  function layout(el){
+    if(!el)return;
+    if(span&&span.totalW>0&&span.totalH>0){
+      var zoom=Number(opts&&opts.zoom);if(!isFinite(zoom)||zoom<=0)zoom=1;
+      var w=span.totalW*zoom,h=span.totalH*zoom;
+      var left=(span.totalW-w)/2-span.x;
+      var top=(span.totalH-h)/2-span.y;
+      // The longhands are set and `inset` is deliberately NOT used here: it is a shorthand
+      // for top/right/bottom/left, so assigning `inset:auto` wipes the left and top that
+      // were just computed. That is what made every slice render at 0,0 - both monitors
+      // showed the left half of the picture and the span looked like two copies.
+      el.style.right='auto';
+      el.style.bottom='auto';
+      el.style.width=w+'px';
+      el.style.height=h+'px';
+      el.style.left=left+'px';
+      el.style.top=top+'px';
+      el.style.objectFit='fill';
+      el.style.objectPosition='50% 50%';
+      // In span mode the geometry already carries the zoom, so the transform must not
+      // apply it a second time.
+      el.style.transform=buildTransform().replace(/scale\([^)]*\)/,'');
+      return;
+    }
+    el.style.right='auto';
+    el.style.bottom='auto';
+    el.style.width='100%';
+    el.style.height='100%';
+    el.style.left='0';
+    el.style.top='0';
+    el.style.objectFit=objectFitFor(opts?opts.fit:'cover');
+    el.style.objectPosition=buildObjectPosition();
+    el.style.transform=buildTransform();
+  }
+
+  function applyTo(el){
+    if(!el)return;
+    el.style.filter=buildFilter();
+    layout(el);
+    if(el.tagName==='VIDEO'){
+      var r=Number(opts&&opts.playbackRate);
+      if(!isFinite(r)||r<=0)r=1;
+      rate=r;
+      try{el.playbackRate=rate}catch(e){}
+      pingpong=!!(opts&&opts.pingPong);
+      try{el.loop=!pingpong}catch(e){}
+      ppArmed=pingpong;
+    }
+  }
+
+  function applyToActive(){applyTo(active)}
+
+  function apply(options){
+    opts=options||null;
+    span=opts&&opts.span?opts.span:null;
+    refreshTone();
+    applyToActive();
+    report('options-applied'+(opts?'':' none'));
+    return true;
+  }
+
+  // Ping-pong: the element loops by default, which cannot play backwards. When the mode
+  // is on, loop is disabled and this reverses the direction at each end, so the picture
+  // plays forward and then back rather than jumping.
+  function watchDirection(video,myGeneration){
+    if(!pingpong)return;
+    function tick(){
+      if(myGeneration!==generation||video!==active||!video.isConnected)return;
+      if(video.duration&&isFinite(video.duration)){
+        var t=video.currentTime;
+        if(ppDir>0&&t>=video.duration-0.06){ppDir=-1;try{video.playbackRate=-rate}catch(e){}}
+        else if(ppDir<0&&t<=0.06){ppDir=1;try{video.playbackRate=rate}catch(e){}}
+      }
+      if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,120);
+    }
+    if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,120);
+  }
+
+  function nextPaint(fn){var fired=false;function once(){if(fired)return;fired=true;try{fn()}catch(e){}}try{requestAnimationFrame(once)}catch(e){}setTimeout(once,50)}
+  function firstFrame(el,isImage,ok,fail){var done=false;function ready(){if(done)return;done=true;if(isImage||paused||el.paused||!el.requestVideoFrameCallback){nextPaint(ok);return}var fired=false;var timer=setTimeout(function(){if(fired)return;fired=true;ok()},500);el.requestVideoFrameCallback(function(){if(fired)return;fired=true;clearTimeout(timer);ok()})}if(isImage){el.onload=ready;el.onerror=fail}else{el.addEventListener('loadeddata',ready,{once:true});el.addEventListener('canplay',ready,{once:true});el.addEventListener('error',fail,{once:true});if(el.readyState>=2)ready()}}
   function element(src,isImage){var el=document.createElement(isImage?'img':'video');el.className='media';el.style.opacity='0';el.src=src;if(!isImage){el.preload='auto';el.playsInline=true;el.loop=true;el.muted=muted;el.disablePictureInPicture=true}stage.appendChild(el);return el}
   function watchLoop(video,myGeneration){var last=0;function tick(){if(myGeneration!==generation||video!==active||!video.isConnected)return;var now=video.currentTime||0;if(last>0.5&&now+0.5<last)report('loop-seamless');last=now;if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}
-  function prepare(src,isImage,newMuted,token,fps){generation++;var myGeneration=generation;muted=newMuted;var next=element(src,isImage);if(!isImage){next.muted=muted;next.play().catch(function(){})}firstFrame(next,isImage,function(){if(myGeneration!==generation){remove(next);return}var previous=active;next.style.zIndex='2';next.style.transition='opacity 120ms linear';active=next;if(paused&&!isImage)active.pause();requestAnimationFrame(function(){next.style.opacity='1';setTimeout(function(){next.style.transition='';if(previous)remove(previous);if(!isImage)watchLoop(next,myGeneration)},150)});report('media-ready:'+token)},function(){if(myGeneration!==generation)return;remove(next);report('media-error:'+token)})}
+  function prepare(src,isImage,newMuted,token,fps){generation++;var myGeneration=generation;muted=newMuted;var next=element(src,isImage);applyTo(next);if(!isImage){next.muted=muted;next.play().catch(function(){})}firstFrame(next,isImage,function(){if(myGeneration!==generation){remove(next);return}var previous=active;next.style.zIndex='2';next.style.transition='opacity 120ms linear';active=next;applyTo(next);if(paused&&!isImage)active.pause();nextPaint(function(){next.style.opacity='1'});setTimeout(function(){if(myGeneration!==generation)return;next.style.transition='';if(previous)remove(previous);if(!isImage){watchLoop(next,myGeneration);watchDirection(next,myGeneration)}},150);report('media-ready:'+token)},function(){if(myGeneration!==generation)return;remove(next);report('media-error:'+token)})}
   function setPlayback(isPaused,isMuted){
     paused=isPaused;muted=isMuted;
     if(!active||active.tagName!=='VIDEO'){report('pb-noactive:'+(active?active.tagName:'null'));return}
@@ -1186,7 +1654,8 @@ namespace LumaWall
     }
   }
   function setFps(fps){}
-  window.luma={prepare:prepare,setPlayback:setPlayback,setFps:setFps};
+  function state(){var v=active;return JSON.stringify({generation:generation,paused:paused,muted:muted,active:active?active.tagName:null,readyState:v&&v.tagName==='VIDEO'?v.readyState:null,currentTime:v&&v.tagName==='VIDEO'?Number((v.currentTime||0).toFixed(2)):null,videoWidth:v&&v.tagName==='VIDEO'?v.videoWidth:null,error:v&&v.error?v.error.code:null,connected:v?v.isConnected:null,elements:document.querySelectorAll('video,img').length,hasOptions:!!opts,span:span?'yes':'no',rate:rate})}
+  window.luma={prepare:prepare,setPlayback:setPlayback,setFps:setFps,state:state,apply:apply};
  })();
 </script></body></html>";
         }
@@ -1208,18 +1677,70 @@ namespace LumaWall
                 });
                 return;
             }
-            if (!pageReady) return;
+
+            // The page must exist before a script can reach it. This used to return
+            // silently, and the caller logged "Media prepared" anyway - so the log said
+            // the wallpaper had been applied while the page had never been told about
+            // it. That is the failure that leaves a wallpaper showing the previous
+            // video, or nothing, with a clean log.
+            //
+            // Now the pending media is remembered and sent when the page reports ready,
+            // which is the same pattern FlushPendingPlaybackSync uses for playback
+            // state - that path learned this lesson already and this one had not.
+            if (!pageReady)
+            {
+                pendingMediaPath = path;
+                AppLog.Write("Media queued until the page is ready " + screen.DeviceName + " -> " + path);
+                return;
+            }
+
             int request = ++mediaRequest;
+            // A new request means the old confirmation no longer applies, so the
+            // watchdog starts counting again from this moment.
+            mediaConfirmed = false;
+            mediaRetryCount = 0;
+            mediaGaveUp = false;
+            pageReloadedForRequest = false;
+            lastMediaAttempt = DateTime.UtcNow;
+            // The page may be throttled because this wallpaper is stopped behind another
+            // window. It has to be woken before it can be asked to decode anything, or
+            // the request is delivered to a renderer that is not running scripts.
+            PrepareForMediaChange();
             string source = new Uri(path, UriKind.Absolute).AbsoluteUri;
             RunScript("window.luma.prepare(" + JavaScriptString(source) + ",false," + (muted ? "true" : "false") + "," + request + "," + targetFps + ")");
             AppLog.Write("Media prepared in permanent host " + screen.DeviceName + " -> " + path);
         }
 
+        /// <summary>
+        /// Sends the media that was queued while the page was still loading.
+        ///
+        /// Called from ReportReady and from the navigation-completed handler, because
+        /// either can be the first moment the page can accept a script.
+        /// </summary>
+        private void FlushPendingMedia()
+        {
+            if (string.IsNullOrEmpty(pendingMediaPath)) return;
+            string path = pendingMediaPath;
+            pendingMediaPath = null;
+            AppLog.Write("Sending the media that was queued while loading " + screen.DeviceName + " -> " + path);
+            QueueMedia(path);
+        }
+
         private void ReportReady(int request)
         {
             if (request != mediaRequest || IsDisposed) return;
+            // The page confirmed this exact request, so the watchdog can stand down.
+            mediaConfirmed = true;
+            mediaRetryCount = 0;
+            mediaGaveUp = false;
             browserReady = true;
             currentMediaPath = mediaPath;
+            // The page has just been (re)created, so it knows nothing about the current
+            // playback state - it starts from its own defaults. Pushing the state here is
+            // what makes a rebuilt page actually play. Without it the host believes the
+            // wallpaper is running while the fresh page sits on a paused element, which
+            // is exactly what a static wallpaper looks like: the log says resumed, and
+            // nothing is decoding.
             ApplyPlaybackState();
             // A wallpaper that was paused before its WebView2 existed has never had the
             // memory policy applied, so this is the first moment it can be. Done here
@@ -1271,7 +1792,117 @@ namespace LumaWall
                 pendingPlaybackSync = true;
                 return;
             }
-            try { webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
+            try
+            {
+                // The result is inspected rather than discarded. ExecuteScriptAsync
+                // reports a script that threw as an exception in its result, and a
+                // silent catch here is why a page that never loaded anything looked
+                // exactly like a page that was working.
+                webView.CoreWebView2.ExecuteScriptAsync(script).ContinueWith(delegate(Task<string> task)
+                {
+                    if (task.IsFaulted)
+                    {
+                        Exception error = task.Exception == null ? null : task.Exception.GetBaseException();
+                        AppLog.Write("Script failed on " + screen.DeviceName + ": "
+                            + (error == null ? "unknown" : error.Message));
+                    }
+                    else if (task.Result != null && task.Result.IndexOf("\"exceptionDetails\"", StringComparison.Ordinal) >= 0)
+                    {
+                        AppLog.Write("Script threw on " + screen.DeviceName + ": " + Truncate(task.Result, 300));
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Script rejected on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
+        private static string Truncate(string value, int length)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= length) return value;
+            return value.Substring(0, length) + "...";
+        }
+
+        /// <summary>
+        /// Asks the page what it is doing, and writes the answer to the log.
+        ///
+        /// Called when a wallpaper change goes unconfirmed, because the interesting
+        /// question at that moment is whether the page has an element at all, whether
+        /// that element has decoded, and whether it is the element the host last asked
+        /// for. Without this the only visible symptom is silence.
+        /// </summary>
+        private void RequestPageState(string why)
+        {
+            if (!pageReady || webView == null || webView.IsDisposed || webView.CoreWebView2 == null)
+            {
+                AppLog.Write("Page state after " + why + " on " + screen.DeviceName
+                    + ": host side not usable (pageReady=" + pageReady
+                    + " webView=" + (webView == null ? "null" : (webView.IsDisposed ? "disposed" : "ok"))
+                    + " core=" + (webView == null || webView.CoreWebView2 == null ? "null" : "ok") + ")");
+                return;
+            }
+
+            // The host-side facts first, because they decide what a null script result
+            // means. IsSuspended and MemoryUsageTargetLevel are the two states that make
+            // a live page unable to run script; without them a null result is ambiguous
+            // between "the renderer was discarded" and "the page is throttled".
+            string hostSide;
+            try
+            {
+                hostSide = "suspended=" + webView.CoreWebView2.IsSuspended
+                    + " targetLevel=" + webView.CoreWebView2.MemoryUsageTargetLevel
+                    + " webViewVisible=" + webView.Visible
+                    + " handleCreated=" + IsHandleCreated;
+            }
+            catch (Exception ex)
+            {
+                hostSide = "unavailable: " + ex.Message;
+            }
+
+            try
+            {
+                string probe = "['probe',1+1,String(location.href),typeof window.luma,"
+                    + "document.querySelectorAll('video').length,"
+                    + "document.readyState,"
+                    + "String(document.visibilityState),"
+                    + "String(window.__lumaMessages ? window.__lumaMessages.length : -1)"
+                    + "].join(' | ')";
+                webView.CoreWebView2.ExecuteScriptAsync(probe)
+                    .ContinueWith(delegate(Task<string> task)
+                    {
+                        // UI thread again: this continuation reads webView and screen.
+                        if (InvokeRequired)
+                        {
+                            try { BeginInvoke(new Action(delegate { ReportPageState(why, hostSide, task); })); }
+                            catch { }
+                            return;
+                        }
+                        ReportPageState(why, hostSide, task);
+                    });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Page state probe rejected on " + screen.DeviceName + ": " + ex.Message
+                    + " [" + hostSide + "]");
+            }
+        }
+
+        /// <summary>Writes the page-state probe's answer to the log, on the UI thread.</summary>
+        private void ReportPageState(string why, string hostSide, Task<string> task)
+        {
+            if (IsDisposed) return;
+            {
+                        string value;
+                        if (task.IsFaulted)
+                        {
+                            Exception error = task.Exception == null ? null : task.Exception.GetBaseException();
+                            value = "FAULTED " + (error == null ? "unknown" : error.Message);
+                        }
+                        else value = task.Result == null ? "(null result)" : task.Result;
+                        AppLog.Write("Page state after " + why + " on " + screen.DeviceName
+                            + ": [" + hostSide + "] script=" + Truncate(value, 300));
+            }
         }
 
         private void ApplyPlaybackState()
@@ -1338,13 +1969,343 @@ namespace LumaWall
         /// </summary>
         public void MaintainPausedMemory()
         {
-            if (!playbackPaused || staticMode) return;
+            if (staticMode) return;
+
+            // Watchdog first, and before the pause check: a wallpaper change that the
+            // page never confirmed has to be retried whether or not this wallpaper is
+            // currently stopped. Without this the app waits forever on a message that
+            // may never come, and the user sees a wallpaper that did not change while
+            // the log reports that it was prepared.
+            RetryUnconfirmedMedia();
+            // Only reconcile when no media change is in flight. A prepare and a probe sent
+            // together race: the probe can be answered by the document that is being replaced,
+            // which comes back empty and looks like a dead page. Skipping one interval costs
+            // nothing and removes the race entirely.
+            if (mediaConfirmed) ReconcilePlayback();
+
+            if (!playbackPaused) return;
 
             DateTime now = DateTime.UtcNow;
             if ((now - lastMemoryMaintenance).TotalSeconds < MemoryMaintenanceSeconds) return;
             lastMemoryMaintenance = now;
 
             PurgeJavaScriptMemory();
+        }
+
+        /// <summary>
+        /// Keeps the page's playback in step with what the host believes, and rebuilds the
+        /// page when it has stopped running script altogether.
+        ///
+        /// Two different faults end with the same symptom - a wallpaper that holds a frame
+        /// and never moves - and they need different treatment:
+        ///
+        ///   1. The page is gone. ExecuteScriptAsync returns null for even `1+1`, while
+        ///      the WebView still reports itself healthy. Nothing can be fixed from the
+        ///      host side; the page has to be rebuilt.
+        ///
+        ///   2. The page is alive but its video is not playing while the host believes it
+        ///      is. This is a desync, and it happens because every playback command is
+        ///      edge-triggered: `SetPaused` returns early when the value has not changed,
+        ///      so a page that missed one command - because it was being rebuilt, or
+        ///      because it had not finished loading - never receives another. The host
+        ///      goes on believing the wallpaper plays, and the screen shows a still frame.
+        ///
+        /// The probe reports both, and the fix for each is applied. The interval is short
+        /// because the probe is a single trivial expression, and a wallpaper that has been
+        /// still for a minute is a bug report.
+        /// </summary>
+        private void ReconcilePlayback()
+        {
+            if (IsDisposed || staticMode || !pageReady) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+
+            // A stopped wallpaper is supposed to be still, so there is nothing to reconcile
+            // - and it is also the case where a probe cannot be trusted. A stopped page is
+            // put at MemoryUsageTargetLevel.Low, which lets Chromium release the renderer's
+            // resources; a page in that state can leave an ExecuteScriptAsync unanswered.
+            // Reading that silence as "the page died" produced a rebuild of a wallpaper that
+            // was doing exactly what it had been told to do.
+            if (playbackPaused) return;
+
+            DateTime now = DateTime.UtcNow;
+            if ((now - lastLivenessCheck).TotalSeconds < LivenessCheckSeconds) return;
+            // A page that has just been told to play or pause needs a moment to carry it
+            // out. Probing during that moment answers with a document mid-change, which
+            // comes back empty and counts as a strike against a page that is working.
+            // The log showed exactly this: two strikes for DISPLAY3 inside the same second
+            // as its own resume command.
+            if ((now - lastPlaybackCommand).TotalSeconds < SettleSeconds) return;
+            lastLivenessCheck = now;
+            if (livenessCheckInFlight) return;
+            livenessCheckInFlight = true;
+
+            bool hostWantsPlaying = !playbackPaused;
+
+            // The page's own state API, not a hand-written expression. The first version
+            // of this probe read `active` directly, which is a variable inside the page's
+            // IIFE - so the script threw a ReferenceError, ExecuteScriptAsync reported
+            // null for the failure, and every healthy wallpaper was mistaken for a dead
+            // page and rebuilt. The page exposes state() for exactly this.
+            // String(...) around the whole expression, and a literal fallback: a script whose
+            // value is undefined comes back from ExecuteScriptAsync as null, and null was being
+            // read as "the page is dead" - which rebuilt a page that was working perfectly.
+            // Whatever happens inside, this expression evaluates to a non-empty string.
+            string probe = "String((window.luma&&window.luma.state)?window.luma.state():'no-state')";
+
+            try
+            {
+                webView.CoreWebView2.ExecuteScriptAsync(probe).ContinueWith(delegate(Task<string> task)
+                {
+                    // The whole body runs on the UI thread. CoreWebView2 belongs to the thread
+                    // that created it, and a continuation runs on the pool - reading a
+                    // CoreWebView2 member from there throws a COM cast failure (E_NOINTERFACE)
+                    // instead of doing the work, which is how the reconcile reported an
+                    // exception rather than rebuilding the page it had detected as dead.
+                    livenessCheckInFlight = false;
+                    if (IsDisposed) return;
+                    if (InvokeRequired)
+                    {
+                        try { BeginInvoke(new Action(delegate { ReconcileBody(task, hostWantsPlaying); })); }
+                        catch { }
+                        return;
+                    }
+                    ReconcileBody(task, hostWantsPlaying);
+                });
+            }
+            catch (Exception ex)
+            {
+                livenessCheckInFlight = false;
+                AppLog.Write("Playback reconcile rejected on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// The body of the reconcile, on the UI thread.
+        ///
+        /// Split out so the thread hop is one visible line instead of a wrapper around a
+        /// hundred lines of logic - the reason this exists is worth being able to see.
+        /// </summary>
+        private void ReconcileBody(Task<string> task, bool hostWantsPlaying)
+        {
+            if (IsDisposed) return;
+            {
+                    livenessCheckInFlight = false;
+                    if (IsDisposed) return;
+
+                    string raw = task.IsFaulted || task.Result == null
+                        ? null
+                        : task.Result.Trim().Trim('"').Replace("\\\"", "\"");
+
+                    // Null, an exception payload, or a page without the state API all mean
+                    // the page cannot be asked about itself. Rebuild it.
+                    if (raw == null || raw.Length == 0 || raw == "null"
+                        || raw.IndexOf("exceptionDetails", StringComparison.Ordinal) >= 0
+                        || raw.IndexOf("no-state", StringComparison.Ordinal) >= 0)
+                    {
+                        // One bad answer is not proof of a dead page. A probe can come back
+                        // empty while the document is being replaced - the page that was there
+                        // a moment ago is gone and the next one has not run its script yet - and
+                        // rebuilding on that transient answer destroyed a page that was working.
+                        //
+                        // Two consecutive failures are required. A genuinely dead page is still
+                        // rebuilt, one interval later; a page that merely blinked is left alone.
+                        deadPageStrikes++;
+                        AppLog.Write("Wallpaper page did not answer on " + screen.DeviceName
+                            + " (strike " + deadPageStrikes + " of " + DeadPageStrikes
+                            + ", result " + (task.IsFaulted ? "faulted" : (task.Result ?? "null")) + ")");
+                        if (deadPageStrikes < DeadPageStrikes) return;
+
+                        deadPageStrikes = 0;
+                        mediaConfirmed = false;
+                        mediaRetryCount = 0;
+                        pageReloadedForRequest = false;
+                        ReloadPage("its script stopped running");
+                        return;
+                    }
+
+                    // A good answer clears the strikes: the page is demonstrably alive.
+                    deadPageStrikes = 0;
+
+                    // state() returns JSON: {"generation":1,"paused":false,...,"readyState":4,...}
+                    // Read it with plain string searches - no parser is needed for five
+                    // fields, and it keeps this file free of a JSON dependency.
+                    bool hasActive = raw.IndexOf("\"active\":null", StringComparison.Ordinal) < 0;
+                    bool pagePaused = raw.IndexOf("\"paused\":true", StringComparison.Ordinal) >= 0;
+                    int readyState = ReadIntField(raw, "readyState");
+                    double currentTime = ReadDoubleField(raw, "currentTime");
+
+                    // A page with no element, or an element that never decoded, cannot be
+                    // playing whatever the host believes. Rebuild it.
+                    if (!hasActive || readyState < 2)
+                    {
+                        AppLog.Write("Wallpaper page has no playing element on " + screen.DeviceName
+                            + " (active=" + hasActive + " readyState=" + readyState + ")");
+                        mediaConfirmed = false;
+                        mediaRetryCount = 0;
+                        pageReloadedForRequest = false;
+                        ReloadPage("its element was gone");
+                        return;
+                    }
+
+                    // The desync: the host says play, the page says stopped. Re-issue the
+                    // command - it is the same one the page missed.
+                    if (hostWantsPlaying && pagePaused)
+                    {
+                        AppLog.Write("Wallpaper was stopped while the app believed it was playing on "
+                            + screen.DeviceName + "; resuming");
+                        ApplyPlaybackState();
+                        return;
+                    }
+
+                    // The other desync: nothing is paused, but time is not moving. This is
+                    // what a video looks like when its play() promise was rejected - the
+                    // element stays unpaused and never advances.
+                    if (hostWantsPlaying && !pagePaused)
+                    {
+                        if (lastSeenTime >= 0 && Math.Abs(currentTime - lastSeenTime) < 0.001)
+                        {
+                            AppLog.Write("Wallpaper time is not advancing on " + screen.DeviceName
+                                + " (stuck at " + currentTime.ToString("F2") + "s); restarting playback");
+                            ApplyPlaybackState();
+                        }
+                        lastSeenTime = currentTime;
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Reads an integer field out of the page's state JSON.
+        ///
+        /// Deliberately a string search rather than a JSON parse: the state object is flat,
+        /// the fields are known, and a parse would add a dependency to a file that has
+        /// none. Returns -1 when the field is absent, which callers treat as "unknown".
+        /// </summary>
+        private static int ReadIntField(string json, string name)
+        {
+            string marker = "\"" + name + "\":";
+            int at = json.IndexOf(marker, StringComparison.Ordinal);
+            if (at < 0) return -1;
+            int start = at + marker.Length;
+            int end = start;
+            while (end < json.Length && (char.IsDigit(json[end]) || json[end] == '-')) end++;
+            int value;
+            return int.TryParse(json.Substring(start, end - start), out value) ? value : -1;
+        }
+
+        private static double ReadDoubleField(string json, string name)
+        {
+            string marker = "\"" + name + "\":";
+            int at = json.IndexOf(marker, StringComparison.Ordinal);
+            if (at < 0) return -1;
+            int start = at + marker.Length;
+            int end = start;
+            while (end < json.Length && (char.IsDigit(json[end]) || json[end] == '-' || json[end] == '.')) end++;
+            double value;
+            return double.TryParse(json.Substring(start, end - start),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out value) ? value : -1;
+        }
+
+        /// <summary>
+        /// Rebuilds the wallpaper page in place.
+        ///
+        /// This is the recovery for the one failure the host cannot fix by adjusting
+        /// anything: a page whose JavaScript context has gone. It was measured on this
+        /// machine - the WebView reports suspended=False, targetLevel=Normal,
+        /// visible=True and a valid window handle, while ExecuteScriptAsync returns null
+        /// for even a trivial expression. Nothing on the host side is wrong; the page is
+        /// simply not there any more.
+        ///
+        /// Navigating to the same file again gives a fresh document, and the
+        /// NavigationCompleted handler sends the media that is wanted at that moment -
+        /// so the wallpaper that was asked for is the one that loads.
+        /// </summary>
+        private void ReloadPage(string why)
+        {
+            if (IsDisposed || webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            AppLog.Write("Rebuilding the wallpaper page on " + screen.DeviceName + " because " + why);
+            try
+            {
+                // pageReady is cleared first: the page is about to be replaced, and
+                // leaving it true would let scripts be sent to a document that is going
+                // away. NavigationCompleted sets it again.
+                pageReady = false;
+                browserReady = false;
+                // The pending-media slot is cleared so the fresh page does not receive
+                // two requests for the same wallpaper: NavigationCompleted sends
+                // mediaPath directly, which is already the wallpaper that was asked for.
+                pendingMediaPath = null;
+                webView.CoreWebView2.Navigate(new Uri(pagePath, UriKind.Absolute).AbsoluteUri);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Page rebuild failed on " + screen.DeviceName + ": " + ex.Message);
+                ReportFailed(mediaRequest);
+            }
+        }
+
+        /// <summary>
+        /// Re-sends a wallpaper the page never confirmed.
+        ///
+        /// The page reports `media-ready` once the video has decoded a frame. A page
+        /// that never reports leaves the app believing the wallpaper is still being
+        /// prepared, so nothing is ever committed and the screen keeps the previous
+        /// image. That is the failure this guards against.
+        ///
+        /// A retry is cheap: sending `prepare` again just replaces the element the page
+        /// is holding. It is capped, because a wallpaper that cannot load at all should
+        /// surface as a failure rather than loop forever - after the last attempt the
+        /// wallpaper is reported failed, which is what makes the app fall back instead
+        /// of leaving a blank screen.
+        /// </summary>
+        private void RetryUnconfirmedMedia()
+        {
+            if (IsDisposed || staticMode || !pageReady) return;
+            if (mediaConfirmed || string.IsNullOrEmpty(mediaPath)) return;
+
+            DateTime now = DateTime.UtcNow;
+            if ((now - lastMediaAttempt).TotalSeconds < MediaRetrySeconds) return;
+            lastMediaAttempt = now;
+
+            if (mediaRetryCount >= MaxMediaRetries)
+            {
+                if (!mediaGaveUp)
+                {
+                    mediaGaveUp = true;
+                    AppLog.Write("Wallpaper never confirmed after " + MaxMediaRetries + " attempts on "
+                        + screen.DeviceName + " -> " + mediaPath);
+                    ReportFailed(mediaRequest);
+                }
+                return;
+            }
+
+            // Two attempts with no answer means the page is not merely slow, it is not
+            // running script. The diagnostic proved this happens while the WebView
+            // reports itself healthy - not suspended, normal memory target, visible -
+            // so there is nothing left to adjust from the host side. The page's
+            // JavaScript context is gone, and the only way back is a fresh page.
+            //
+            // Reloading is safe and cheap: NavigationCompleted re-runs the same setup
+            // path as startup, which sends the media that is wanted right now. Once per
+            // request, so a page that cannot load anything still ends in a clean failure
+            // rather than a reload loop.
+            if (mediaRetryCount >= 2 && !pageReloadedForRequest)
+            {
+                pageReloadedForRequest = true;
+                ReloadPage("the page stopped answering");
+                return;
+            }
+
+            mediaRetryCount++;
+            AppLog.Write("Wallpaper unconfirmed; re-sending (attempt " + mediaRetryCount + ") "
+                + screen.DeviceName + " -> " + mediaPath);
+            // Ask the page what it has before re-sending. The answer is what turns
+            // "nothing happened" into a diagnosable fact.
+            RequestPageState("unconfirmed attempt " + mediaRetryCount);
+            int request = ++mediaRequest;
+            string source = new Uri(mediaPath, UriKind.Absolute).AbsoluteUri;
+            RunScript("window.luma.prepare(" + JavaScriptString(source) + ",false,"
+                + (muted ? "true" : "false") + "," + request + "," + targetFps + ")");
         }
 
         /// <summary>
@@ -1398,20 +2359,53 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// Sets this window's pause state and reports whether it actually changed.
+        /// Tells this wallpaper whether it should be playing.
         ///
-        /// The return value lets the manager skip redundant work: ApplyPlaybackState
-        /// pushes a script into the page, and doing that every health tick used to
-        /// re-enter the video element and stall playback.
+        /// Returns true when the state actually changed, which is what the log uses to
+        /// report transitions. The command is sent even when the value has not changed,
+        /// and that is the fix for a real fault: every playback command is edge-triggered,
+        /// so a page that missed one - because it was being rebuilt, because its element
+        /// was still loading, or because the message crossed a page swap - would never be
+        /// told again. The host went on believing the wallpaper played while the page sat
+        /// on a stopped element, which is exactly a wallpaper that is applied and static.
+        ///
+        /// Measured on this machine: `resume-frame` appeared for DISPLAY2 and DISPLAY3 in
+        /// the same tick where DISPLAY1 - reported as resumed - produced none at all, and
+        /// no video decoded for it afterwards.
         /// </summary>
         public bool SetPaused(bool value)
         {
-            if (playbackPaused == value) return false;
+            bool changed = playbackPaused != value;
             playbackPaused = value;
-            ApplyPlaybackState();
+
+            // The command is re-sent when the state changes, and also when the same
+            // state has stood for a while - but not on every call.
+            //
+            // Both halves matter. Sending only on a change is what left a rebuilt page
+            // stopped forever: the page missed the one command it needed and the host
+            // never repeated it. Sending on every call is what floods the page, because
+            // the manager calls this on every health tick - the log filled with a
+            // pause-ack every two seconds per display.
+            //
+            // So: immediately on a change, then at most once every ReassertSeconds as a
+            // safety net. ReconcilePlayback is what handles a page that is genuinely out
+            // of step; this is only here so a missed command cannot persist.
+            DateTime now = DateTime.UtcNow;
+            bool due = changed || (now - lastPlaybackCommand).TotalSeconds >= ReassertSeconds;
+            if (due)
+            {
+                lastPlaybackCommand = now;
+                ApplyPlaybackState();
+            }
             ApplyMemoryTargetLevel();
-            return true;
+            return changed;
         }
+
+        // How long a playback state may stand without being re-sent. Long enough that the
+        // traffic is invisible, short enough that a page which missed a command is put
+        // right well before a user would notice.
+        private const double ReassertSeconds = 30;
+        private DateTime lastPlaybackCommand = DateTime.MinValue;
 
         /// <summary>
         /// Tells the browser engine how much memory it may hold, following the pause
@@ -1435,7 +2429,16 @@ namespace LumaWall
             if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
             try
             {
-                webView.CoreWebView2.MemoryUsageTargetLevel = playbackPaused
+                // Low only while the wallpaper is stopped AND settled, Normal otherwise.
+                //
+                // Low is a real saving and it is documented as best-effort, so it is kept -
+                // but only for a page that is genuinely idle. A page that is being asked to
+                // load a wallpaper is not idle, and telling Chromium to give up its
+                // resources at the same moment it is asked to decode is a race the page
+                // loses: the request is delivered to a renderer that has been told to shed
+                // what it needs to answer. mediaConfirmed is what distinguishes the two.
+                bool idle = playbackPaused && mediaConfirmed;
+                webView.CoreWebView2.MemoryUsageTargetLevel = idle
                     ? CoreWebView2MemoryUsageTargetLevel.Low
                     : CoreWebView2MemoryUsageTargetLevel.Normal;
             }
@@ -1445,6 +2448,25 @@ namespace LumaWall
                 // per state change, not per frame, so it cannot flood the log.
                 AppLog.Write("Memory target level unavailable on " + screen.DeviceName + ": " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Puts the page back to normal resources so it can be asked to do work.
+        ///
+        /// Called before every media change. The wallpaper may be stopped and marked
+        /// Low because a window covers it, and a stopped, memory-throttled page is a
+        /// page whose script may not run at all - so the request to load the new video
+        /// would never be carried out. Restoring Normal first is what makes a wallpaper
+        /// change work while the desktop is covered.
+        /// </summary>
+        private void PrepareForMediaChange()
+        {
+            if (staticMode) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            try { webView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal; }
+            catch { }
+            try { webView.CoreWebView2.Resume(); }
+            catch { }
         }
 
         /// <summary>
@@ -1464,6 +2486,17 @@ namespace LumaWall
         /// decoded image changes; the pages that go are the ones that will be rebuilt
         /// anyway the next time a frame is drawn.
         ///
+        /// The level is MODERATE, and that choice is the fix for a real fault. "critical"
+        /// was used first and it broke every wallpaper change: at critical pressure
+        /// Chromium is entitled to discard a renderer process outright to reclaim its
+        /// memory, and a discarded renderer takes the page's JavaScript context with it.
+        /// The wallpaper keeps showing its last painted frame while every later request
+        /// to load a different video is evaluated in a context that no longer exists -
+        /// ExecuteScriptAsync returns null and nothing happens. Moderate still runs
+        /// Chromium's purge machinery (caches trimmed, discardable memory dropped, an
+        /// extra GC) without authorising the one action that leaves the page unable to
+        /// do its job.
+        ///
         /// Fire-and-forget by design. This runs on the pause path, and a wallpaper must
         /// never be held up waiting for the browser to answer a housekeeping call.
         /// </summary>
@@ -1473,8 +2506,14 @@ namespace LumaWall
             if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
             try
             {
+                // "moderate", not "critical". At critical pressure Chromium is entitled to
+                // discard a renderer outright, and a wallpaper whose renderer was discarded
+                // keeps its last painted frame - so the fault is invisible until the user
+                // changes wallpaper and nothing happens. Moderate still runs the purge
+                // machinery (caches trimmed, discardable memory dropped, an extra GC)
+                // without authorising the one action that leaves a page unable to work.
                 webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Memory.simulatePressureNotification",
-                    "{\"level\":\"critical\"}");
+                    "{\"level\":\"moderate\"}");
             }
             catch (Exception ex)
             {
@@ -1497,6 +2536,18 @@ namespace LumaWall
             if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
             try
             {
+                // Kept, because the fault that made it look dangerous was not this call.
+                //
+                // A wallpaper page holds one video element and a few dozen lines of script,
+                // so there is little heap here to reclaim - but the purge is free while the
+                // page is stopped and it is the one memory action that acts on this page
+                // alone rather than on the shared browser group.
+                //
+                // The investigation that removed it briefly was misled by a broken probe:
+                // the liveness check read a variable that only exists inside the page's
+                // IIFE, so every healthy page answered null and looked like a page whose
+                // JavaScript context had been discarded. With the probe fixed - it now
+                // calls the page's own state() - the purge is safe to keep.
                 webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Memory.forciblyPurgeJavaScriptMemory", "{}");
             }
             catch (Exception ex)
@@ -1517,6 +2568,135 @@ namespace LumaWall
         {
             ApplyMemoryTargetLevel();
             if (playbackPaused) RequestMemoryPressure();
+            // The page starts with no options, so a wallpaper restored at startup has to be
+            // told about them - otherwise the user's colour grade and framing would appear
+            // only after they touched a control.
+            ApplyOptions();
+        }
+
+        // ── the per-display look and playback settings ───────────────────────
+        //
+        // The options live in the config, but the page needs them as one JSON object. It is
+        // built here rather than serialized from the C# type because the page wants short
+        // camelCase names and the config uses the C# names, and because the span geometry
+        // is computed at this point - it depends on where this monitor sits in the desktop,
+        // which the config does not know.
+        private DisplayOptions options = new DisplayOptions();
+        private SpanGroup spanGroup;
+
+        public void SetOptions(DisplayOptions value, SpanGroup span)
+        {
+            options = value ?? new DisplayOptions();
+            spanGroup = span;
+            if (pageReady) ApplyOptions();
+        }
+
+        /// <summary>
+        /// Sends the options to the page.
+        ///
+        /// Every value is written with InvariantCulture. On a machine whose locale uses a
+        /// comma for the decimal separator, `1,5` inside a JSON number is a parse error -
+        /// and the page would fall back to its defaults, which is a wallpaper that ignores
+        /// the user's settings only on some computers.
+        /// </summary>
+        private void ApplyOptions()
+        {
+            if (!pageReady || staticMode) return;
+            RunScript("window.luma.apply(" + BuildOptionsJson() + ")");
+        }
+
+        private string BuildOptionsJson()
+        {
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+            var json = new StringBuilder();
+            json.Append("{");
+            json.Append("\"brightness\":").Append(options.Brightness.ToString("0.####", culture)).Append(",");
+            json.Append("\"contrast\":").Append(options.Contrast.ToString("0.####", culture)).Append(",");
+            json.Append("\"saturation\":").Append(options.Saturation.ToString("0.####", culture)).Append(",");
+            json.Append("\"hue\":").Append(options.Hue.ToString("0.####", culture)).Append(",");
+            json.Append("\"gamma\":").Append(options.Gamma.ToString("0.####", culture)).Append(",");
+            json.Append("\"filter\":").Append(JavaScriptString(string.IsNullOrEmpty(options.Filter) ? "none" : options.Filter)).Append(",");
+            json.Append("\"flipHorizontal\":").Append(options.FlipHorizontal ? "true" : "false").Append(",");
+            json.Append("\"flipVertical\":").Append(options.FlipVertical ? "true" : "false").Append(",");
+            json.Append("\"hdrToneMap\":").Append(options.HdrToneMap ? "true" : "false").Append(",");
+            json.Append("\"hdrExposure\":").Append(options.HdrExposure.ToString("0.####", culture)).Append(",");
+            json.Append("\"hdrHighlight\":").Append(options.HdrHighlight.ToString("0.####", culture)).Append(",");
+            json.Append("\"fit\":").Append(JavaScriptString(string.IsNullOrEmpty(options.Fit) ? "cover" : options.Fit)).Append(",");
+            json.Append("\"zoom\":").Append(options.Zoom.ToString("0.####", culture)).Append(",");
+            json.Append("\"offsetX\":").Append(options.OffsetX.ToString("0.####", culture)).Append(",");
+            json.Append("\"offsetY\":").Append(options.OffsetY.ToString("0.####", culture)).Append(",");
+            json.Append("\"playbackRate\":").Append(options.PlaybackRate.ToString("0.####", culture)).Append(",");
+            json.Append("\"pingPong\":").Append(options.PingPong ? "true" : "false");
+
+            // The span geometry, in this monitor's own coordinates. The page needs to know
+            // how big the whole picture is and how far into it this monitor sits; it does
+            // not need to know anything about the other monitors.
+            if (spanGroup != null)
+            {
+                int x, y, totalW, totalH;
+                if (TryMeasureSpan(spanGroup, out x, out y, out totalW, out totalH))
+                {
+                    json.Append(",\"span\":{");
+                    json.Append("\"x\":").Append(x.ToString(culture)).Append(",");
+                    json.Append("\"y\":").Append(y.ToString(culture)).Append(",");
+                    json.Append("\"totalW\":").Append(totalW.ToString(culture)).Append(",");
+                    json.Append("\"totalH\":").Append(totalH.ToString(culture));
+                    json.Append("}");
+                }
+            }
+
+            json.Append("}");
+            return json.ToString();
+        }
+
+        /// <summary>
+        /// Where this monitor sits inside its span group, and how big the group is.
+        ///
+        /// The group's monitors are ordered left to right by their position on the desktop,
+        /// not by the order they were added, because "the left monitor shows the left part"
+        /// is the only arrangement a user expects. A monitor with no entry in the group is
+        /// reported as a failure so the page falls back to a normal single-monitor
+        /// wallpaper rather than drawing a slice that belongs to nobody.
+        /// </summary>
+        private bool TryMeasureSpan(SpanGroup group, out int x, out int y, out int totalW, out int totalH)
+        {
+            x = y = totalW = totalH = 0;
+            if (group == null || group.Devices == null || group.Devices.Count == 0) return false;
+
+            var members = new List<Forms.Screen>();
+            foreach (Forms.Screen candidate in Forms.Screen.AllScreens)
+                foreach (string device in group.Devices)
+                    if (string.Equals(candidate.DeviceName, device, StringComparison.OrdinalIgnoreCase)) members.Add(candidate);
+            if (members.Count == 0) return false;
+
+            members.Sort(delegate(Forms.Screen a, Forms.Screen b)
+            {
+                int byX = a.Bounds.Left.CompareTo(b.Bounds.Left);
+                return byX != 0 ? byX : a.Bounds.Top.CompareTo(b.Bounds.Top);
+            });
+
+            Forms.Screen mine = null;
+            foreach (Forms.Screen candidate in members)
+                if (string.Equals(candidate.DeviceName, screen.DeviceName, StringComparison.OrdinalIgnoreCase)) mine = candidate;
+            if (mine == null) return false;
+
+            int left = int.MaxValue, top = int.MaxValue, right = int.MinValue, bottom = int.MinValue;
+            foreach (Forms.Screen member in members)
+            {
+                left = Math.Min(left, member.Bounds.Left);
+                top = Math.Min(top, member.Bounds.Top);
+                right = Math.Max(right, member.Bounds.Right);
+                bottom = Math.Max(bottom, member.Bounds.Bottom);
+            }
+
+            totalW = right - left;
+            totalH = bottom - top;
+            if (totalW <= 0 || totalH <= 0) return false;
+            // Offsets are measured from the union's top-left corner, which is what the page
+            // subtracts to find its own slice.
+            x = mine.Bounds.Left - left;
+            y = mine.Bounds.Top - top;
+            return true;
         }
         public void SetMute(bool value) { muted = value; ApplyPlaybackState(); }
         public void ChangeMedia(string path, bool mute, int fps)
@@ -1569,6 +2749,9 @@ namespace LumaWall
             return string.Equals(screen.DeviceName, target.DeviceName, StringComparison.OrdinalIgnoreCase) &&
                 screen.Bounds == target.Bounds && string.Equals(currentMediaPath ?? mediaPath, path, StringComparison.OrdinalIgnoreCase) && !IsDisposed;
         }
+        /// <summary>The display this wallpaper is attached to.</summary>
+        public string DeviceName { get { return screen.DeviceName; } }
+
         public bool MatchesScreen(Forms.Screen target) { return string.Equals(screen.DeviceName, target.DeviceName, StringComparison.OrdinalIgnoreCase) && screen.Bounds == target.Bounds && !IsDisposed; }
         public void StopVideo()
         {
@@ -1650,6 +2833,51 @@ namespace LumaWall
         private bool globalPaused;
         private readonly HashSet<string> pausedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// The live settings, so a window can be handed its display's look and span group.
+        ///
+        /// A reference rather than a copy: the user can change these while wallpapers are
+        /// running, and a snapshot taken at startup would go stale. Null until the window
+        /// sets it, and every reader tolerates null - a wallpaper created before that point
+        /// uses the neutral defaults, which is the behaviour of the build before these
+        /// features existed.
+        /// </summary>
+        public AppConfig Config;
+
+        /// <summary>
+        /// Hands a window the settings that apply to its display.
+        ///
+        /// Called at every point a wallpaper is created, changed or re-asserted. Skipping
+        /// any of them leaves that wallpaper wearing the previous display's grade, which
+        /// looks like a colour setting that went to the wrong monitor.
+        /// </summary>
+        private void PushOptions(WallpaperWindow window, string deviceName)
+        {
+            if (window == null) return;
+            AppConfig config = Config;
+            if (config == null) return;
+            try { window.SetOptions(config.OptionsFor(deviceName), config.SpanGroupFor(deviceName)); }
+            catch { }
+        }
+
+        /// <summary>
+        /// Re-applies the current look and span to every live wallpaper.
+        ///
+        /// This is what the settings page calls after a slider moves. Without it the user
+        /// would have to change wallpaper to see the effect, and the natural conclusion
+        /// would be that the control does nothing.
+        /// </summary>
+        public void RefreshOptions()
+        {
+            var all = new List<WallpaperWindow>();
+            foreach (var pair in windows) all.Add(pair.Value);
+            foreach (var pair in pending) all.Add(pair.Value);
+            foreach (WallpaperWindow window in all)
+            {
+                try { PushOptions(window, window.DeviceName); } catch { }
+            }
+        }
+
         /// <summary>Whether the given display should currently be frozen.</summary>
         private bool IsPaused(string deviceName)
         {
@@ -1672,6 +2900,7 @@ namespace LumaWall
                 existing.SetTargetFps(fps);
                 existing.ReassertDesktop();
                 SyncPause(existing, screen.DeviceName);
+                PushOptions(existing, screen.DeviceName);
                 AppLog.Write("Wallpaper already active; reasserted " + screen.DeviceName + " -> " + path);
                 return;
             }
@@ -1681,6 +2910,7 @@ namespace LumaWall
                 CancelPending(screen.DeviceName);
                 existing.ChangeMedia(path, mute, fps);
                 SyncPause(existing, screen.DeviceName);
+                PushOptions(existing, screen.DeviceName);
                 AppLog.Write("Wallpaper changed inside permanent host " + screen.DeviceName + " -> " + path);
                 return;
             }
@@ -1691,12 +2921,16 @@ namespace LumaWall
                 preparing.SetMute(mute);
                 preparing.SetTargetFps(fps);
                 SyncPause(preparing, screen.DeviceName);
+                PushOptions(preparing, screen.DeviceName);
                 AppLog.Write("Wallpaper swap already preparing " + screen.DeviceName + " -> " + path);
                 return;
             }
 
             CancelPending(screen.DeviceName);
             var window = new WallpaperWindow(screen, path, mute, fps);
+            // Pushed before Show() so the page's very first painted frame already carries
+            // the user's grade. Doing it after would flash the ungraded picture first.
+            PushOptions(window, screen.DeviceName);
             pending[screen.DeviceName] = window;
             window.RendererReady += delegate { CommitSwap(screen.DeviceName, window); };
             window.RendererFailed += delegate { FailSwap(screen.DeviceName, window); };

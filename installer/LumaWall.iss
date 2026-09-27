@@ -1,5 +1,5 @@
 #define MyAppName "LumaWall"
-#define MyAppVersion "4.0.1"
+#define MyAppVersion "4.1.0"
 #define MyAppPublisher "LumaWall"
 #define MyAppExeName "LumaWall.exe"
 
@@ -25,7 +25,7 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
-VersionInfoVersion=4.0.1.0
+VersionInfoVersion=4.1.0.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=LumaWall Installer
 VersionInfoProductName={#MyAppName}

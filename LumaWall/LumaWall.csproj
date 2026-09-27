@@ -38,6 +38,8 @@
     <Compile Include="MainWindow.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="MemoryTrim.cs" />
+    <Compile Include="DesktopTimer.cs" />
+    <Compile Include="FeaturesPage.cs" />
     <Content Include="catalog.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="assets\*.mp4"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="assets\*.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>

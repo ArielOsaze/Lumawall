@@ -59,6 +59,7 @@
     </a>
     <nav class="nav-links">
       <a href="#features">Feature</a>
+      <a href="#studio">Studio</a>
       <a href="#performance">Performance</a>
       <a href="#video">Video</a>
       <a href="#screens">Screens</a>
@@ -186,6 +187,112 @@
         </div>
         <h3 class="h3">It does not get in the desktop's way</h3>
         <p>The wallpaper sits on Windows' desktop layer, directly beneath the icons. It is not an overlay window, so your icons stay clickable, it never appears in Alt+Tab, and it blocks nothing.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ STUDIO (new in 4.1) ═══════════════ -->
+<section class="sec sec-alt" id="studio">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <span class="eyebrow">New in 4.1</span>
+      <h2 class="h2">Studio: tune each display on its own</h2>
+      <p class="lead">
+        Everything below is GPU work in the compositor. No frame is copied into
+        system RAM, no resolution is reduced, and the video decoder is never
+        touched &mdash; so the RAM cost is zero.
+      </p>
+    </div>
+
+    <div class="grid grid-3">
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+        </div>
+        <h3 class="h3">Colour correction</h3>
+        <p>
+          Brightness, contrast, saturation, hue and gamma &mdash; each display
+          keeps its own values. Move a slider and the wallpaper on the desktop
+          changes immediately, with no restart.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h5"/></svg>
+        </div>
+        <h3 class="h3">Eight ready filters</h3>
+        <p>
+          Grayscale, sepia, cool, warm, vivid, noir and dream. A filter stacks
+          with the colour controls above, so the result is not a rigid preset.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 8l7-5 7 5"/><path d="M5 16l7 5 7-5"/></svg>
+        </div>
+        <h3 class="h3">Flip and framing</h3>
+        <p>
+          Mirror horizontally or vertically, pick a fit mode (cover, contain,
+          stretch, or original size), then set zoom and pan so the part that
+          matters is not cropped away.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>
+        </div>
+        <h3 class="h3">HDR and tone mapping</h3>
+        <p>
+          Highlight roll-off and exposure computed as a tone curve on the GPU.
+          For wallpapers whose bright areas clip, without shifting the shadows.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="1.5"/><rect x="16" y="6" width="5" height="12" rx="1.5"/><path d="M15 12h1"/></svg>
+        </div>
+        <h3 class="h3">Stretched wallpaper</h3>
+        <p>
+          One video split across adjacent monitors, so a wide picture reads as
+          a single continuous image instead of the same crop repeated on every
+          screen.
+        </p>
+      </article>
+
+      <article class="card" data-reveal>
+        <div class="card-ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg>
+        </div>
+        <h3 class="h3">Desktop timer</h3>
+        <p>
+          A countdown, a clock, or a stopwatch, floating over the wallpaper.
+          Four shapes, nine positions, any size and opacity. It stays out of
+          Alt+Tab and clicks pass straight through to the desktop.
+        </p>
+      </article>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:22px">
+      <article class="card" data-reveal>
+        <h3 class="h3">Playback rate</h3>
+        <p>
+          From 0.25&times; to 4&times;, plus a ping-pong mode that plays forward
+          then backward instead of jumping to the start. For wallpapers whose
+          motion is too fast, or too rigid.
+        </p>
+      </article>
+      <article class="card" data-reveal>
+        <h3 class="h3">Still light</h3>
+        <p>
+          All of the above runs on the GPU without copying frames into RAM.
+          When a wallpaper is stopped its page is returned to a low-memory
+          state automatically, and raised again the moment it is asked to work.
+        </p>
       </article>
     </div>
   </div>

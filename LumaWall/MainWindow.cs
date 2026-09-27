@@ -27,7 +27,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace LumaWall
 {
-    internal sealed class MainWindow : Window
+    internal sealed partial class MainWindow : Window
     {
         private static readonly Dictionary<string, string[]> Copy = new Dictionary<string, string[]>
         {
@@ -143,6 +143,10 @@ namespace LumaWall
         private readonly ConfigStore store = new ConfigStore();
         private readonly AppConfig config;
         private readonly WallpaperManager manager = new WallpaperManager();
+        // The desktop timer. Created here and started from the config, so its lifetime
+        // matches the window's: no timer exists while the app is closed, and closing the
+        // app cannot leave a stray widget on the desktop.
+        private DesktopTimer desktopTimer;
         private ContentControl pageHost;
         private readonly Dictionary<string, Button> navButtons = new Dictionary<string, Button>();
         private readonly Dictionary<string, TextBlock> navLabels = new Dictionary<string, TextBlock>();
@@ -794,6 +798,7 @@ namespace LumaWall
             nav.Children.Add(NavRailButton("library", Icons.Library, "nav.library"));
             nav.Children.Add(NavRailButton("discover", Icons.Catalog, "nav.discover"));
             nav.Children.Add(NavRailButton("displays", Icons.Displays, "nav.displays"));
+            nav.Children.Add(NavRailButton("studio", Icons.Displays, "nav.studio"));
             nav.Children.Add(NavRailButton("performance", Icons.Performance, "nav.performance"));
             rail.Children.Add(nav);
 
@@ -950,6 +955,7 @@ namespace LumaWall
             else if (page == "library") pageHost.Content = BuildLibrary();
             else if (page == "discover") pageHost.Content = BuildDiscover();
             else if (page == "displays") pageHost.Content = BuildDisplays();
+            else if (page == "studio") pageHost.Content = BuildStudio();
             else pageHost.Content = BuildPerformance();
             UpdateStatusBar();
         }
@@ -3048,6 +3054,13 @@ namespace LumaWall
                     store.Save(config);
                     AppLog.Write("Invocation applied wallpaper to " + targets.Length + " monitor(s): " + requested);
                 }
+                else
+                {
+                    // This used to fall through with no log at all, so an --apply= that
+                    // named a missing file looked identical to one that worked: nothing
+                    // happened and nothing was written down.
+                    AppLog.Write("Invocation ignored; no such file: " + requested);
+                }
             }
             if (showWindow)
             {
@@ -3179,7 +3192,45 @@ namespace LumaWall
 
         private void ShowFromTray() { ShowInTaskbar = true; Show(); WindowState = WindowState.Normal; Activate(); }
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e) { if (!exiting) { e.Cancel = true; ShowInTaskbar = false; Hide(); } }
-        private void ExitApp() { exiting = true; healthTimer.Stop(); RemoveForegroundHook(); manager.CloseAll(); tray.Visible = false; tray.Dispose(); Application.Current.Shutdown(); }
+        /// <summary>
+        /// The desktop timer's commands, called from the Studio page.
+        ///
+        /// Thin wrappers, so the page never touches the timer directly: the timer owns a
+        /// top-level window, and a page that could reach it could leave it in a state the
+        /// app does not know about.
+        /// </summary>
+        private void timerRefresh()
+        {
+            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+            desktopTimer.Refresh();
+        }
+
+        private void timerReset()
+        {
+            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+            desktopTimer.Reset();
+        }
+
+        private void timerPause()
+        {
+            if (desktopTimer == null) return;
+            desktopTimer.Pause();
+        }
+
+        private void ExitApp()
+        {
+            exiting = true;
+            healthTimer.Stop();
+            RemoveForegroundHook();
+            // The timer owns a top-level window, so it has to be disposed explicitly:
+            // shutting down the application does not close a window that was never
+            // activated, and it would stay on the desktop after the app exited.
+            if (desktopTimer != null) { try { desktopTimer.Dispose(); } catch { } desktopTimer = null; }
+            manager.CloseAll();
+            tray.Visible = false;
+            tray.Dispose();
+            Application.Current.Shutdown();
+        }
 
         private void ShowToast(string message)
         {
@@ -3188,6 +3239,16 @@ namespace LumaWall
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             timer.Tick += delegate { timer.Stop(); toast.Visibility = Visibility.Collapsed; };
             timer.Start();
+
+            // The manager needs the live config so every wallpaper can be handed its
+            // display's look and span group. Set here rather than in the constructor
+            // because the config is loaded before the window is built, and a wallpaper
+            // created during startup has to see it.
+            manager.Config = config;
+
+            // The desktop timer, if the user has it on.
+            desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+            desktopTimer.Start();
         }
 
         // ================= LAYOUT HELPERS =================

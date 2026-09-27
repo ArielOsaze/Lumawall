@@ -162,17 +162,41 @@ def main():
 
     # ── 4. the gates on what remains ─────────────────────────────────────────
     #
-    # The safety property of the surviving memory work is that it never runs while a
-    # wallpaper is playing. Each gate is checked by name, because the failure mode is
-    # a gate that quietly stops being consulted.
+    # The safety property of the surviving memory work is that the PAGE-TAKING work
+    # never runs while a wallpaper is playing. Each gate is checked by name, because
+    # the failure mode is a gate that quietly stops being consulted.
+    #
+    # The watchdog and the playback reconcile are deliberately NOT behind the paused
+    # gate, and that is the fix for a real fault rather than a relaxation of this rule:
+    # both exist to notice a page that stopped answering or stopped playing, and a
+    # wallpaper the app believes is playing is exactly the case they must be able to
+    # see. They take no memory action themselves - they only retry a request or
+    # re-issue a playback command.
     print()
     gates = [
-        (r'public void MaintainPausedMemory\(\)[\s\S]{0,500}?if \(!playbackPaused \|\| staticMode\) return;',
-         'MaintainPausedMemory refuses to run for a playing wallpaper'),
-        (r'private void PurgeJavaScriptMemory\(\)[\s\S]{0,400}?if \(!playbackPaused\) return;',
+        # The purge must still sit behind the paused check inside MaintainPausedMemory.
+        # Matching the whole body and requiring that order is what proves the gate is
+        # still in the path, rather than merely present somewhere in the file.
+        (r'public void MaintainPausedMemory\(\)[\s\S]{0,900}?if \(!playbackPaused\) return;[\s\S]{0,400}?PurgeJavaScriptMemory\(\);',
+         'MaintainPausedMemory keeps its purge behind the paused gate'),
+        (r'public void MaintainPausedMemory\(\)[\s\S]{0,1200}?RetryUnconfirmedMedia\(\);[\s\S]{0,600}?ReconcilePlayback\(\);',
+         'MaintainPausedMemory runs the media watchdog and the playback reconcile'),
+        # The reconcile must not run while a media change is in flight, and must not probe a
+        # stopped wallpaper. Both guards exist because the probe races the page otherwise:
+        # a prepare and a probe sent together answer with a document mid-change, and a page
+        # held at Low memory answers with nothing at all.
+        (r'if \(mediaConfirmed\) ReconcilePlayback\(\);',
+         'the reconcile is gated on a confirmed wallpaper'),
+        (r'private void ReconcilePlayback\(\)[\s\S]{0,1200}?if \(playbackPaused\) return;',
+         'the reconcile skips a stopped wallpaper'),
+        (r'private void PurgeJavaScriptMemory\(\)[\s\S]{0,600}?if \(!playbackPaused\) return;',
          'PurgeJavaScriptMemory is gated on the paused state'),
         (r'private void RequestMemoryPressure\(\)[\s\S]{0,400}?if \(staticMode\) return;',
          'RequestMemoryPressure has its own guard'),
+        # The command that keeps a wallpaper alive must never be edge-triggered again:
+        # an early return here is what left a rebuilt page stopped forever.
+        (r'public bool SetPaused\(bool value\)\s*\{\s*bool changed = playbackPaused != value;',
+         'SetPaused always sends the playback command instead of skipping it'),
     ]
 
     for pattern, description in gates:
