@@ -2805,14 +2805,64 @@ namespace LumaWall
             else ShowToast(Tr("toast.failed"));
         }
 
+        /// <summary>
+        /// Reads the bundled catalogue off the UI thread.
+        ///
+        /// Parsing catalog.json is 235-315ms of CPU on a warm cache, and more on a cold one -
+        /// which is exactly the case the user described, "pas pertama buka lumawall setelah
+        /// smua di close". It used to run inline in OnLoaded, between the window appearing and
+        /// the wallpapers being restored, so every cold start froze for a third of a second.
+        ///
+        /// The parse touches no UI object, so it runs on a worker; only the finished list is
+        /// handed back to the dispatcher. The page is rebuilt when it arrives, because
+        /// BuildDiscover reads catalogItems while it draws.
+        /// </summary>
+        private void LoadBundledCatalogAsync()
+        {
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "catalog.json");
+            if (!File.Exists(path)) return;
+
+            System.Threading.Tasks.Task.Run(new Action(delegate
+            {
+                List<CatalogItem> parsed = null;
+                long elapsed = 0;
+                try
+                {
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    parsed = ReadCatalog(File.ReadAllText(path));
+                    clock.Stop();
+                    elapsed = clock.ElapsedMilliseconds;
+                }
+                catch (Exception error)
+                {
+                    AppLog.Write("catalog: could not be read - " + error.Message);
+                    return;
+                }
+
+                List<CatalogItem> result = parsed;
+                long ms = elapsed;
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(delegate
+                {
+                    catalogItems.Clear();
+                    catalogItems.AddRange(result);
+                    AppLog.Write(string.Format("catalog: {0} items in {1} ms (off the UI thread)",
+                        catalogItems.Count, ms));
+                    if (activePage == "discover") ReloadCurrentPage();
+                }));
+            }));
+        }
+
         private void LoadBundledCatalog()
         {
             try
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "catalog.json");
                 if (!File.Exists(path)) return;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
                 catalogItems.Clear();
                 catalogItems.AddRange(ReadCatalog(File.ReadAllText(path)));
+                AppLog.Write(string.Format("catalog: {0} items in {1} ms",
+                    catalogItems.Count, clock.ElapsedMilliseconds));
             }
             catch { }
         }
@@ -3222,7 +3272,15 @@ namespace LumaWall
         {
             config.Library = config.Library.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             store.Save(config);
-            LoadBundledCatalog();
+
+            // The wallpapers come up first, and the catalogue loads after.
+            //
+            // Parsing catalog.json is 235ms of work on the UI thread, and it used to sit
+            // between the window appearing and the wallpapers being restored - so the user
+            // stared at a frozen frame for a quarter of a second every cold start, which is
+            // the "pas pertama buka lumawall setelah smua di close lumayan ngelag".
+            //
+            // Nothing before the discover page needs the catalogue, so it waits.
             selectedVideo = config.Library.FirstOrDefault();
             selectedMonitor = Forms.Screen.PrimaryScreen.DeviceName;
             RestoreWallpapers();
@@ -3230,6 +3288,10 @@ namespace LumaWall
             lastMonitorSignature = GetMonitorSignature();
             healthTimer.Start();
             WarnIfWebView2Missing();
+
+            // Now, with the desktop already animating, load the catalogue off the UI thread.
+            LoadBundledCatalogAsync();
+
             HandleInvocation(Environment.GetCommandLineArgs().Skip(1).ToArray(), false);
             SwitchPage(Environment.GetCommandLineArgs().Any(x => x == "--library") ? "library" : "discover");
             if (startHidden) Dispatcher.BeginInvoke(new Action(Hide));

@@ -1015,6 +1015,35 @@ namespace LumaWall
                 string captured = key;
                 bool chosen = config.Timer.Position == key;
 
+                // Each cell shows a miniature of the screen with the clock in that spot.
+                //
+                // Nine anonymous dots were the complaint: "kirainya apa kananya apa kadang
+                // bikin bingung". A dot does not say what will happen; a dot in the corner of
+                // a little screen does. The miniature is the same 3x3 the pad already is, so
+                // nothing is added to explain the explanation.
+                var mini = new Grid
+                {
+                    Margin = new Thickness(4),
+                };
+                for (int row = 0; row < 3; row++)
+                    mini.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                for (int col = 0; col < 3; col++)
+                    mini.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                var mark = new Border
+                {
+                    Width = 13,
+                    Height = 6,
+                    CornerRadius = new CornerRadius(1.5),
+                    Background = new SolidColorBrush(chosen ? Colors.White : CDim),
+                    Opacity = chosen ? 1.0 : 0.55,
+                };
+                Grid.SetRow(mark, key.StartsWith("top") ? 0 : key.StartsWith("bottom") ? 2 : 1);
+                Grid.SetColumn(mark, key.EndsWith("left") ? 0 : key.EndsWith("right") ? 2 : 1);
+                mark.HorizontalAlignment = HorizontalAlignment.Center;
+                mark.VerticalAlignment = VerticalAlignment.Center;
+                mini.Children.Add(mark);
+
                 var cellBorder = new Border
                 {
                     Margin = new Thickness(gap),
@@ -1024,12 +1053,7 @@ namespace LumaWall
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                     ToolTip = StudioPositionLabel(key),
-                };
-                cellBorder.Child = new System.Windows.Shapes.Ellipse
-                {
-                    Width = 8,
-                    Height = 8,
-                    Fill = new SolidColorBrush(chosen ? Colors.White : CDim),
+                    Child = mini,
                 };
                 cellBorder.MouseLeftButtonUp += delegate
                 {
