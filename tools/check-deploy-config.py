@@ -92,42 +92,58 @@ def main():
         return 1
 
     # ── 1. the project settings ──────────────────────────────────────────────
+    #
+    # A token that has expired is not a broken deployment. It says the CLI needs logging in
+    # again, which is a note for the person running the check, not a fault in the site. The
+    # live check below is the one that decides whether the site is actually up, and it does
+    # not need the API at all.
     try:
         project = api('/v9/projects/%s?teamId=%s' % (PROJECT, TEAM_ID), tok)
     except urllib.error.HTTPError as e:
-        print('  could not read the project: HTTP %s' % e.code)
-        return 1
-
-    root = project.get('rootDirectory')
-    git = project.get('link') or {}
-
-    print('    project           %s' % project.get('name'))
-    print('    rootDirectory     %r' % root)
-    print('    git integration   %s' % (git.get('repo') or 'DISCONNECTED'))
-
-    if git.get('repo'):
-        # The Git integration is connected, so every push builds. rootDirectory has
-        # to be right or those builds produce an empty deployment.
-        if root != REQUIRED_ROOT:
-            problems.append(
-                'rootDirectory is %r but the Git integration is connected, so every '
-                'push builds the repository root - which has no index.html - and '
-                'promotes an empty deployment to production. Set it to %r.'
-                % (root, REQUIRED_ROOT))
-            print('    %-17s WRONG - a push will take the site down' % '')
+        if e.code in (401, 403):
+            notes.append(
+                'the Vercel CLI token is no longer valid (HTTP %d), so the project settings '
+                'could not be read - run `npx vercel login` to restore it. This does not '
+                'affect the site: the checks below test the live domain directly.' % e.code)
+            project = None
         else:
-            print('    %-17s correct for the Git build' % '')
-    else:
-        notes.append('the Git integration is disconnected, so pushes do not deploy; '
-                     'the CLI is the only path (tools/deploy-vercel.ps1)')
+            print('  could not read the project: HTTP %s' % e.code)
+            return 1
+
+    if project is not None:
+        root = project.get('rootDirectory')
+        git = project.get('link') or {}
+
+        print('    project           %s' % project.get('name'))
+        print('    rootDirectory     %r' % root)
+        print('    git integration   %s' % (git.get('repo') or 'DISCONNECTED'))
+
+        if git.get('repo'):
+            # The Git integration is connected, so every push builds. rootDirectory has
+            # to be right or those builds produce an empty deployment.
+            if root != REQUIRED_ROOT:
+                problems.append(
+                    'rootDirectory is %r but the Git integration is connected, so every '
+                    'push builds the repository root - which has no index.html - and '
+                    'promotes an empty deployment to production. Set it to %r.'
+                    % (root, REQUIRED_ROOT))
+                print('    %-17s WRONG - a push will take the site down' % '')
+            else:
+                print('    %-17s correct for the Git build' % '')
+        else:
+            notes.append('the Git integration is disconnected, so pushes do not deploy; '
+                         'the CLI is the only path (tools/deploy-vercel.ps1)')
 
     # ── 2. the alias ─────────────────────────────────────────────────────────
-    try:
-        aliases = api('/v4/aliases?projectId=%s&teamId=%s&limit=20'
-                      % (project['id'], TEAM_ID), tok)
-    except urllib.error.HTTPError as e:
+    if project is None:
         aliases = {'aliases': []}
-        notes.append('could not read the aliases: HTTP %s' % e.code)
+    else:
+        try:
+            aliases = api('/v4/aliases?projectId=%s&teamId=%s&limit=20'
+                          % (project['id'], TEAM_ID), tok)
+        except urllib.error.HTTPError as e:
+            aliases = {'aliases': []}
+            notes.append('could not read the aliases: HTTP %s' % e.code)
 
     target = None
     for alias in aliases.get('aliases', []):
@@ -138,7 +154,14 @@ def main():
     print()
     print('    alias             lumawall.xinet.id -> %s' % (target or 'NOT FOUND'))
     if not target:
-        problems.append('no production alias for lumawall.xinet.id')
+        # Only a fault when the aliases were actually read. With an expired token the list
+        # is empty because the call failed, not because the alias is gone - and reporting
+        # "no production alias" then is a false alarm about a site that is serving fine.
+        if project is not None:
+            problems.append('no production alias for lumawall.xinet.id')
+        else:
+            print('    %-17s not checked - the token could not read the aliases'
+                  % '')
 
     # ── 3. what the domain actually serves ───────────────────────────────────
     #
