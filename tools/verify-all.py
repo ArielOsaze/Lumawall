@@ -84,6 +84,8 @@ CHECKS = [
      ['python', 'tools/check-promo-copy.py']),
     ('page behaviour: autoplay, crop, reveals, copy',
      ['node', 'tools/check-page.mjs']),
+    ('the site ships a dark scrollbar',
+     ['node', 'tools/check-scrollbar-site.mjs']),
     ('page at every viewport size',
      ['node', 'tools/check-responsive.mjs']),
     ('site animation and font',
