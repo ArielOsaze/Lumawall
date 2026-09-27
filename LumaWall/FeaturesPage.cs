@@ -96,18 +96,24 @@ namespace LumaWall
             left.Children.Add(StudioDisplayPicker(screens));
             left.Children.Add(StudioPreviewCard());
             left.Children.Add(StudioPresetCard());
+            left.Children.Add(StudioSpanCard());
+            left.Children.Add(StudioTimerCard());
+            left.Children.Add(StudioResetCard());
             Grid.SetColumn(left, 0);
             columns.Children.Add(left);
 
             DisplayOptions options = config.OptionsFor(studioDevice);
 
+            // The right column holds the four groups that act on one image. Everything in
+            // the left column is about the display itself rather than about the grade, and
+            // that is also what fixes the layout: with all six cards in the right column
+            // the left one was 746px shorter, leaving a band of empty background under the
+            // presets. Measured with tools/MeasureStudioLayout.cs.
             var right = new StackPanel();
             right.Children.Add(StudioColourCard(options));
             right.Children.Add(StudioHdrCard(options));
             right.Children.Add(StudioFrameCard(options));
             right.Children.Add(StudioPlaybackCard(options));
-            right.Children.Add(StudioSpanCard());
-            right.Children.Add(StudioTimerCard());
             Grid.SetColumn(right, 1);
             columns.Children.Add(right);
 
@@ -1334,6 +1340,21 @@ namespace LumaWall
             };
             row.Children.Add(resetAll);
             return row;
+        }
+
+        /// <summary>
+        /// The reset card, on its own at the foot of the left column.
+        ///
+        /// A card rather than a bare row of buttons: "reset everything" throws away every
+        /// display's grade, and a button that destructive should not look like the chips
+        /// above it. The note says what each one does before it is pressed.
+        /// </summary>
+        private UIElement StudioResetCard()
+        {
+            Border card;
+            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Restore, CMuted, out card);
+            host.Children.Add(StudioResetRow());
+            return card;
         }
 
         // ── presets and the preview ──────────────────────────────────────────────────

@@ -220,6 +220,7 @@ namespace LumaWall
             { "preset.natural", new[] { "Natural", "Natural", "自然", "ナチュラル" } },
             { "preset.night", new[] { "Malam", "Night", "夜晚", "ナイト" } },
             { "preset.soft", new[] { "Lembut", "Soft", "柔和", "ソフト" } },
+            { "studio.resetHint", new[] { "Kembalikan pengaturan monitor ini, atau semua monitor sekaligus.", "Put this display back to defaults, or every display at once.", "将此显示器恢复默认，或一次性恢复全部。", "このモニター、または全モニターを初期設定に戻します。" } },
             { "preset.vivid", new[] { "Vivid", "Vivid", "鲜艳", "ビビッド" } },
             { "preset.warm", new[] { "Hangat", "Warm", "暖色", "ウォーム" } },
             { "studio.framingHint", new[] { "Atur posisi dan ukuran gambar di layar.", "Position and size of the image on screen.", "图像在屏幕上的位置与大小。", "画面上での画像の位置と大きさ。" } },
