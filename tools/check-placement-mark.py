@@ -339,6 +339,15 @@ def main():
         # Proof the click landed on the cell it aimed at.
         recorded = config_position()
         if recorded != position:
+            # The first click after the window is brought forward is sometimes swallowed
+            # while Windows finishes activating it. A person would click again; so does this,
+            # once, and only once - a pad that needs three clicks is broken, not warming up.
+            time.sleep(0.6)
+            click_out = click(pad_x + PAD * want_x, pad_y + PAD * want_y)
+            time.sleep(1.2)
+            recorded = config_position()
+
+        if recorded != position:
             # Report what had the focus, so a click that never reached the app is not
             # mistaken for an app that ignored it.
             focus = ''
