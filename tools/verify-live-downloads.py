@@ -17,6 +17,7 @@ Usage:
 
 import hashlib
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -24,10 +25,28 @@ import urllib.request
 BASE = 'https://lumawall.xinet.id/assets/downloads/'
 LOCAL_DIR = os.path.join('site', 'assets', 'downloads')
 
+
+def current_version():
+    """The version the app is at, read from the assembly rather than written here.
+
+    A checker with a hard-coded version keeps passing after the version moves, so it
+    reported a stale download for three releases while the site was serving the current one.
+    """
+    info = os.path.join('LumaWall', 'Properties', 'AssemblyInfo.cs')
+    if os.path.exists(info):
+        with open(info, encoding='utf-8') as fh:
+            m = re.search(r'AssemblyFileVersion\("([0-9.]+)"\)', fh.read())
+        if m:
+            return m.group(1)
+    return ''
+
+
+V = current_version()
+
 FILES = [
-    'LumaWall-Setup-4.1.3.0.exe',
-    'LumaWall_4.1.3.0_x64.msix',
-    'LumaWall-portable-4.1.3.0.zip',
+    'LumaWall-Setup-%s.exe' % V,
+    'LumaWall_%s_x64.msix' % V,
+    'LumaWall-portable-%s.zip' % V,
 ]
 
 

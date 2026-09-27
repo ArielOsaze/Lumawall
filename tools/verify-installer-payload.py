@@ -38,10 +38,28 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 
 MANIFEST = os.path.join('installer', 'build-manifest.json')
-DEFAULT_INSTALLER = os.path.join('site', 'assets', 'downloads', 'LumaWall-Setup-4.1.3.0.exe')
+def current_version():
+    """The version the app is at, read from the assembly rather than written here.
+
+    A checker with a hard-coded version keeps passing after the version moves, which is how
+    it reported a stale download for three releases while the site was serving the current
+    one - and how the installer check went looking for 4.1.3.0 that no longer exists.
+    """
+    info = os.path.join('LumaWall', 'Properties', 'AssemblyInfo.cs')
+    if os.path.exists(info):
+        with open(info, encoding='utf-8') as fh:
+            m = re.search(r'AssemblyFileVersion\("([0-9.]+)"\)', fh.read())
+        if m:
+            return m.group(1)
+    return ''
+
+
+DEFAULT_INSTALLER = os.path.join('site', 'assets', 'downloads',
+                                 'LumaWall-Setup-%s.exe' % current_version())
 RELEASE_DIR = os.path.join('LumaWall', 'bin', 'Release')
 KEY_BINARY = 'LumaWall.exe'
 
