@@ -94,6 +94,8 @@ CHECKS = [
     ('the placement pad is square and aligned',
      ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'tools/measure-placement-pad.ps1']),
+    ('the placement pad records the click and draws the clock in that third',
+     ['python', 'tools/check-placement-mark.py']),
     ('startup is quick', ['python', 'tools/check-startup.py']),
     ('page at every viewport size',
      ['node', 'tools/check-responsive.mjs']),

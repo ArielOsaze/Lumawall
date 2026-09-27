@@ -977,32 +977,49 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// The position picker: a 3x3 grid of dots, with the screen's edges named.
+        /// The position picker: one picture of the screen, and you click where the clock goes.
         ///
-        /// Nine dots alone do not say which side is which. The complaint was "placement
-        /// bagian ini loh kirainya apa kananya apa kadang bikin bingung" - which one is
-        /// left, which one is right, it is confusing. A grid is only self-explanatory if
-        /// you already know it is a screen; the first row could as easily be "first three
-        /// options".
+        /// This replaced a 3x3 grid of cells that each contained a smaller 3x3 grid.
+        /// That design could not work: a cell is 40px, its inner grid 32px, so each of the
+        /// nine sub-cells was 10.7px - narrower than the 13px clock mark it had to hold. The
+        /// marks overflowed into their neighbours, and the measured result was a pad where
+        /// only the centre cell appeared to have a mark.
         ///
-        /// So the pad is drawn inside a frame that IS the screen, and the four edges are
-        /// labelled: KIRI / KANAN on the sides, ATAS / BAWAH top and bottom. The labels are
-        /// small, dim and outside the pad, so they orient the grid without competing with
-        /// it. The pad is square (it represents the screen) and the current choice is named
-        /// in words beside it.
+        /// The complaint was "placement bagian ini loh kirainya apa kananya apa kadang bikin
+        /// bingung" - you could not tell which cell meant what. Nine pictures of a screen
+        /// inside nine cells of a screen is confusing by construction. There is one screen
+        /// here, the clock is drawn on it exactly once, and it moves as you choose. The nine
+        /// drop targets are still there, but they are invisible: they are where you click,
+        /// not something you have to read.
+        ///
+        /// The edges are labelled so the picture reads as a screen, and the current choice is
+        /// named in words beside it.
         /// </summary>
         private UIElement StudioPositionPad()
         {
-            const double cell = 40;
-            const double gap = 2;
-            const double edge = 13;   // room for the edge labels
+            const double pad = 126;    // the screen
+            const double edge = 13;    // room for the edge labels
+            const double markW = 22;   // the clock mark, comfortably inside a third (42px)
+            const double markH = 9;
 
-            var grid = new UniformGrid
+            // A Grid, not a UniformGrid.
+            //
+            // UniformGrid places children in order and IGNORES the Grid.Row / Grid.Column
+            // attached properties - so the clock mark, which is the tenth child, always
+            // landed in the fourth row's first column (the bottom-left of the pad) no matter
+            // what position was chosen. Measured: the config said middle-center and the mark
+            // was drawn at 0.17/0.88 of the pad. The pad looked like it ignored clicks
+            // because the one thing that was supposed to move could not move at all.
+            var grid = new Grid
             {
-                Columns = 3,
-                Width = cell * 3,
-                Height = cell * 3,
+                Width = pad,
+                Height = pad,
             };
+            for (int i = 0; i < 3; i++)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
             string[] keys =
             {
                 "top-left", "top-center", "top-right",
@@ -1010,77 +1027,80 @@ namespace LumaWall
                 "bottom-left", "bottom-center", "bottom-right",
             };
 
+            // The clock mark, drawn once and moved. It sits on the pad at the chosen
+            // position, so the picture shows the answer rather than asking you to decode it.
+            var clock = new Border
+            {
+                Width = markW,
+                Height = markH,
+                CornerRadius = new CornerRadius(2.5),
+                Background = new SolidColorBrush(CPrimary),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+            };
+            Grid.SetRow(clock, 1);
+            Grid.SetColumn(clock, 1);
+
+            string current = string.IsNullOrEmpty(config.Timer.Position) ? "middle-center" : config.Timer.Position;
+            Action<string> moveMark = delegate(string key)
+            {
+                Grid.SetRow(clock, key.StartsWith("top") ? 0 : key.StartsWith("bottom") ? 2 : 1);
+                Grid.SetColumn(clock, key.EndsWith("left") ? 0 : key.EndsWith("right") ? 2 : 1);
+            };
+            moveMark(current);
+
             foreach (string key in keys)
             {
                 string captured = key;
-                bool chosen = config.Timer.Position == key;
+                bool chosen = current == key;
 
-                // Each cell shows a miniature of the screen with the clock in that spot.
-                //
-                // Nine anonymous dots were the complaint: "kirainya apa kananya apa kadang
-                // bikin bingung". A dot does not say what will happen; a dot in the corner of
-                // a little screen does. The miniature is the same 3x3 the pad already is, so
-                // nothing is added to explain the explanation.
-                var mini = new Grid
+                // The drop target. It is invisible - a faint highlight on hover is the only
+                // sign it exists - because the mark on the pad is what the user reads.
+                var target = new Border
                 {
-                    Margin = new Thickness(4),
-                };
-                for (int row = 0; row < 3; row++)
-                    mini.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-                for (int col = 0; col < 3; col++)
-                    mini.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                var mark = new Border
-                {
-                    Width = 13,
-                    Height = 6,
-                    CornerRadius = new CornerRadius(1.5),
-                    Background = new SolidColorBrush(chosen ? Colors.White : CDim),
-                    Opacity = chosen ? 1.0 : 0.55,
-                };
-                Grid.SetRow(mark, key.StartsWith("top") ? 0 : key.StartsWith("bottom") ? 2 : 1);
-                Grid.SetColumn(mark, key.EndsWith("left") ? 0 : key.EndsWith("right") ? 2 : 1);
-                mark.HorizontalAlignment = HorizontalAlignment.Center;
-                mark.VerticalAlignment = VerticalAlignment.Center;
-                mini.Children.Add(mark);
-
-                var cellBorder = new Border
-                {
-                    Margin = new Thickness(gap),
-                    CornerRadius = new CornerRadius(6),
-                    Background = new SolidColorBrush(chosen ? CPrimary : CSurface2),
-                    BorderBrush = new SolidColorBrush(chosen ? CPrimaryHi : CBorder),
-                    BorderThickness = new Thickness(1),
+                    Background = Brushes.Transparent,
                     Cursor = Cursors.Hand,
                     ToolTip = StudioPositionLabel(key),
-                    Child = mini,
                 };
-                cellBorder.MouseLeftButtonUp += delegate
+                target.MouseLeftButtonUp += delegate
                 {
                     config.Timer.Position = captured;
+                    moveMark(captured);
                     timerRefresh();
                     store.Save(config);
                     ReloadCurrentPage();
                 };
-                cellBorder.MouseEnter += delegate { if (!chosen) cellBorder.Background = new SolidColorBrush(CSurfaceHover); };
-                cellBorder.MouseLeave += delegate { if (!chosen) cellBorder.Background = new SolidColorBrush(CSurface2); };
+                target.MouseEnter += delegate
+                {
+                    target.Background = new SolidColorBrush(Color.FromArgb(38, CPrimaryHi.R, CPrimaryHi.G, CPrimaryHi.B));
+                };
+                target.MouseLeave += delegate { target.Background = Brushes.Transparent; };
 
-                grid.Children.Add(cellBorder);
+                // The drop target needs its cell too - with a real Grid, children without
+                // a row and column all pile into cell 0,0.
+                Grid.SetRow(target, key.StartsWith("top") ? 0 : key.StartsWith("bottom") ? 2 : 1);
+                Grid.SetColumn(target, key.EndsWith("left") ? 0 : key.EndsWith("right") ? 2 : 1);
+                grid.Children.Add(target);
             }
 
-            // The frame is the screen, and the four labels name its edges. Without them the
-            // pad is nine anonymous dots.
+            // The mark goes on last so it draws above the drop targets.
+            grid.Children.Add(clock);
+
+            // The frame is the screen. The labels name its edges so the square reads as a
+            // screen rather than as an abstract grid.
             var frame = new Border
             {
                 BorderBrush = new SolidColorBrush(CBorder),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(9),
                 Padding = new Thickness(5),
+                Background = new SolidColorBrush(Color.FromArgb(70, CSurface2.R, CSurface2.G, CSurface2.B)),
                 Child = grid,
             };
 
-            var canvas = new Grid { Width = cell * 3 + 10 + edge * 2,
-                                    Height = cell * 3 + 10 + edge * 2,
+            var canvas = new Grid { Width = pad + 10 + edge * 2,
+                                    Height = pad + 10 + edge * 2,
                                     HorizontalAlignment = HorizontalAlignment.Left };
             canvas.Children.Add(frame);
             frame.Margin = new Thickness(edge, edge, edge, edge);
