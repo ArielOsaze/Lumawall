@@ -123,7 +123,23 @@ namespace LumaWall
             columns.Children.Add(right);
 
             page.Children.Add(columns);
-            return page;
+            // Luma Studio is the one page whose content is taller than a small window, and
+            // it was the one page that was not wrapped in a scroll viewer: BuildStudio
+            // returned the StackPanel directly while every other page returned
+            // PageScroll(content). With ten cards in two columns, anything below the fold
+            // was unreachable - there was no scrollbar and no way to get to the playback
+            // and reset cards at the bottom.
+            //
+            // The margin belongs to the canvas, so it is left where it is; the scroll
+            // viewer only adds the ability to move.
+            return new ScrollViewer
+            {
+                Content = page,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                PanningMode = PanningMode.VerticalOnly,
+                Focusable = false,
+            };
         }
 
         // ── the left column ──────────────────────────────────────────────────────────
@@ -194,7 +210,7 @@ namespace LumaWall
                 row.MouseLeftButtonUp += delegate
                 {
                     studioDevice = captured.DeviceName;
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 row.MouseEnter += delegate { if (!chosen) row.BorderBrush = new SolidColorBrush(CBorderHot); };
                 row.MouseLeave += delegate { if (!chosen) row.BorderBrush = new SolidColorBrush(CBorder); };
@@ -340,7 +356,7 @@ namespace LumaWall
                     StudioApplyPreset(captured);
                     store.Save(config);
                     manager.RefreshOptions();
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 row.Children.Add(button);
             }
@@ -477,7 +493,7 @@ namespace LumaWall
                     config.OptionsFor(studioDevice).PlaybackRate = captured;
                     manager.RefreshOptions();
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 speedRow.Children.Add(button);
             }
@@ -568,7 +584,7 @@ namespace LumaWall
                     if (captured.Enabled) ClearSpanGroup(captured);
                     else ApplySpanGroup(captured);
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 Grid.SetColumn(toggle, 1);
                 line.Children.Add(toggle);
@@ -584,7 +600,7 @@ namespace LumaWall
                     ClearSpanGroup(captured);
                     config.SpanGroups.Remove(captured);
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 Grid.SetColumn(remove, 2);
                 line.Children.Add(remove);
@@ -620,7 +636,7 @@ namespace LumaWall
                     config.SpanGroups.Add(group);
                     ApplySpanGroup(group);
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 create.Children.Add(make);
             }
@@ -705,8 +721,16 @@ namespace LumaWall
                 config.Timer.Mode,
                 delegate(string value) { config.Timer.Mode = value; }));
 
-            host.Children.Add(StudioLabel(Tr("timer.shape")));
-            host.Children.Add(StudioShapeRow());
+            host.Children.Add(StudioLabel(Tr("timer.style")));
+            host.Children.Add(StudioStyleRow());
+
+            if (config.Timer.Mode == "clock")
+            {
+                host.Children.Add(StudioToggle(Tr("timer.date"), Tr("timer.dateHint"), config.Timer.ShowDate,
+                    delegate(bool v) { config.Timer.ShowDate = v; }));
+                host.Children.Add(StudioToggle(Tr("timer.twelve"), Tr("timer.twelveHint"), config.Timer.TwelveHour,
+                    delegate(bool v) { config.Timer.TwelveHour = v; }));
+            }
 
             host.Children.Add(StudioLabel(Tr("timer.position")));
             host.Children.Add(StudioPositionPad());
@@ -714,8 +738,6 @@ namespace LumaWall
             host.Children.Add(StudioDivider());
             host.Children.Add(StudioSlider(Tr("timer.size"), 50, 250, 5, config.Timer.Scale, "F0",
                 delegate(double v) { config.Timer.Scale = (int)v; }));
-            host.Children.Add(StudioSlider(Tr("timer.opacity"), 0.2, 1.0, 0.01, config.Timer.Opacity, "F2",
-                delegate(double v) { config.Timer.Opacity = v; }));
             host.Children.Add(StudioSlider(Tr("timer.offsetX"), -400, 400, 1, config.Timer.OffsetX, "F0",
                 delegate(double v) { config.Timer.OffsetX = (int)v; }));
             host.Children.Add(StudioSlider(Tr("timer.offsetY"), -400, 400, 1, config.Timer.OffsetY, "F0",
@@ -750,35 +772,41 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// The shape picker: four little drawings of the actual shapes.
+        /// The style picker: four tiles that draw what each style actually looks like.
         ///
-        /// This was a chip row reading "Kapsul / Bulat / Kotak / Tanpa latar". Those are
-        /// the right words and the wrong control - the question is what it will look
-        /// like, and a word cannot answer that.
+        /// The previous control asked "Kapsul / Bulat / Kotak / Tanpa latar" and drew the
+        /// silhouette of a box. That is the wrong question: the old styles were all boxes,
+        /// and a box is what made the widget look like a stray system dialog. These four
+        /// are what macOS and iOS widgets do instead, and the tiles show it - the time with
+        /// no background, with a wash, in a panel, and inside a ring.
         /// </summary>
-        private UIElement StudioShapeRow()
+        private UIElement StudioStyleRow()
         {
             var row = new WrapPanel();
-            string[] keys = { "pill", "circle", "square", "bare" };
-            string[] labels = { Tr("timer.pill"), Tr("timer.circle"), Tr("timer.square"), Tr("timer.bare") };
+            string[] keys = { "minimal", "bold", "glass", "card", "ring", "analog" };
+            string[] labels =
+            {
+                Tr("timer.minimal"), Tr("timer.bold"), Tr("timer.glass"),
+                Tr("timer.card"), Tr("timer.ring"), Tr("timer.analog"),
+            };
 
             for (int i = 0; i < keys.Length; i++)
             {
                 string key = keys[i];
-                bool chosen = config.Timer.Shape == key;
+                bool chosen = (config.Timer.Style ?? "minimal") == key;
 
                 var cell = new StackPanel { Margin = new Thickness(0, 0, 8, 6) };
                 var tile = new Border
                 {
-                    Width = 64,
-                    Height = 46,
-                    CornerRadius = new CornerRadius(8),
+                    Width = 66,
+                    Height = 48,
+                    CornerRadius = new CornerRadius(9),
                     Background = new SolidColorBrush(chosen ? CPrimarySoft : CSurface2),
                     BorderBrush = new SolidColorBrush(chosen ? CPrimary : CBorder),
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                 };
-                tile.Child = StudioShapeGlyph(key, chosen);
+                tile.Child = StudioStyleGlyph(key, chosen);
                 cell.Children.Add(tile);
                 cell.Children.Add(new TextBlock
                 {
@@ -791,10 +819,10 @@ namespace LumaWall
 
                 tile.MouseLeftButtonUp += delegate
                 {
-                    config.Timer.Shape = key;
+                    config.Timer.Style = key;
                     timerRefresh();
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 tile.MouseEnter += delegate { if (!chosen) tile.BorderBrush = new SolidColorBrush(CBorderHot); };
                 tile.MouseLeave += delegate { if (!chosen) tile.BorderBrush = new SolidColorBrush(CBorder); };
@@ -805,53 +833,119 @@ namespace LumaWall
             return row;
         }
 
-        /// <summary>Draws the timer's silhouette, so the shape choice is visible.</summary>
-        private UIElement StudioShapeGlyph(string key, bool chosen)
+        /// <summary>
+        /// Draws one style tile.
+        ///
+        /// A dark plate stands in for the wallpaper, so "transparent" is visible as
+        /// transparent rather than as the panel's own colour. The time is drawn in white
+        /// with a faint dark halo underneath it, which is how the widget keeps itself
+        /// readable - the same trick the real widget uses.
+        /// </summary>
+        private UIElement StudioStyleGlyph(string key, bool chosen)
         {
-            Color ink = chosen ? CPrimaryHi : CMuted;
-            var canvas = new Canvas { Width = 64, Height = 46 };
+            Color ink = chosen ? Colors.White : CMuted;
+            var canvas = new Canvas { Width = 66, Height = 48 };
 
-            double w = key == "circle" ? 26 : key == "square" ? 28 : 42;
-            double h = key == "circle" ? 26 : key == "square" ? 26 : 18;
-            double left = (64 - w) / 2;
-            double top = (46 - h) / 2;
-
-            var body = new System.Windows.Shapes.Rectangle
+            // The wallpaper stand-in.
+            var plate = new Border
             {
-                Width = w,
-                Height = h,
-                RadiusX = key == "square" ? 4 : h / 2,
-                RadiusY = key == "square" ? 4 : h / 2,
+                Width = 66,
+                Height = 48,
+                CornerRadius = new CornerRadius(9),
+                Background = new SolidColorBrush(Color.FromRgb(28, 32, 42)),
             };
-            Canvas.SetLeft(body, left);
-            Canvas.SetTop(body, top);
+            canvas.Children.Add(plate);
 
-            if (key == "bare")
+            if (key == "glass" || key == "card")
             {
-                // No background: just the time, in the weight the widget uses.
-                body.Stroke = new SolidColorBrush(ink);
-                body.StrokeThickness = 1.3;
-                body.StrokeDashArray = new DoubleCollection { 2, 2 };
-                body.Fill = Brushes.Transparent;
+                // A faint wash, not a slab. The card is inset and rounder, the glass fills
+                // the tile - that is the only difference between them.
+                bool card = key == "card";
+                var wash = new Border
+                {
+                    Width = card ? 46 : 66,
+                    Height = card ? 32 : 48,
+                    CornerRadius = new CornerRadius(card ? 10 : 9),
+                    Background = new SolidColorBrush(Color.FromArgb(card ? (byte)110 : (byte)70, 12, 14, 18)),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(wash, card ? 10 : 0);
+                Canvas.SetTop(wash, card ? 8 : 0);
+                canvas.Children.Add(wash);
             }
-            else
-            {
-                body.Fill = new SolidColorBrush(Color.FromArgb((byte)(chosen ? 92 : 44), ink.R, ink.G, ink.B));
-                body.Stroke = new SolidColorBrush(ink);
-                body.StrokeThickness = 1.2;
-            }
-            canvas.Children.Add(body);
 
+            if (key == "ring")
+            {
+                var ring = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 32,
+                    Height = 32,
+                    Stroke = new SolidColorBrush(Color.FromArgb(210, 255, 255, 255)),
+                    StrokeThickness = 2.4,
+                    StrokeDashArray = new DoubleCollection { 3.4, 1.1 },
+                    Fill = Brushes.Transparent,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(ring, 17);
+                Canvas.SetTop(ring, 8);
+                canvas.Children.Add(ring);
+            }
+
+            if (key == "analog")
+            {
+                // The iOS Clock face: a ring, four quarter ticks, two hands.
+                var ring = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 34,
+                    Height = 34,
+                    Stroke = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255)),
+                    StrokeThickness = 1.4,
+                    Fill = Brushes.Transparent,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(ring, 16);
+                Canvas.SetTop(ring, 7);
+                canvas.Children.Add(ring);
+
+                // Two hands, drawn as lines from the centre: hour pointing up-right,
+                // minute pointing down-right, which is what a clock at 10:10 looks like.
+                var hour = new System.Windows.Shapes.Line
+                {
+                    X1 = 33, Y1 = 24, X2 = 40, Y2 = 15,
+                    Stroke = new SolidColorBrush(Colors.White),
+                    StrokeThickness = 2.4,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round,
+                    IsHitTestVisible = false,
+                };
+                var minute = new System.Windows.Shapes.Line
+                {
+                    X1 = 33, Y1 = 24, X2 = 41, Y2 = 32,
+                    Stroke = new SolidColorBrush(Colors.White),
+                    StrokeThickness = 1.6,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round,
+                    IsHitTestVisible = false,
+                };
+                canvas.Children.Add(hour);
+                canvas.Children.Add(minute);
+            }
+
+            // The time, with the halo that keeps it readable over anything.
             var time = new TextBlock
             {
-                Text = "12:30",
-                FontSize = key == "circle" ? 8.5 : 10,
-                FontFamily = FMono,
+                Text = key == "ring" ? "5:00" : "9:41",
+                FontSize = key == "ring" ? 9.5 : 13,
+                FontFamily = FDisplay,
+                FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(ink),
+                // The dial has no text at all, so the glyph is left out rather than drawn
+                // over the hands.
+                Visibility = key == "analog" ? Visibility.Collapsed : Visibility.Visible,
             };
             time.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            Canvas.SetLeft(time, (64 - time.DesiredSize.Width) / 2);
-            Canvas.SetTop(time, (46 - time.DesiredSize.Height) / 2);
+            Canvas.SetLeft(time, (66 - time.DesiredSize.Width) / 2);
+            Canvas.SetTop(time, (48 - time.DesiredSize.Height) / 2);
             canvas.Children.Add(time);
 
             return canvas;
@@ -899,7 +993,7 @@ namespace LumaWall
                     config.Timer.Position = captured;
                     timerRefresh();
                     store.Save(config);
-                    SwitchPage("studio");
+                    ReloadCurrentPage();
                 };
                 cell.MouseEnter += delegate { if (!chosen) cell.Background = new SolidColorBrush(CSurfaceHover); };
                 cell.MouseLeave += delegate { if (!chosen) cell.Background = new SolidColorBrush(CSurface2); };
@@ -1268,7 +1362,7 @@ namespace LumaWall
                 set(!value);
                 manager.RefreshOptions();
                 store.Save(config);
-                SwitchPage("studio");
+                ReloadCurrentPage();
             };
             Grid.SetColumn(track, 1);
             row.Children.Add(track);
@@ -1331,7 +1425,7 @@ namespace LumaWall
                 config.Displays[studioDevice] = new DisplayOptions();
                 manager.RefreshOptions();
                 store.Save(config);
-                SwitchPage("studio");
+                ReloadCurrentPage();
             };
             row.Children.Add(reset);
 
@@ -1344,7 +1438,7 @@ namespace LumaWall
                 config.Displays.Clear();
                 manager.RefreshOptions();
                 store.Save(config);
-                SwitchPage("studio");
+                ReloadCurrentPage();
             };
             row.Children.Add(resetAll);
             return row;

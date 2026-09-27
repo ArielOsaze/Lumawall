@@ -1,4 +1,4 @@
-// DesktopTimer.cs - the always-on-top timer that sits on the wallpaper.
+// DesktopTimer.cs - the desktop widget: a countdown, a clock, or a stopwatch.
 //
 // Why a separate top-level window rather than something drawn into the wallpaper page:
 //
@@ -10,10 +10,33 @@
 // It is deliberately not a normal window: no taskbar button, no activation, and
 // click-through, so it cannot steal focus from a game or block a click on the desktop.
 // A timer that interrupts what the user is doing would be worse than no timer.
+//
+// ── the look ─────────────────────────────────────────────────────────────────────────
+//
+// The first version drew a filled rounded rectangle with a hairline border in the accent
+// colour. On a wallpaper it read as a system dialog that had lost its window: an opaque
+// slab covering the artwork, with a coloured edge that fought whatever was behind it. The
+// complaint was "widget timer ini yg kayak jelek bgt" and it was fair.
+//
+// macOS and iOS widgets do the opposite. They carry no background at all - or a barely
+// there frosted wash - and the text is held legible by a soft shadow rather than by a box.
+// That is what this draws now:
+//
+//   minimal   the time alone, with a soft shadow. No fill, no border.
+//   glass     the same, over a faint translucent wash. Reads on a busy wallpaper.
+//   card      a macOS-widget style rounded panel: translucent, no border, content inset.
+//   ring      an iOS timer: a progress arc that empties as the countdown runs.
+//
+// Transparency here is per-pixel, not a colour key. A layered window painted through
+// UpdateLayeredWindow takes a 32bpp ARGB bitmap, so the text can be fully opaque while the
+// space around it is fully transparent, and the antialiased edges of the glyphs blend into
+// the wallpaper instead of into a mask colour. Colour-key transparency cannot do that: it
+// leaves a halo of the key colour around every antialiased edge.
 
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -25,7 +48,7 @@ namespace LumaWall
     /// The timer readout: a countdown, a clock, or a stopwatch, drawn on a small layered
     /// window over the desktop.
     ///
-    /// Shape, size and position come from the config because the right answer depends on
+    /// Style, size and position come from the config because the right answer depends on
     /// the wallpaper behind it - a bright wallpaper needs a different treatment from a dark
     /// one, and the empty corner is different on every desktop.
     /// </summary>
@@ -120,13 +143,7 @@ namespace LumaWall
             return left < TimeSpan.Zero ? TimeSpan.Zero : left;
         }
 
-        /// <summary>
-        /// Paints the window with what the timer currently reads.
-        ///
-        /// The text is measured before the window is sized, so the shape grows to fit the
-        /// digits rather than clipping them - which is what happens when a countdown drops
-        /// from 10:00 to 9:59 and the face was sized for the longer string.
-        /// </summary>
+        /// <summary>Paints the window with what the timer currently reads.</summary>
         private void Render()
         {
             if (disposed) return;
@@ -134,14 +151,48 @@ namespace LumaWall
             if (current == null || !current.Enabled) { Stop(); return; }
 
             TimeSpan value = Remaining();
-            string text = Format(value, current);
 
             bool finished = current.Mode == "countdown" && value <= TimeSpan.Zero;
             // A countdown that reaches zero blinks, because a silent 00:00 on a desktop the
             // user is not looking at is not a notification.
             bool dim = finished && current.BlinkAtEnd && ((DateTime.UtcNow.Millisecond / 500) % 2 == 0);
 
-            window.Draw(text, current, finished, dim);
+            window.Draw(Format(value, current), Subtitle(current), Progress(value, current),
+                        current, finished, dim);
+        }
+
+        /// <summary>
+        /// The small line under the time: the date for a clock, the mode for the others.
+        ///
+        /// A macOS widget is a big reading over a small label, and the label is what makes
+        /// the big number mean something. "14:32" alone is a number; "14:32 / Rabu, 27
+        /// September" is a clock.
+        /// </summary>
+        private static string Subtitle(TimerConfig current)
+        {
+            if (current.Mode == "clock")
+            {
+                if (!current.ShowDate) return "";
+                CultureInfo culture = CultureInfo.CurrentUICulture;
+                // "Rabu, 27 September" / "Wednesday, 27 September" - long day and month,
+                // which is the macOS lock screen form.
+                return DateTime.Now.ToString("dddd, d MMMM", culture);
+            }
+            return "";
+        }
+
+        /// <summary>How full the ring is: 1 at the start of a countdown, 0 at the end.</summary>
+        private static double Progress(TimeSpan value, TimerConfig current)
+        {
+            if (current.Mode == "stopwatch") return 1.0;
+            if (current.Mode == "clock")
+            {
+                // The seconds hand of a ring clock, so the arc moves once a minute.
+                return 1.0 - (DateTime.Now.TimeOfDay.TotalSeconds % 60) / 60.0;
+            }
+            double total = Math.Max(1, current.Seconds);
+            double left = Math.Max(0, value.TotalSeconds);
+            return Math.Max(0, Math.Min(1, left / total));
         }
 
         private static string Format(TimeSpan value, TimerConfig current)
@@ -149,6 +200,13 @@ namespace LumaWall
             if (current.Mode == "clock")
             {
                 DateTime now = DateTime.Now;
+                if (current.TwelveHour)
+                {
+                    // No leading zero, the way macOS and iOS show a clock: "9:41", not
+                    // "09:41". The leading zero makes a desktop clock look like a log line.
+                    string format = current.ShowSeconds ? "h:mm:ss" : "h:mm";
+                    return now.ToString(format, CultureInfo.InvariantCulture);
+                }
                 return current.ShowSeconds
                     ? now.ToString("HH:mm:ss", CultureInfo.InvariantCulture)
                     : now.ToString("HH:mm", CultureInfo.InvariantCulture);
@@ -172,9 +230,12 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// The window itself. A layered window rather than a WPF one, because the desktop
-        /// timer must not appear in Alt-Tab, must not take focus, and must let clicks
-        /// through to whatever is underneath.
+        /// The window itself.
+        ///
+        /// A layered window rather than a WPF one, because the desktop timer must not appear
+        /// in Alt-Tab, must not take focus, and must let clicks through to whatever is
+        /// underneath. It is painted through UpdateLayeredWindow so it can be genuinely
+        /// transparent between the glyphs.
         /// </summary>
         private sealed class TimerWindow : Form
         {
@@ -183,26 +244,45 @@ namespace LumaWall
             private const int WS_EX_TOOLWINDOW = 0x00000080;
             private const int WS_EX_NOACTIVATE = 0x08000000;
             private const int SW_SHOWNOACTIVATE = 4;
+            private const int ULW_ALPHA = 0x00000002;
+            private const byte AC_SRC_OVER = 0x00;
+            private const byte AC_SRC_ALPHA = 0x01;
 
             [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int command);
+            [DllImport("user32.dll")] private static extern bool UpdateLayeredWindow(
+                IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
+                IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
+            [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
+            [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+            [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr hDC);
+            [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr hDC);
+            [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
+            [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr hObject);
+
+            [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
+            [StructLayout(LayoutKind.Sequential)] private struct SIZE { public int cx, cy; }
+            [StructLayout(LayoutKind.Sequential, Pack = 1)]
+            private struct BLENDFUNCTION
+            {
+                public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat;
+            }
 
             private TimerConfig current = new TimerConfig();
-            private string lastText = "";
-            private bool lastFinished;
-            private bool lastDim;
+            private string lastText = "", lastSubtitle = "";
+            private bool lastFinished, lastDim;
+            private double lastProgress = -1;
+            private int lastWidth, lastHeight;
 
             public TimerWindow()
             {
                 FormBorderStyle = FormBorderStyle.None;
                 ShowInTaskbar = false;
                 StartPosition = FormStartPosition.Manual;
-                // The window is never activated, so it must not try to be a normal window:
-                // no close box, no minimise, no focus.
                 TopMost = true;
-                BackColor = Color.Black;
+                // No BackColor and no Opacity: the window is painted entirely through
+                // UpdateLayeredWindow, and setting either would make Windows composite the
+                // form itself underneath the bitmap we hand it.
                 DoubleBuffered = true;
-                SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint
-                    | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
             }
 
             protected override bool ShowWithoutActivation { get { return true; } }
@@ -225,66 +305,138 @@ namespace LumaWall
                 ShowWindow(Handle, SW_SHOWNOACTIVATE);
             }
 
+            // The window is painted through UpdateLayeredWindow, so the normal paint path is
+            // suppressed entirely. Without this, Windows paints the form's own background
+            // first and the widget gets a black rectangle behind it.
+            protected override void OnPaintBackground(PaintEventArgs e) { }
+            protected override void OnPaint(PaintEventArgs e) { }
+
             public void Apply(TimerConfig value)
             {
                 current = value ?? new TimerConfig();
-                Opacity = Math.Max(0.2, Math.Min(1.0, current.Opacity));
             }
 
-            /// <summary>
-            /// Sizes and paints the face for one reading.
-            ///
-            /// Everything is derived from the current text, so a shape that fits "10:00"
-            /// also fits "9:59" and a clock that grows from "09:59" to "10:00" grows the
-            /// window instead of clipping the digit.
-            /// </summary>
-            public void Draw(string text, TimerConfig config, bool finished, bool dim)
+            public void Draw(string text, string subtitle, double progress,
+                             TimerConfig config, bool finished, bool dim)
             {
                 // Skip a repaint when nothing visible changed. At 5 Hz a clock would
-                // otherwise redraw 5 times a second for no reason, and each redraw is a
-                // window resize plus a full paint.
-                if (text == lastText && finished == lastFinished && dim == lastDim) return;
-                lastText = text; lastFinished = finished; lastDim = dim;
+                // otherwise redraw 5 times a second for no reason, and each redraw rebuilds
+                // a bitmap and calls UpdateLayeredWindow.
+                bool same = text == lastText && subtitle == lastSubtitle
+                            && finished == lastFinished && dim == lastDim
+                            && Math.Abs(progress - lastProgress) < 0.002;
+                if (same) return;
+                lastText = text; lastSubtitle = subtitle;
+                lastFinished = finished; lastDim = dim; lastProgress = progress;
 
                 using (var probe = CreateGraphics())
                 {
                     float scale = Math.Max(50, Math.Min(250, config.Scale)) / 100f;
-                    using (var family = PickFont())
+                    string style = Style(config);
+
+                    float timeSize = 30f * scale;
+                    float labelSize = 11f * scale;
+
+                    SizeF timeSize2, labelSize2;
+                    using (var timeFont = TimeFont(timeSize, style))
+                    using (var labelFont = LabelFont(labelSize))
                     {
-                        using (var font = new Font(family, 30f * scale, FontStyle.Bold, GraphicsUnit.Pixel))
-                        {
-                            SizeF measured = probe.MeasureString(text, font);
-                            int padding = config.Shape == "bare" ? (int)(6 * scale) : (int)(26 * scale);
-                            int width = (int)Math.Ceiling(measured.Width) + padding * 2;
-                            int height = (int)Math.Ceiling(measured.Height) + (int)(14 * scale) * 2;
-
-                            if (config.Shape == "circle")
-                            {
-                                // A circle has to be big enough for the text in both
-                                // directions, so the larger of the two wins.
-                                int side = Math.Max(width, height);
-                                width = side; height = side;
-                            }
-                            else if (config.Shape == "square")
-                            {
-                                int side = Math.Max(width, height);
-                                width = side; height = side;
-                            }
-
-                            Rectangle bounds = Place(width, height, config);
-                            if (Bounds != bounds) Bounds = bounds;
-                            Invalidate();
-                        }
+                        timeSize2 = probe.MeasureString(text, timeFont, int.MaxValue, StringFormat.GenericTypographic);
+                        labelSize2 = string.IsNullOrEmpty(subtitle)
+                            ? SizeF.Empty
+                            : probe.MeasureString(subtitle, labelFont, int.MaxValue, StringFormat.GenericTypographic);
                     }
+
+                    // Both round styles need a square face.
+                    //
+                    // The ring is an ellipse the moment the window is not square, and the
+                    // window is sized from the measured text - so "05:00" produced a wide,
+                    // flat oval. The dial has no text at all and needs a square for the same
+                    // reason. Measured from the scale alone in both cases.
+                    bool round = style == "ring" || style == "analog";
+                    int ringPad = style == "ring" ? (int)(26 * scale) : 0;
+                    int inset = style == "card" ? (int)(26 * scale) : 0;
+
+                    int contentW = (int)Math.Ceiling(Math.Max(timeSize2.Width, labelSize2.Width));
+                    int contentH = (int)Math.Ceiling(timeSize2.Height)
+                                   + (labelSize2.Height > 0 ? (int)Math.Ceiling(labelSize2.Height) + (int)(3 * scale) : 0);
+
+                    if (round)
+                    {
+                        int side = style == "analog"
+                            ? (int)(86 * scale)
+                            : Math.Max(contentW, contentH) + (int)(10 * scale);
+                        contentW = side;
+                        contentH = side;
+                    }
+
+                    int width = contentW + inset * 2 + ringPad * 2;
+                    int height = contentH + inset * 2 + ringPad * 2;
+
+                    // A little slack so the shadow is not clipped at the edges. A round style
+                    // gets the same slack on both axes, or the square it just computed stops
+                    // being square.
+                    width += (int)(12 * scale);
+                    height += (int)((round ? 12 : 10) * scale);
+
+                    Rectangle bounds = Place(width, height, config);
+                    if (Bounds != bounds) Bounds = bounds;
+                    if (width != lastWidth || height != lastHeight)
+                    {
+                        lastWidth = width; lastHeight = height;
+                    }
+                    PaintToLayeredWindow(config, style, scale);
                 }
+            }
+
+            private static string Style(TimerConfig config)
+            {
+                string style = (config.Style ?? "").Trim().ToLowerInvariant();
+                if (style == "minimal" || style == "glass" || style == "card"
+                    || style == "ring" || style == "analog" || style == "bold")
+                    return style;
+                return "minimal";
+            }
+
+            /// <summary>
+            /// The face font.
+            ///
+            /// macOS and iOS use SF Pro, which is not on Windows. The closest thing that is
+            /// installed everywhere this runs is Segoe UI Variable Display - the Windows 11
+            /// face - and below that plain Segoe UI. Both are geometric humanist sans with
+            /// figures that sit on the same width, which is what stops a countdown from
+            /// jittering sideways as the digits change.
+            ///
+            /// The style changes the weight rather than the family: macOS uses a light face
+            /// for a big clock and a semibold one for a widget, and a bold face everywhere -
+            /// which is what the first version did - is what made it look like a scoreboard.
+            /// </summary>
+            private static Font TimeFont(float size, string style)
+            {
+                FontFamily family = PickFont();
+                // macOS uses a light face for a big clock and a semibold one for a widget.
+                // Bold everywhere - which is what the first version did - is what made it
+                // look like a scoreboard.
+                FontStyle weight = FontStyle.Regular;
+                if (style == "card") weight = FontStyle.Bold;
+                if (style == "bold") weight = FontStyle.Bold;
+                return new Font(family, size, weight, GraphicsUnit.Pixel);
+            }
+
+            private static Font LabelFont(float size)
+            {
+                return new Font(PickFont(), size, FontStyle.Regular, GraphicsUnit.Pixel);
             }
 
             private static FontFamily PickFont()
             {
-                // A font that exists everywhere, chosen for digits that stay distinguishable
-                // at a glance: Segoe UI's tabular figures keep a countdown from jittering as
-                // the digits change.
-                string[] preferred = { "Segoe UI", "Segoe UI Semibold", "Arial", "Tahoma" };
+                string[] preferred =
+                {
+                    "Segoe UI Variable Display",
+                    "Segoe UI Variable Text",
+                    "Segoe UI",
+                    "Arial",
+                };
                 foreach (string name in preferred)
                 {
                     try
@@ -298,12 +450,7 @@ namespace LumaWall
             }
 
             /// <summary>
-            /// Where the face sits, from the named position plus the user's offset.
-            ///
-            /// The window is placed on the primary screen's working area unless the chosen
-            /// corner belongs to another screen - the offset is applied after the corner, so
-            /// a positive X always moves it toward the right regardless of which corner it
-            /// started from.
+            /// Where the widget sits, from the named position plus the user's offset.
             /// </summary>
             private static Rectangle Place(int width, int height, TimerConfig config)
             {
@@ -323,74 +470,304 @@ namespace LumaWall
                 return new Rectangle(left, top, width, height);
             }
 
-            protected override void OnPaint(PaintEventArgs e)
+            /// <summary>
+            /// Draws one frame into a 32bpp ARGB bitmap and hands it to the compositor.
+            ///
+            /// This is where the widget stopped being a box. Everything is drawn with an
+            /// explicit alpha, so the only pixels that are not transparent are the glyphs
+            /// themselves, their shadow, and - for glass and card - a faint wash.
+            /// </summary>
+            private void PaintToLayeredWindow(TimerConfig config, string style, float scale)
             {
-                Graphics g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                int w = Math.Max(1, Width), h = Math.Max(1, Height);
 
-                Color face = ParseColor(current.Face, Color.FromArgb(11, 14, 20));
-                Color accent = ParseColor(current.Accent, Color.FromArgb(125, 211, 252));
-                if (lastFinished) accent = Color.FromArgb(accent.R, Math.Min((byte)255, (byte)(accent.G + 40)), accent.B);
-
-                Rectangle area = new Rectangle(0, 0, Width, Height);
-                float scale = Math.Max(50, Math.Min(250, current.Scale)) / 100f;
-
-                if (current.Shape != "bare")
+                using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb))
                 {
-                    using (var brush = new SolidBrush(Color.FromArgb(lastDim ? 150 : 235, face)))
-                    using (var path = ShapePath(area, current.Shape, (int)(14 * scale)))
+                    using (var g = Graphics.FromImage(bitmap))
                     {
-                        g.FillPath(brush, path);
-                    }
-                    // A hairline of the accent colour, so the widget reads as part of the
-                    // app rather than as a stray system dialog.
-                    using (var pen = new Pen(Color.FromArgb(150, accent), Math.Max(1f, 1.5f * scale)))
-                    using (var path = ShapePath(area, current.Shape, (int)(14 * scale)))
-                    {
-                        var inset = new RectangleF(path.GetBounds().X + 1, path.GetBounds().Y + 1,
-                            path.GetBounds().Width - 2, path.GetBounds().Height - 2);
-                        using (var edge = ShapePath(Rectangle.Round(inset), current.Shape, (int)(14 * scale)))
-                            g.DrawPath(pen, edge);
-                    }
-                }
+                        g.SmoothingMode = SmoothingMode.AntiAlias;
+                        g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        g.Clear(Color.Transparent);
 
-                using (var family = PickFont())
-                using (var font = new Font(family, 30f * scale, FontStyle.Bold, GraphicsUnit.Pixel))
-                using (var textBrush = new SolidBrush(lastDim ? Color.FromArgb(140, accent) : accent))
-                using (var format = new StringFormat())
-                {
-                    format.Alignment = StringAlignment.Center;
-                    format.LineAlignment = StringAlignment.Center;
-                    g.DrawString(lastText, font, textBrush, area, format);
+                        Color ink = ParseColor(config.Accent, Color.White);
+                        if (lastFinished)
+                            ink = Color.FromArgb(ink.R, Math.Min((byte)255, (byte)(ink.G + 40)), ink.B);
+
+                        var area = new Rectangle(0, 0, w, h);
+                        var content = new Rectangle(
+                            (int)(6 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0),
+                            (int)(5 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0),
+                            w - (int)(12 * scale) - (style == "card" ? (int)(40 * scale) : 0) - (style == "ring" ? (int)(40 * scale) : 0),
+                            h - (int)(10 * scale) - (style == "card" ? (int)(40 * scale) : 0) - (style == "ring" ? (int)(40 * scale) : 0));
+
+                        // ── the wash behind the text, for glass and card ────────────────
+                        if (style == "glass" || style == "card")
+                        {
+                            // A faint dark wash, not a slab. macOS widget material is dark
+                            // and barely visible: it separates the text from a busy
+                            // wallpaper without becoming an object of its own.
+                            int alpha = style == "card" ? 96 : 54;
+                            using (var brush = new SolidBrush(Color.FromArgb(alpha, 12, 14, 18)))
+                            using (var path = RoundedRect(area, style == "card" ? (int)(18 * scale) : h / 2))
+                            {
+                                g.FillPath(brush, path);
+                            }
+                        }
+
+                        // ── the ring, for the iOS-timer style ──────────────────────────
+                        if (style == "ring")
+                        {
+                            // iOS Activity rings are thick: at 30% of the radius they read
+                            // as a ring, while a hairline reads as a drawn circle. 3.5px was
+                            // the hairline - the stroke is a share of the face now.
+                            float radius = Math.Min(w, h) / 2f;
+                            float thickness = Math.Max(3f, radius * 0.30f);
+                            float pad = thickness / 2f + 1f;
+                            var circle = new RectangleF(pad, pad, w - pad * 2, h - pad * 2);
+                            using (var track = new Pen(Color.FromArgb(48, 255, 255, 255), thickness))
+                            {
+                                g.DrawEllipse(track, circle);
+                            }
+                            using (var arc = new Pen(Color.FromArgb(235, ink), thickness))
+                            {
+                                arc.StartCap = LineCap.Round;
+                                arc.EndCap = LineCap.Round;
+                                float sweep = (float)(lastProgress * 360.0);
+                                if (sweep > 0.5f)
+                                    g.DrawArc(arc, circle, -90, sweep);
+                            }
+                        }
+
+                        // ── the analog dial, for the iOS Clock style ───────────────────
+                        if (style == "analog")
+                        {
+                            DrawAnalogDial(g, w, h, ink, scale);
+                        }
+
+                        // ── the time ───────────────────────────────────────────────────
+                        //
+                        // Skipped for the analog dial: the hands are the reading, and
+                        // drawing "19:31" under them would be a clock with a caption.
+                        float timeSize = style == "bold" ? 38f * scale : 30f * scale;
+                        float labelSize = style == "bold" ? 12.5f * scale : 11f * scale;
+
+                        using (var family = PickFont())
+                        using (var timeFont = TimeFont(timeSize, style))
+                        using (var labelFont = LabelFont(labelSize))
+                        using (var format = new StringFormat(StringFormat.GenericTypographic))
+                        {
+                            format.Alignment = StringAlignment.Center;
+                            format.LineAlignment = StringAlignment.Center;
+
+                            bool hasLabel = !string.IsNullOrEmpty(lastSubtitle) && style != "analog";
+                            float timeH = timeFont.GetHeight(g);
+                            float labelH = hasLabel ? labelFont.GetHeight(g) : 0f;
+                            float gap = hasLabel ? 2f * scale : 0f;
+                            float blockH = timeH + gap + labelH;
+
+                            float cx = content.Left + content.Width / 2f;
+                            float timeCy = content.Top + (content.Height - blockH) / 2f + timeH / 2f;
+                            var timeRect = new RectangleF(content.Left, timeCy - timeH / 2f, content.Width, timeH);
+                            var labelRect = new RectangleF(content.Left, timeCy + timeH / 2f + gap, content.Width, labelH);
+
+                            int inkAlpha = lastDim ? 150 : 255;
+
+                            // The shadow is what makes a background-less widget legible.
+                            // Without it a white clock on a pale wallpaper disappears, and
+                            // that is the whole reason the first version drew a box.
+                            if (style != "analog")
+                            {
+                                DrawShadowedText(g, lastText, timeFont, timeRect, format, ink, inkAlpha, scale);
+
+                                if (hasLabel)
+                                {
+                                    // The label is muted, the way a widget's caption is: it is
+                                    // there to be read second.
+                                    Color label = Color.FromArgb(inkAlpha * 72 / 100, ink);
+                                    DrawShadowedText(g, lastSubtitle, labelFont, labelRect, format, label, inkAlpha, scale * 0.7f);
+                                }
+                            }
+                        }
+                    }
+
+                    PushToWindow(bitmap);
                 }
             }
 
-            private static GraphicsPath ShapePath(Rectangle area, string shape, int radius)
+            /// <summary>
+            /// The iOS Clock face: a thin ring, twelve hour ticks, and two hands.
+            ///
+            /// This is the one style that draws no text, because the clock is the text. It
+            /// follows the iOS Clock app: a hairline outer ring, ticks that are longer at
+            /// the quarters, a tapered hour hand and a longer minute hand, and a small cap
+            /// where they meet. Nothing else - no numbers, no second hand, no bezel.
+            ///
+            /// The hands are drawn as tapered polygons rather than lines, because a line
+            /// with a round cap looks like a stick at these sizes while a taper reads as a
+            /// hand.
+            /// </summary>
+            private static void DrawAnalogDial(Graphics g, int w, int h, Color ink, float scale)
+            {
+                float cx = w / 2f, cy = h / 2f;
+                float radius = Math.Min(w, h) / 2f - Math.Max(3f, 5f * scale);
+
+                // The hairline ring.
+                using (var ring = new Pen(Color.FromArgb(90, ink), Math.Max(1f, 1.4f * scale)))
+                {
+                    g.DrawEllipse(ring, cx - radius, cy - radius, radius * 2, radius * 2);
+                }
+
+                // Twelve ticks, longer at the quarters - the iOS Clock arrangement.
+                for (int i = 0; i < 12; i++)
+                {
+                    double angle = Math.PI * 2 * i / 12.0 - Math.PI / 2;
+                    bool quarter = (i % 3) == 0;
+                    float inner = radius - (quarter ? 7f : 4f) * scale;
+                    float outer = radius - 1.5f * scale;
+                    var a = new PointF(cx + (float)Math.Cos(angle) * inner,
+                                       cy + (float)Math.Sin(angle) * inner);
+                    var b = new PointF(cx + (float)Math.Cos(angle) * outer,
+                                       cy + (float)Math.Sin(angle) * outer);
+                    using (var pen = new Pen(Color.FromArgb(quarter ? 230 : 130, ink),
+                                             Math.Max(1f, (quarter ? 2f : 1.2f) * scale)))
+                    {
+                        pen.StartCap = LineCap.Round;
+                        pen.EndCap = LineCap.Round;
+                        g.DrawLine(pen, a, b);
+                    }
+                }
+
+                DateTime now = DateTime.Now;
+                double hourAngle = (now.Hour % 12 + now.Minute / 60.0) * 30.0 - 90.0;
+                double minuteAngle = now.Minute * 6.0 - 90.0;
+
+                DrawHand(g, cx, cy, hourAngle, radius * 0.52f, 4.2f * scale, ink);
+                DrawHand(g, cx, cy, minuteAngle, radius * 0.78f, 3.0f * scale, ink);
+
+                // The cap at the pivot.
+                float cap = 2.6f * scale;
+                using (var brush = new SolidBrush(Color.FromArgb(240, ink)))
+                {
+                    g.FillEllipse(brush, cx - cap, cy - cap, cap * 2, cap * 2);
+                }
+            }
+
+            /// <summary>One hand: a tapered triangle from the pivot, with a small tail.</summary>
+            private static void DrawHand(Graphics g, float cx, float cy, double angleDeg,
+                                         float length, float width, Color ink)
+            {
+                double a = angleDeg * Math.PI / 180.0;
+                float dx = (float)Math.Cos(a), dy = (float)Math.Sin(a);
+                // Perpendicular, for the width of the base.
+                float px = -dy, py = dx;
+                float tail = length * 0.18f;
+
+                var tip = new PointF(cx + dx * length, cy + dy * length);
+                var left = new PointF(cx + px * width / 2f - dx * tail, cy + py * width / 2f - dy * tail);
+                var right = new PointF(cx - px * width / 2f - dx * tail, cy - py * width / 2f - dy * tail);
+
+                using (var brush = new SolidBrush(Color.FromArgb(240, ink)))
+                {
+                    g.FillPolygon(brush, new[] { tip, left, right });
+                }
+            }
+
+            /// <summary>
+            /// Draws text with a soft shadow so it stays readable on any wallpaper.
+            ///
+            /// A real Gaussian blur of the glyphs would be better but costs a second bitmap
+            /// and a convolution on every tick. This draws the glyphs eight times around the
+            /// centre at low alpha and then the glyph itself on top, which produces a halo
+            /// that is indistinguishable at these sizes and costs one extra pass.
+            /// </summary>
+            private static void DrawShadowedText(Graphics g, string text, Font font, RectangleF rect,
+                                                 StringFormat format, Color colour, int alpha, float scale)
+            {
+                float radius = Math.Max(1.2f, 1.6f * scale);
+                int shadowAlpha = Math.Min(150, Math.Max(60, (int)(90 * Math.Min(1.6f, scale))));
+
+                using (var shadow = new SolidBrush(Color.FromArgb(shadowAlpha, 0, 0, 0)))
+                {
+                    for (int i = 0; i < 8; i++)
+                    {
+                        double angle = Math.PI * 2 * i / 8.0;
+                        var offset = new RectangleF(
+                            rect.X + (float)(Math.Cos(angle) * radius),
+                            rect.Y + (float)(Math.Sin(angle) * radius),
+                            rect.Width, rect.Height);
+                        g.DrawString(text, font, shadow, offset, format);
+                    }
+                    // A second, tighter pass darkens the immediate edge, which is what makes
+                    // the halo read as a shadow rather than as a blur.
+                    var near = new RectangleF(rect.X, rect.Y + radius * 0.7f, rect.Width, rect.Height);
+                    g.DrawString(text, font, shadow, near, format);
+                }
+
+                using (var brush = new SolidBrush(Color.FromArgb(alpha, colour)))
+                {
+                    g.DrawString(text, font, brush, rect, format);
+                }
+            }
+
+            private static GraphicsPath RoundedRect(Rectangle area, int radius)
             {
                 var path = new GraphicsPath();
                 Rectangle r = new Rectangle(area.X, area.Y, Math.Max(1, area.Width - 1), Math.Max(1, area.Height - 1));
-                if (shape == "circle")
-                {
-                    path.AddEllipse(r);
-                }
-                else if (shape == "square")
+                int limit = Math.Min(r.Width, r.Height) / 2;
+                int use = Math.Max(0, Math.Min(radius, limit));
+                if (use == 0)
                 {
                     path.AddRectangle(r);
+                    return path;
                 }
-                else
-                {
-                    // Pill: a rounded rectangle whose radius is capped at half the shorter
-                    // side, which is what keeps it a pill rather than a lozenge.
-                    int limit = Math.Min(r.Width, r.Height) / 2;
-                    int use = Math.Min(radius, limit);
-                    path.AddArc(r.X, r.Y, use * 2, use * 2, 180, 90);
-                    path.AddArc(r.Right - use * 2, r.Y, use * 2, use * 2, 270, 90);
-                    path.AddArc(r.Right - use * 2, r.Bottom - use * 2, use * 2, use * 2, 0, 90);
-                    path.AddArc(r.X, r.Bottom - use * 2, use * 2, use * 2, 90, 90);
-                    path.CloseFigure();
-                }
+                path.AddArc(r.X, r.Y, use * 2, use * 2, 180, 90);
+                path.AddArc(r.Right - use * 2, r.Y, use * 2, use * 2, 270, 90);
+                path.AddArc(r.Right - use * 2, r.Bottom - use * 2, use * 2, use * 2, 0, 90);
+                path.AddArc(r.X, r.Bottom - use * 2, use * 2, use * 2, 90, 90);
+                path.CloseFigure();
                 return path;
+            }
+
+            /// <summary>
+            /// Hands the finished bitmap to the compositor with its alpha channel intact.
+            ///
+            /// UpdateLayeredWindow takes the bitmap as the window's whole appearance: the
+            /// alpha byte of each pixel is its opacity. That is what allows an opaque glyph
+            /// next to a fully transparent pixel, with a smooth edge between them.
+            /// </summary>
+            private void PushToWindow(Bitmap bitmap)
+            {
+                IntPtr screenDc = GetDC(IntPtr.Zero);
+                IntPtr memDc = CreateCompatibleDC(screenDc);
+                IntPtr hBitmap = IntPtr.Zero;
+                IntPtr oldBitmap = IntPtr.Zero;
+                try
+                {
+                    hBitmap = bitmap.GetHbitmap(Color.FromArgb(0));
+                    oldBitmap = SelectObject(memDc, hBitmap);
+
+                    var size = new SIZE { cx = bitmap.Width, cy = bitmap.Height };
+                    var src = new POINT { X = 0, Y = 0 };
+                    var dst = new POINT { X = Left, Y = Top };
+                    var blend = new BLENDFUNCTION
+                    {
+                        BlendOp = AC_SRC_OVER,
+                        BlendFlags = 0,
+                        SourceConstantAlpha = 255,
+                        AlphaFormat = AC_SRC_ALPHA,
+                    };
+
+                    UpdateLayeredWindow(Handle, screenDc, ref dst, ref size,
+                                        memDc, ref src, 0, ref blend, ULW_ALPHA);
+                }
+                finally
+                {
+                    if (oldBitmap != IntPtr.Zero) SelectObject(memDc, oldBitmap);
+                    if (hBitmap != IntPtr.Zero) DeleteObject(hBitmap);
+                    DeleteDC(memDc);
+                    ReleaseDC(IntPtr.Zero, screenDc);
+                }
             }
 
             private static Color ParseColor(string value, Color fallback)

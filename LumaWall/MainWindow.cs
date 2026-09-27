@@ -235,6 +235,19 @@ namespace LumaWall
             { "studio.previewHint", new[] { "Perkiraan hasil pengaturan warna dan filter.", "How the colour and filter settings will look.", "颜色与滤镜设置的效果预览。", "色とフィルター設定の仕上がりイメージ。" } },
             { "studio.rateFine", new[] { "Kecepatan presisi", "Fine speed", "精确速度", "微調整" } },
             { "timer.pill", new[] { "Kapsul", "Pill", "胶囊", "ピル" } },
+            // The four styles. Named for what they look like rather than for a shape:
+            // "minimal" is the time on its own, which is the macOS widget default.
+            { "timer.style", new[] { "Gaya", "Style", "样式", "スタイル" } },
+            { "timer.minimal", new[] { "Polos", "Minimal", "极简", "ミニマル" } },
+            { "timer.glass", new[] { "Kaca", "Glass", "玻璃", "ガラス" } },
+            { "timer.card", new[] { "Kartu", "Card", "卡片", "カード" } },
+            { "timer.ring", new[] { "Cincin", "Ring", "圆环", "リング" } },
+            { "timer.bold", new[] { "Tebal", "Bold", "粗体", "ボールド" } },
+            { "timer.analog", new[] { "Analog", "Analog", "指针", "アナログ" } },
+            { "timer.date", new[] { "Tampilkan tanggal", "Show the date", "显示日期", "日付を表示" } },
+            { "timer.dateHint", new[] { "Baris kecil di bawah jam.", "A small line under the clock.", "时钟下方的小字。", "時計の下の小さな行。" } },
+            { "timer.twelve", new[] { "Format 12 jam", "12-hour clock", "12 小时制", "12 時間表示" } },
+            { "timer.twelveHint", new[] { "9:41, bukan 09:41.", "9:41 rather than 09:41.", "9:41，而非 09:41。", "09:41 ではなく 9:41。" } },
             { "timer.position", new[] { "Penempatan", "Placement", "位置", "配置" } },
             { "timer.restart", new[] { "Mulai ulang", "Restart", "重新开始", "リスタート" } },
             { "timer.restarted", new[] { "Timer dimulai ulang.", "Timer restarted.", "计时器已重新开始。", "タイマーをリスタートしました。" } },
@@ -1059,6 +1072,51 @@ namespace LumaWall
                 TextBlock label;
                 if (navLabels.TryGetValue(page, out label)) label.Text = Tr("nav." + page);
             }
+        }
+
+        /// <summary>
+        /// Rebuilds the current page in place, keeping the scroll position.
+        ///
+        /// Every option on the Luma Studio page - a colour chip, a filter, a placement -
+        /// changed a setting and then called SwitchPage("studio") to redraw. That rebuilds
+        /// the whole page, and a rebuilt ScrollViewer starts at offset 0, so choosing a
+        /// placement scrolled the user back to the top and they had to find their way down
+        /// again for every setting they touched. The complaint was "tiap pilih placement yg
+        /// berbeda langsung di scroll keatas".
+        ///
+        /// This records the offset before the rebuild and restores it after, so a change
+        /// leaves the page where it was. The restore is deferred to Loaded because a
+        /// ScrollViewer only accepts a scroll offset once it has measured its content.
+        /// </summary>
+        private void ReloadCurrentPage()
+        {
+            double offset = 0;
+            var scroller = pageHost.Content as ScrollViewer;
+            if (scroller != null) offset = scroller.VerticalOffset;
+
+            SwitchPage(activePage);
+
+            if (offset <= 0) return;
+            var rebuilt = pageHost.Content as ScrollViewer;
+            if (rebuilt == null) return;
+
+            // Loaded fires after the new content has been measured, which is the earliest
+            // point ScrollToVerticalOffset has any effect.
+            RoutedEventHandler restore = null;
+            restore = delegate
+            {
+                rebuilt.Loaded -= restore;
+                rebuilt.ScrollToVerticalOffset(offset);
+            };
+            rebuilt.Loaded += restore;
+
+            // The Loaded event has already fired when the content is assigned inside a
+            // handler, so also try immediately - one of the two always lands.
+            rebuilt.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                if (rebuilt.VerticalOffset == 0 && offset > 0)
+                    rebuilt.ScrollToVerticalOffset(offset);
+            }), DispatcherPriority.Loaded);
         }
 
         private void SwitchPage(string page)
@@ -2967,11 +3025,58 @@ namespace LumaWall
             SetCatalogThumbnail(value, target, 1280);
         }
 
+        /// <summary>
+        /// A card's thumbnail.
+        ///
+        /// When there is no thumbnail URL - 2886 entries, mostly motionbgs ones whose still
+        /// the site does not serve - the card used to be left with an empty Image, which
+        /// draws as a black rectangle. A grid of black tiles reads as a broken catalogue,
+        /// which is the complaint: "kenapa di catalog ada bbrp wallpaper yg cuma item".
+        ///
+        /// These cards now draw a placeholder: the category's icon, large, in the muted
+        /// colour on the card's own surface. It is honest - there is no preview to show -
+        /// and it tells the user what the entry is instead of looking like a failure.
+        /// </summary>
         private void SetCatalogThumbnail(string value, Image target, int decodeWidth)
         {
-            if (string.IsNullOrEmpty(value)) return;
+            if (string.IsNullOrEmpty(value))
+            {
+                ShowThumbnailPlaceholder(target);
+                return;
+            }
             if (Uri.IsWellFormedUriString(value, UriKind.Absolute)) SetImage(target, value, decodeWidth);
             else SetImage(target, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, value), decodeWidth);
+        }
+
+        /// <summary>
+        /// Draws the "no preview" mark into an Image.
+        ///
+        /// A DrawingImage rather than a file, so it needs no asset and cannot fail to load.
+        /// The mark is the app's own wallpaper glyph in the muted colour, on a slightly
+        /// lifted surface so the card still reads as a tile rather than as a hole.
+        /// </summary>
+        private void ShowThumbnailPlaceholder(Image target)
+        {
+            var canvas = new DrawingVisual();
+            using (DrawingContext dc = canvas.RenderOpen())
+            {
+                dc.DrawRectangle(new SolidColorBrush(CSurface2), null,
+                                 new Rect(0, 0, 320, 180));
+
+                // A large wallpaper glyph, centred.
+                var glyph = Icons.Build(Icons.Wallpaper, 44, new SolidColorBrush(CDim));
+                var host = new VisualBrush(glyph)
+                {
+                    Stretch = Stretch.None,
+                    AlignmentX = AlignmentX.Center,
+                    AlignmentY = AlignmentY.Center,
+                };
+                dc.DrawRectangle(host, null, new Rect(0, 0, 320, 180));
+            }
+
+            var image = new DrawingImage(canvas.Drawing);
+            image.Freeze();
+            target.Source = image;
         }
 
         private void SetImage(Image image, string path)
@@ -3096,6 +3201,7 @@ namespace LumaWall
             selectedVideo = config.Library.FirstOrDefault();
             selectedMonitor = Forms.Screen.PrimaryScreen.DeviceName;
             RestoreWallpapers();
+            StartDesktopTimer();
             lastMonitorSignature = GetMonitorSignature();
             healthTimer.Start();
             WarnIfWebView2Missing();
@@ -3316,7 +3422,8 @@ namespace LumaWall
         private void timerRefresh()
         {
             if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; });
-            desktopTimer.Refresh();
+            if (config.Timer != null && config.Timer.Enabled) desktopTimer.Refresh();
+            else desktopTimer.Stop();
         }
 
         private void timerReset()
@@ -3353,16 +3460,30 @@ namespace LumaWall
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             timer.Tick += delegate { timer.Stop(); toast.Visibility = Visibility.Collapsed; };
             timer.Start();
+        }
 
+        /// <summary>
+        /// Starts the desktop timer when the user has it on.
+        ///
+        /// This used to live inside ShowToast, which is the transient message in the corner.
+        /// The result was that the desktop timer only started if a toast happened to appear
+        /// - so switching the widget on in Luma Studio, saving, and restarting the app left
+        /// it off until something else triggered a toast. It is called from OnLoaded and
+        /// from every place that changes a timer setting.
+        /// </summary>
+        private void StartDesktopTimer()
+        {
             // The manager needs the live config so every wallpaper can be handed its
             // display's look and span group. Set here rather than in the constructor
             // because the config is loaded before the window is built, and a wallpaper
             // created during startup has to see it.
             manager.Config = config;
 
-            // The desktop timer, if the user has it on.
-            desktopTimer = new DesktopTimer(delegate { return config.Timer; });
-            desktopTimer.Start();
+            if (desktopTimer == null)
+                desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+
+            if (config.Timer != null && config.Timer.Enabled) desktopTimer.Start();
+            else desktopTimer.Stop();
         }
 
         // ================= LAYOUT HELPERS =================

@@ -570,16 +570,34 @@ namespace LumaWall
     {
         [DataMember] public bool Enabled = false;
         [DataMember] public string Mode = "countdown";   // countdown | clock | stopwatch
+
+        // The look. Replaces the old Shape field.
+        //
+        // Shape described a box: pill, circle, square, bare. Three of the four drew an
+        // opaque slab with a coloured hairline, which is what made the widget look like a
+        // system dialog sitting on the wallpaper. Style describes what macOS and iOS
+        // actually do instead:
+        //
+        //   minimal   the time alone with a soft shadow. No fill, no border.
+        //   glass     the same over a faint translucent wash.
+        //   card      a macOS-widget panel: translucent, no border.
+        //   ring      an iOS timer: a progress arc around the time.
+        [DataMember] public string Style = "minimal";    // minimal | glass | card | ring
+
+        // Kept so a config written by an older build still loads. Nothing reads it.
+        [DataMember] public string Shape = "";
+
         [DataMember] public int Seconds = 300;           // countdown length
-        [DataMember] public string Shape = "pill";       // pill | circle | square | bare
         [DataMember] public int Scale = 100;             // 50 .. 250 percent
         [DataMember] public string Position = "top-right"; // 9 named positions
         [DataMember] public int OffsetX = 28;
         [DataMember] public int OffsetY = 28;
-        [DataMember] public double Opacity = 0.88;       // 0.2 .. 1
-        [DataMember] public string Accent = "#7DD3FC";
-        [DataMember] public string Face = "#0B0E14";
+        [DataMember] public double Opacity = 1.0;        // kept for compatibility
+        [DataMember] public string Accent = "#FFFFFF";   // the ink; white reads on any wallpaper
+        [DataMember] public string Face = "";            // kept for compatibility
         [DataMember] public bool ShowSeconds = true;
+        [DataMember] public bool ShowDate = true;        // the small line under a clock
+        [DataMember] public bool TwelveHour = false;     // 9:41 rather than 09:41
         [DataMember] public bool BlinkAtEnd = true;
     }
 
@@ -958,6 +976,9 @@ namespace LumaWall
         private static List<string> ScanCoveringWindows(bool requireZoomed)
         {
             var covered = new List<string>();
+            // One line per monitor per scan, so the log says why a pause happened without
+            // being flooded by a scan that runs every few seconds.
+            var loggedOnce = new HashSet<string>();
             uint ownPid = (uint)Process.GetCurrentProcess().Id;
 
             EnumWindows(delegate(IntPtr hwnd, IntPtr param)
@@ -1002,7 +1023,24 @@ namespace LumaWall
                     // 2% tolerance: maximized windows are inset by the invisible
                     // resize border, and DPI rounding can shave a pixel or two.
                     if (overlapW >= b.Width * 0.98 && overlapH >= b.Height * 0.98)
+                    {
                         covered.Add(screen.DeviceName);
+                        // Name the window that caused this.
+                        //
+                        // The pause/resume log said which monitor changed but never why, so
+                        // a wallpaper that paused and resumed on its own could not be
+                        // traced to anything - the log recorded the decision and hid the
+                        // evidence. The title, class and process together identify it.
+                        if (!loggedOnce.Contains(screen.DeviceName))
+                        {
+                            loggedOnce.Add(screen.DeviceName);
+                            AppLog.Write(string.Format(
+                                "Covering window on {0}: '{1}' class={2} process={3} rect={4},{5} {6}x{7}",
+                                screen.DeviceName, WindowTitle(hwnd), ClassName(hwnd),
+                                ProcessNameOf(hwnd),
+                                rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top));
+                        }
+                    }
                 }
                 return true;
             }, IntPtr.Zero);
@@ -1160,6 +1198,20 @@ namespace LumaWall
             var className = new StringBuilder(128);
             if (GetClassName(hwnd, className, className.Capacity) == 0) return "";
             return className.ToString();
+        }
+
+        /// <summary>The process name behind a window, for the covering-window log line.</summary>
+        private static string ProcessNameOf(IntPtr hwnd)
+        {
+            try
+            {
+                uint pid;
+                GetWindowThreadProcessId(hwnd, out pid);
+                if (pid == 0) return "?";
+                using (var process = Process.GetProcessById((int)pid))
+                    return process.ProcessName;
+            }
+            catch { return "?"; }
         }
 
         private static bool IsShellDesktopWindow(IntPtr hwnd)
