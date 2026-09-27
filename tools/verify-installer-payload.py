@@ -41,7 +41,7 @@ import os
 import sys
 
 MANIFEST = os.path.join('installer', 'build-manifest.json')
-DEFAULT_INSTALLER = os.path.join('site', 'assets', 'downloads', 'LumaWall-Setup-4.0.1.exe')
+DEFAULT_INSTALLER = os.path.join('site', 'assets', 'downloads', 'LumaWall-Setup-4.1.3.exe')
 RELEASE_DIR = os.path.join('LumaWall', 'bin', 'Release')
 KEY_BINARY = 'LumaWall.exe'
 

@@ -137,7 +137,113 @@ namespace LumaWall
             { "status.audio.on", new[] { "Audio hidup", "Audio on", "音频开启", "音声オン" } },
             { "status.wallpaper", new[] { "Wallpaper", "Wallpaper", "壁纸", "壁紙" } },
             { "inspector.output", new[] { "Target monitor", "Display target", "显示目标", "表示先" } },
-            { "inspector.detected", new[] { "terdeteksi", "detected", "已检测", "検出" } }
+            { "inspector.detected", new[] { "terdeteksi", "detected", "已检测", "検出" } },
+            { "filter.cool", new[] { "Dingin", "Cool", "冷色", "クール" } },
+            { "filter.dream", new[] { "Dream", "Dream", "梦幻", "ドリーム" } },
+            { "filter.grayscale", new[] { "Hitam putih", "Grayscale", "灰度", "グレースケール" } },
+            { "filter.noir", new[] { "Noir", "Noir", "黑色电影", "ノワール" } },
+            { "filter.none", new[] { "Tanpa filter", "None", "无", "なし" } },
+            { "filter.sepia", new[] { "Sepia", "Sepia", "怀旧", "セピア" } },
+            { "filter.vivid", new[] { "Vivid", "Vivid", "鲜艳", "ビビッド" } },
+            { "filter.warm", new[] { "Hangat", "Warm", "暖色", "ウォーム" } },
+            { "fit.center", new[] { "Ukuran asli di tengah", "Actual size, centred", "原始大小居中", "等倍で中央" } },
+            { "fit.contain", new[] { "Utuh, ada garis tepi", "Whole image, letterboxed", "完整显示（留边）", "全体表示（余白あり）" } },
+            { "fit.cover", new[] { "Penuh, tepi terpotong", "Fill, edges cropped", "铺满并裁剪", "画面いっぱい（切り抜き）" } },
+            { "fit.fill", new[] { "Regangkan mengikuti layar", "Stretch to the screen", "拉伸铺满", "画面に合わせて伸縮" } },
+            { "flip.both", new[] { "Keduanya", "Both", "两者", "両方" } },
+            { "flip.h", new[] { "Kiri-kanan", "Left to right", "左右", "左右" } },
+            { "flip.none", new[] { "Normal", "Normal", "正常", "標準" } },
+            { "flip.v", new[] { "Atas-bawah", "Top to bottom", "上下", "上下" } },
+            { "nav.studio", new[] { "Luma Studio", "Luma Studio", "Luma Studio", "Luma Studio" } },
+            { "studio.brightness", new[] { "Kecerahan", "Brightness", "亮度", "明るさ" } },
+            { "studio.contrast", new[] { "Kontras", "Contrast", "对比度", "コントラスト" } },
+            { "studio.display", new[] { "Monitor yang sedang diatur", "Display being edited", "正在调整的显示器", "調整するモニター" } },
+            { "studio.filter", new[] { "Filter", "Filter", "滤镜", "フィルター" } },
+            { "studio.fit", new[] { "Cara mengisi layar", "How it fills the screen", "填充方式", "表示方法" } },
+            { "studio.flip", new[] { "Cermin", "Mirror", "镜像", "ミラー" } },
+            { "studio.framing", new[] { "Bingkai", "Framing", "构图", "フレーミング" } },
+            { "studio.gamma", new[] { "Gamma", "Gamma", "伽马", "ガンマ" } },
+            { "studio.hdr", new[] { "HDR", "HDR", "HDR", "HDR" } },
+            { "studio.hdrExposure", new[] { "Eksposur", "Exposure", "曝光", "露出" } },
+            { "studio.hdrHighlight", new[] { "Kompresi sorotan", "Highlight compression", "高光压缩", "ハイライト圧縮" } },
+            { "studio.hdrHint", new[] { "Menjaga detail di bagian terang dan gelap pada wallpaper berkontras tinggi.", "Keeps detail in the bright and dark parts of a high-contrast wallpaper.", "保留高对比壁纸明暗两处的细节。", "コントラストの強い壁紙でも明部と暗部のディテールを保ちます。" } },
+            { "studio.hdrOn", new[] { "Pemetaan tone", "Tone mapping", "色调映射", "トーンマッピング" } },
+            { "studio.hue", new[] { "Rona", "Hue", "色相", "色相" } },
+            { "studio.look", new[] { "Warna", "Colour", "色彩", "カラー" } },
+            { "studio.off", new[] { "Mati", "Off", "关闭", "オフ" } },
+            { "studio.on", new[] { "Aktif", "On", "开启", "オン" } },
+            { "studio.panX", new[] { "Geser mendatar", "Pan horizontally", "水平平移", "横方向の位置" } },
+            { "studio.panY", new[] { "Geser tegak", "Pan vertically", "垂直平移", "縦方向の位置" } },
+            { "studio.pingpong", new[] { "Maju-mundur", "Play forward then back", "往复播放", "ピンポン再生" } },
+            { "studio.pingpongHint", new[] { "Memutar maju lalu mundur, halus untuk loop pendek.", "Plays forward then backward, smooth for a short loop.", "先正放再倒放，短循环更顺滑。", "順再生と逆再生を繰り返し、短いループが滑らかになります。" } },
+            { "studio.playback", new[] { "Pemutaran", "Playback", "播放", "再生" } },
+            { "studio.primary", new[] { "Utama", "Primary", "主显示器", "メイン" } },
+            { "studio.rate", new[] { "Kecepatan putar", "Playback speed", "播放速度", "再生速度" } },
+            { "studio.remove", new[] { "Hapus", "Remove", "移除", "削除" } },
+            { "studio.reset", new[] { "Atur ulang monitor ini", "Reset this display", "重置此显示器", "このモニターをリセット" } },
+            { "studio.resetAll", new[] { "Atur ulang semua", "Reset everything", "全部重置", "すべてリセット" } },
+            { "studio.saturation", new[] { "Saturasi", "Saturation", "饱和度", "彩度" } },
+            { "studio.span", new[] { "Wallpaper menyambung", "One wallpaper across monitors", "跨显示器延展", "モニターをまたぐ表示" } },
+            { "studio.spanActive", new[] { "Sedang aktif: {0}", "Active now: {0}", "当前启用：{0}", "現在有効：{0}" } },
+            { "studio.spanApplied", new[] { "Wallpaper disambung.", "Wallpaper stretched.", "壁纸已延展。", "壁紙をつなげました。" } },
+            { "studio.spanHint", new[] { "Satu wallpaper membentang di beberapa monitor sekaligus.", "One wallpaper spanning several monitors at once.", "一张壁纸同时横跨多台显示器。", "1枚の壁紙を複数のモニターにまたがって表示します。" } },
+            { "studio.spanNoWallpaper", new[] { "Pilih wallpaper dulu di Koleksi.", "Pick a wallpaper in Library first.", "请先在媒体库选择壁纸。", "先にライブラリで壁紙を選んでください。" } },
+            { "studio.spanOff", new[] { "Matikan", "Turn off", "关闭", "オフ" } },
+            { "studio.spanOn", new[] { "Nyalakan", "Turn on", "开启", "オン" } },
+            { "studio.spanSingle", new[] { "Butuh dua monitor atau lebih.", "Needs two or more displays.", "需要两台或更多显示器。", "2台以上のモニターが必要です。" } },
+            { "studio.spanWith", new[] { "Sambung dengan {0}", "Stretch with {0}", "与 {0} 拼接", "{0} とつなげる" } },
+            { "studio.sub", new[] { "Atur warna, filter, dan bentuk wallpaper untuk tiap monitor.", "Tune colour, filters and framing for each display.", "为每台显示器调整色彩、滤镜与画面构图。", "モニターごとに色、フィルター、表示方法を調整します。" } },
+            { "studio.timer", new[] { "Timer desktop", "Desktop timer", "桌面计时器", "デスクトップタイマー" } },
+            { "studio.title", new[] { "Luma Studio", "Luma Studio", "Luma Studio", "Luma Studio" } },
+            { "studio.zoom", new[] { "Zoom", "Zoom", "缩放", "ズーム" } },
+            { "timer.bare", new[] { "Tanpa latar", "No background", "无底色", "背景なし" } },
+            { "timer.bc", new[] { "Tengah bawah", "Bottom centre", "下中", "下中央" } },
+            { "timer.bl", new[] { "Kiri bawah", "Bottom left", "左下", "左下" } },
+            { "timer.blink", new[] { "Berkedip di akhir", "Blink at the end", "结束时闪烁", "終了時に点滅" } },
+            { "timer.blinkHint", new[] { "Membuat timer berkedip saat hitung mundur habis.", "Makes the timer blink when the countdown reaches zero.", "倒计时归零时让计时器闪烁。", "カウントダウンが0になると点滅します。" } },
+            { "timer.br", new[] { "Kanan bawah", "Bottom right", "右下", "右下" } },
+            { "timer.circle", new[] { "Bulat", "Circle", "圆形", "円" } },
+            { "timer.clock", new[] { "Jam", "Clock", "时钟", "時計" } },
+            { "timer.countdown", new[] { "Hitung mundur", "Countdown", "倒计时", "カウントダウン" } },
+            { "timer.enable", new[] { "Tampilkan timer", "Show a timer", "显示计时器", "タイマーを表示" } },
+            { "timer.hint", new[] { "Menampilkan jam atau hitung mundur di atas wallpaper.", "Shows a clock or countdown on top of the wallpaper.", "在壁纸上方显示时钟或倒计时。", "壁紙の上に時計やカウントダウンを表示します。" } },
+            { "timer.length", new[] { "Durasi (detik)", "Duration (seconds)", "时长（秒）", "時間（秒）" } },
+            { "timer.mc", new[] { "Tengah", "Centre", "正中", "中央" } },
+            { "timer.ml", new[] { "Kiri tengah", "Middle left", "左中", "左中央" } },
+            { "timer.mode", new[] { "Mode", "Mode", "模式", "モード" } },
+            { "timer.mr", new[] { "Kanan tengah", "Middle right", "右中", "右中央" } },
+            { "timer.offsetX", new[] { "Geser mendatar", "Horizontal offset", "水平偏移", "横オフセット" } },
+            { "timer.offsetY", new[] { "Geser tegak", "Vertical offset", "垂直偏移", "縦オフセット" } },
+            { "timer.opacity", new[] { "Transparansi", "Opacity", "不透明度", "不透明度" } },
+            { "timer.pause", new[] { "Jeda", "Pause", "暂停", "一時停止" } },
+            { "preset.cinema", new[] { "Cinema", "Cinema", "影院", "シネマ" } },
+            { "preset.natural", new[] { "Natural", "Natural", "自然", "ナチュラル" } },
+            { "preset.night", new[] { "Malam", "Night", "夜晚", "ナイト" } },
+            { "preset.soft", new[] { "Lembut", "Soft", "柔和", "ソフト" } },
+            { "preset.vivid", new[] { "Vivid", "Vivid", "鲜艳", "ビビッド" } },
+            { "preset.warm", new[] { "Hangat", "Warm", "暖色", "ウォーム" } },
+            { "studio.framingHint", new[] { "Atur posisi dan ukuran gambar di layar.", "Position and size of the image on screen.", "图像在屏幕上的位置与大小。", "画面上での画像の位置と大きさ。" } },
+            { "studio.lookHint", new[] { "Atur nada dan warna wallpaper.", "Adjust the tone and colour of the wallpaper.", "调整壁纸的色调与色彩。", "壁紙の色調と色彩を調整します。" } },
+            { "studio.noDisplay", new[] { "Tidak ada monitor", "No displays", "没有显示器", "モニターがありません" } },
+            { "studio.noDisplaySub", new[] { "Windows tidak melaporkan monitor apa pun.", "Windows is not reporting any displays.", "Windows 未报告任何显示器。", "Windows がモニターを検出していません。" } },
+            { "studio.noWallpaperSet", new[] { "Belum ada wallpaper untuk monitor ini.", "No wallpaper set for this display.", "此显示器尚未设置壁纸。", "このモニターには壁紙が設定されていません。" } },
+            { "studio.playbackHint", new[] { "Atur kecepatan dan arah pemutaran.", "Speed and direction of playback.", "播放速度与方向。", "再生速度と方向。" } },
+            { "studio.presets", new[] { "Preset cepat", "Quick presets", "快捷预设", "クイックプリセット" } },
+            { "studio.presetsHint", new[] { "Satu klik untuk mengatur seluruh warna.", "One click sets the whole grade.", "一键设定整体色调。", "ワンクリックで全体の色を設定します。" } },
+            { "studio.preview", new[] { "Pratinjau", "Preview", "预览", "プレビュー" } },
+            { "studio.previewHint", new[] { "Perkiraan hasil pengaturan warna dan filter.", "How the colour and filter settings will look.", "颜色与滤镜设置的效果预览。", "色とフィルター設定の仕上がりイメージ。" } },
+            { "studio.rateFine", new[] { "Kecepatan presisi", "Fine speed", "精确速度", "微調整" } },
+            { "timer.pill", new[] { "Kapsul", "Pill", "胶囊", "ピル" } },
+            { "timer.position", new[] { "Penempatan", "Placement", "位置", "配置" } },
+            { "timer.restart", new[] { "Mulai ulang", "Restart", "重新开始", "リスタート" } },
+            { "timer.restarted", new[] { "Timer dimulai ulang.", "Timer restarted.", "计时器已重新开始。", "タイマーをリスタートしました。" } },
+            { "timer.shape", new[] { "Bentuk", "Shape", "形状", "形" } },
+            { "timer.size", new[] { "Ukuran", "Size", "大小", "サイズ" } },
+            { "timer.square", new[] { "Kotak", "Square", "方形", "四角" } },
+            { "timer.stopwatch", new[] { "Stopwatch", "Stopwatch", "秒表", "ストップウォッチ" } },
+            { "timer.tc", new[] { "Tengah atas", "Top centre", "上中", "上中央" } },
+            { "timer.tl", new[] { "Kiri atas", "Top left", "左上", "左上" } },
+            { "timer.tr", new[] { "Kanan atas", "Top right", "右上", "右上" } },
         };
 
         private readonly ConfigStore store = new ConfigStore();
@@ -662,7 +768,7 @@ namespace LumaWall
                 Margin = new Thickness(9, 0, 18, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            versionBadge.Child = new TextBlock { Text = "4.0", Foreground = new SolidColorBrush(CPrimaryHi), FontSize = 9, FontWeight = FontWeights.Bold };
+            versionBadge.Child = new TextBlock { Text = AppVersion.Short, Foreground = new SolidColorBrush(CPrimaryHi), FontSize = 9, FontWeight = FontWeights.Bold };
             middle.Children.Add(versionBadge);
 
             var searchHost = new Grid { Width = 360, VerticalAlignment = VerticalAlignment.Center };
@@ -798,7 +904,7 @@ namespace LumaWall
             nav.Children.Add(NavRailButton("library", Icons.Library, "nav.library"));
             nav.Children.Add(NavRailButton("discover", Icons.Catalog, "nav.discover"));
             nav.Children.Add(NavRailButton("displays", Icons.Displays, "nav.displays"));
-            nav.Children.Add(NavRailButton("studio", Icons.Displays, "nav.studio"));
+            nav.Children.Add(NavRailButton("studio", Icons.Studio, "nav.studio"));
             nav.Children.Add(NavRailButton("performance", Icons.Performance, "nav.performance"));
             rail.Children.Add(nav);
 
@@ -821,7 +927,7 @@ namespace LumaWall
             engineStack.Children.Add(new TextBlock { Text = config.TargetFps + " FPS", Foreground = new SolidColorBrush(CDim), FontFamily = FMono, FontSize = 8.5, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) });
             engine.Child = engineStack;
             footer.Children.Add(engine);
-            footer.Children.Add(new TextBlock { Text = "v4.0.0", Foreground = new SolidColorBrush(CDim), FontSize = 8.5, HorizontalAlignment = HorizontalAlignment.Center });
+            footer.Children.Add(new TextBlock { Text = AppVersion.Full, Foreground = new SolidColorBrush(CDim), FontSize = 8.5, HorizontalAlignment = HorizontalAlignment.Center });
             Grid.SetRow(footer, 1);
             rail.Children.Add(footer);
             return rail;
@@ -3285,13 +3391,22 @@ namespace LumaWall
             head.Children.Add(new Border { Width = 3, Height = 16, CornerRadius = new CornerRadius(2), Background = new SolidColorBrush(CPrimary), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
             head.Children.Add(new TextBlock { Text = title, Foreground = new SolidColorBrush(CText), FontSize = 16, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
             grid.Children.Add(head);
-            var button = new Button { Content = action, Foreground = new SolidColorBrush(CPrimaryHi), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontSize = 12 };
-            // Same reason as the settings toggle: the default template's hover is a
-            // pale blue that does not belong in this palette.
-            SetRoundedButton(button, 5);
-            button.Click += click;
-            Grid.SetColumn(button, 1);
-            grid.Children.Add(button);
+
+            // A header with no action gets no button. `button.Click += click` throws
+            // ArgumentNullException("handler") when click is null, and the Studio page
+            // has five plain headers - so opening that page crashed the app every
+            // time, from a call site that reads as harmless.
+            if (action != null && click != null)
+            {
+                var button = new Button { Content = action, Foreground = new SolidColorBrush(CPrimaryHi), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontSize = 12 };
+                // Same reason as the settings toggle: the default template's hover is a
+                // pale blue that does not belong in this palette.
+                SetRoundedButton(button, 5);
+                button.Click += click;
+                Grid.SetColumn(button, 1);
+                grid.Children.Add(button);
+            }
+
             return grid;
         }
 

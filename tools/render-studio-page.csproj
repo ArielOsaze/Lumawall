@@ -1,0 +1,38 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Renders the Luma Studio page to a PNG so the layout can be inspected by eye.
+       A classic (non-SDK) project, matching how LumaWall itself is built: this
+       machine's MSBuild has no .NET SDK resolver, so an SDK-style project cannot
+       be loaded at all. -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ProjectGuid>{5A2C1E70-8B44-4D1F-9E33-2B7C4A6F10D2}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RenderStudioPage</RootNamespace>
+    <AssemblyName>RenderStudioPage</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OutputPath>bin\</OutputPath>
+    <StartupObject>RenderStudioPage</StartupObject>
+    <LangVersion>7.3</LangVersion>
+    <FrameworkPathOverride Condition=" '$(FrameworkPathOverride)' == '' ">C:\Windows\Microsoft.NET\Framework64\v4.0.30319</FrameworkPathOverride>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="RenderStudioPage.cs" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+</Project>

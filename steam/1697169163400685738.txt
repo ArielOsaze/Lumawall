@@ -1,0 +1,314 @@
+Very high CPU usage with 4k video wallpapers :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ tdunks 
+
+ View Profile 
+ View Posts 
+
+ 30 Mar, 2018 @ 6:09am 
+
+   Report this post 
+
+ Very high CPU usage with 4k video wallpapers 
+
+ It seems that for some reason hardware decoding is not working for 4k video wallpapers. I currently have two playing, one on a 1080p monitor and one on a 4k monitor which shoots my cpu usage up to 60%.
+
+For reference my specs are:
+
+4790k
+16gb RAM
+AMD 390
+
+Here are the two wallpapers:
+ http://steamcommunity.com/sharedfiles/filedetails/?id=1085512302 (on 1080p)
+ http://steamcommunity.com/sharedfiles/filedetails/?id=878654942 (on 4k)
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 30 Mar, 2018 @ 6:37am 
+
+   Report this post 
+
+ Perhaps your card does not support 4k (+60 FPS). You can try different decoders too: http://steamcommunity.com/app/431960/discussions/2/1484358860951576217/ 
+
+The LAV options also allow you to switch between different hardware acceleration interfaces. 
+
+ #1 
+
+ Dante 
+
+ View Profile 
+ View Posts 
+
+ 30 Mar, 2018 @ 2:25pm 
+
+   Report this post 
+
+ I using only 1080p wallpaper but got freeze screen and mouse cursor lag ramdom time (i5 6600K, GTX970) when im spectating league of legend and browsing web only, while CPU only around 20% using. Exit WE seems to fix 
+
+ Last edited by Dante ;
+ 30 Mar, 2018 @ 2:26pm 
+
+ #2 
+
+ CLUTCH 
+
+ View Profile 
+ View Posts 
+
+ 30 Mar, 2018 @ 2:27pm 
+
+   Report this post 
+
+ Are you using Windows 10? I know there were a lot of issues with Win 10 and multiple monitors especially using different resolutions or refresh rates. 
+
+ #3 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 30 Mar, 2018 @ 2:33pm 
+
+   Report this post 
+
+ Originally posted by Peinpein :
+I using only 1080p wallpaper but got freeze screen and mouse cursor lag ramdom time (i5 6600K, GTX970) when im spectating league of legend and browsing web only, while CPU only around 20% using. Exit WE seems to fix 
+If your entire screen freezes it sounds like what this driver was causing: http://steamcommunity.com/app/431960/discussions/2/1696040635908929925/ 
+Do you already have a newer one installed?
+
+ #4 
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 30 Mar, 2018 @ 6:09am 
+ Posts: 4 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

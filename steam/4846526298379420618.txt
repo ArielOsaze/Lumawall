@@ -1,0 +1,289 @@
+Does pausing still use some VRAM? :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ m1nzu 
+
+ View Profile 
+ View Posts 
+
+ 28 Sep, 2024 @ 1:43pm 
+
+   Report this post 
+
+ Does pausing still use some VRAM? 
+
+ Or is VRAM not even used in the first place? 
+
+ < 
+
+ > 
+
+ Showing 1 - 3 of 3 comments 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Sep, 2024 @ 1:49pm 
+
+   Report this post 
+
+ "Pausing" will still occupy VRAM, "Stopping" will not use any VRAM.
+
+You can find these options in the "Performance" tab of the settings and in the hotkey settings. 
+
+ #1 
+
+ m1nzu 
+
+ View Profile 
+ View Posts 
+
+ 28 Sep, 2024 @ 2:05pm 
+
+   Report this post 
+
+ Originally posted by Tim :
+"Pausing" will still occupy VRAM, "Stopping" will not use any VRAM.
+
+You can find these options in the "Performance" tab of the settings and in the hotkey settings. 
+Let's say an active wallpaper uses 100MB of VRAM, how much would the VRAM usage be reduced when the wallpaper is paused, approximately? 
+
+ #2 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Sep, 2024 @ 2:10pm 
+
+   Report this post 
+
+ As explained above, if you pause a wallpaper, the same amount of VRAM will still be used. If you "stop" a wallpaper, no VRAM will be used. Please take a look at the performance tab of the Wallpaper Engine settings. If you want wallpapers to stop using video-ram while in-game, set the "Other application fullscreen" option to "Stop (free memory)". 
+
+ #3 
+
+ < 
+
+ > 
+
+ Showing 1 - 3 of 3 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 28 Sep, 2024 @ 1:43pm 
+ Posts: 3 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

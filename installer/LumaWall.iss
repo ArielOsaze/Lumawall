@@ -1,5 +1,5 @@
 #define MyAppName "LumaWall"
-#define MyAppVersion "4.1.0"
+#define MyAppVersion "4.1.3"
 #define MyAppPublisher "LumaWall"
 #define MyAppExeName "LumaWall.exe"
 

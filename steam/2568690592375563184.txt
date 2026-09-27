@@ -1,0 +1,377 @@
+How much PC resources grabs Wallpaper Engine? :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Valkor 
+
+ View Profile 
+ View Posts 
+
+ 6 Jul, 2020 @ 11:06pm 
+
+   Report this post 
+
+ How much PC resources grabs Wallpaper Engine? 
+
+ Hello, do someone knows how much memory and CPU it consumes? The program itself and current live wallpaper 
+
+ < 
+
+ > 
+
+ Showing 1 - 9 of 9 comments 
+
+ butcho 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:17am 
+
+   Report this post 
+
+ Depends heavily on the wallpaper you use. Some use nearly no resources and others will melt your hardware. 
+
+ Last edited by butcho ;
+ 7 Jul, 2020 @ 2:17am 
+
+ #1 
+
+ Valkor 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:19am 
+
+   Report this post 
+
+ Originally posted by butcho :
+Depends heavily on the wallpaper you use. Some use nearly no resources and others will melt your hardware. So...if a wallpaper weights 300 Mb, it will grab 300 Mb from my RAM? +app? 
+
+ #2 
+
+ butcho 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:31am 
+
+   Report this post 
+
+ This also depends on the type of wallpaper. A scene wallpaper with 300 MB will most likely contain huge gfx that will fill up the video ram of your graphics card and of course use the GPU and CPU to a certain amount. 
+
+On the other hand a video wallpaper with 300 MB is something that does not bother your GPU much, at least if it´s not an older model and the video is proper encoded.
+
+Aboslutely not predictable how your system might perform having hundreds and thousands of wallpapers in the workshop. 
+
+ Last edited by butcho ;
+ 7 Jul, 2020 @ 2:33am 
+
+ #3 
+
+ Valkor 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:36am 
+
+   Report this post 
+
+ Originally posted by butcho :
+Aboslutely not predictable how your system might perform having hundreds and thousands of wallpapers in the workshop. Daaaam, is there any way to check it how it affects my system? 
+
+ #4 
+
+ butcho 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:38am 
+
+   Report this post 
+
+ No, you just have to try it to find out. 
+
+ #5 
+
+ Valkor 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:40am 
+
+   Report this post 
+
+ Originally posted by butcho :
+No, you just have to try it to find out. :steamsunny: Welp, thanks anyway for clarification...will test it out 
+
+ #6 
+
+ butcho 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 2:44am 
+
+   Report this post 
+
+ No problem, you´re welcome. May the wallpapers be with you. 
+
+ #7 
+
+ RyanBurnsRed 
+
+ View Profile 
+ View Posts 
+
+ 7 Jul, 2020 @ 9:17am 
+
+   Report this post 
+
+ Wallpapers that are 4K and 60 fps will demand more memory and GPU resources than others. You can see the usage by just opening your task manager and look for wallpaper32. I found that CPU usage isn't really an issue, even with a 4K 60fps wallpaper, but you will need a decent GPU. 
+
+ #8 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 7 Jul, 2020 @ 9:56am 
+
+   Report this post 
+
+ Originally posted by RyanBurnsRed :
+Wallpapers that are 4K and 60 fps will demand more memory and GPU resources than others. You can see the usage by just opening your task manager and look for wallpaper32. I found that CPU usage isn't really an issue, even with a 4K 60fps wallpaper, but you will need a decent GPU. 
+
+Keep in mind that the Windows Task Manager is not capable of taking GPU clock rate into account, so if your GPU takes 30% in its low power state to decode videos, that's more like 3% of its actual capacity. More infos here:
+
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+
+ #9 
+
+ < 
+
+ > 
+
+ Showing 1 - 9 of 9 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 6 Jul, 2020 @ 11:06pm 
+ Posts: 9 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

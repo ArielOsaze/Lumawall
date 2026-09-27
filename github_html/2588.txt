@@ -1,0 +1,337 @@
+Wallpaper video not working even after turning off GPU decode · Issue #2588 · rocksdanister/lively · GitHub 
+
+ Skip to content 
+
+ Navigation Menu
+
+ Sign in 
+ Appearance settings
+
+ Platform 
+ AI CODE CREATION 
+
+ GitHub Copilot Write better code with AI 
+
+ GitHub Copilot app Direct agents from issue to merge 
+
+ MCP Registry Integrate external tools 
+
+ DEVELOPER WORKFLOWS 
+ Actions Automate any workflow 
+
+ Codespaces Instant dev environments 
+
+ Issues Plan and track work 
+
+ Code Review Manage code changes 
+
+ Code Quality Enforce quality at merge 
+
+ APPLICATION SECURITY 
+ GitHub Advanced Security Find and fix vulnerabilities 
+
+ Code security Secure your code as you build 
+
+ Secret protection Stop leaks before they start 
+
+ EXPLORE Why GitHub 
+ Documentation 
+
+ Blog 
+
+ Changelog 
+
+ Marketplace 
+
+ View all features 
+
+ Solutions 
+ BY COMPANY SIZE Enterprises 
+ Small and medium teams 
+ Startups 
+ Nonprofits 
+
+ BY USE CASE App Modernization 
+ DevSecOps 
+ DevOps 
+ CI/CD 
+ View all use cases 
+
+ BY INDUSTRY Healthcare 
+ Financial services 
+ Manufacturing 
+ Government 
+ View all industries 
+
+ View all solutions 
+
+ Resources 
+ EXPLORE BY TOPIC AI 
+ Software Development 
+ DevOps 
+ Security 
+ View all topics 
+
+ EXPLORE BY TYPE Customer stories 
+ Events & webinars 
+ Ebooks & reports 
+ Business insights 
+ GitHub Skills 
+
+ SUPPORT & SERVICES Documentation 
+
+ Customer support 
+
+ Community forum 
+ Trust center 
+ Partners 
+
+ View all resources 
+
+ Open Source 
+ COMMUNITY 
+ GitHub Sponsors Fund open source developers 
+
+ PROGRAMS Security Lab 
+
+ Maintainer Community 
+
+ GitHub Stars 
+
+ Archive Program 
+
+ REPOSITORIES Topics 
+ Trending 
+ Collections 
+
+ Enterprise 
+ ENTERPRISE SOLUTIONS 
+ Enterprise platform AI-powered developer platform 
+
+ AVAILABLE ADD-ONS 
+ GitHub Advanced Security Enterprise-grade security features 
+
+ Copilot for Business Enterprise-grade AI features 
+
+ Premium Support Enterprise-grade 24/7 support 
+
+ Pricing 
+
+ Search / 
+
+ Sign in 
+ Sign up 
+ Appearance settings
+
+ You signed in with another tab or window. Reload to refresh your session. 
+ You signed out in another tab or window. Reload to refresh your session. 
+ You switched accounts on another tab or window. Reload to refresh your session. 
+
+ Dismiss alert 
+
+ {{ message }}
+
+ rocksdanister
+
+ / 
+
+ lively 
+
+ Public 
+
+ Uh oh!
+
+ There was an error while loading. Please reload this page .
+
+ Notifications
+ You must be signed in to change notification settings 
+
+ Fork
+ 1.4k 
+
+ Star
+ 19.7k 
+
+ Code 
+
+ Issues 
+ 392 
+
+ Pull requests 
+ 1 
+
+ Discussions 
+
+ Actions 
+
+ Projects 
+
+ Wiki 
+
+ Security and quality 
+ 0 
+
+ Insights 
+
+ Additional navigation options 
+
+ Code
+
+ Issues
+
+ Pull requests
+
+ Discussions
+
+ Actions
+
+ Projects
+
+ Wiki
+
+ Security and quality
+
+ Insights
+
+ Wallpaper video not working even after turning off GPU decode   #2588 
+
+ New issue 
+
+ Copy link 
+
+ New issue 
+
+ Copy link 
+
+ Closed 
+
+ Closed 
+ Wallpaper video not working even after turning off GPU decode #2588 
+
+ Copy link 
+
+ Labels
+ 24h2 Windows 11 24H2 update Windows 11 24H2 update bug Something isn't working Something isn't working 
+
+ Description
+
+ Funwithmrspace 
+ opened on Jan 19, 2025 
+
+ Issue body actions 
+
+ Lively wallpaper not working even after restarting the system, the only way it was "fixed" was uninstallling and installing again but it seems like a nuisance to keep uninstalling and installing again.
+
+ What happened was:
+
+I restarted my laptop (before it was working just fine)
+
+I looked at the wallpaper and it looks like the normal windows wallpaper
+
+I opened lively and keep changing wallpapers
+
+The wallpaper is not changing
+
+I open settings to change the theme of the windows wallpaper
+
+The wallpaper seems to be working but its not moving like its supposed to
+
+I restart my laptop, doesnt seem to change a thing
+
+After restarting a couple of times i suddenly wasnt able to change the wallpaper and it was stuck on one until i restart i change it in lively and restart my laptop
+
+ To Reproduce 
+
+Steps to reproduce the behavior:
+
+I dont really know it suddenly just happened when i restarted my laptop
+
+ Screenshots/Video 
+
+This image is showing me that i changed my wallpaper but the wallpaper in the background isnt changing even tho ive already changed it in lively
+
+ Desktop (please complete the following information): 
+
+Edition Windows 11 Home Single Language
+
+Version 24H2
+
+Installed on ‎14/‎12/‎2024
+
+OS build 26100.2894
+
+Experience Windows Feature Experience Pack 1000.26100.36.0
+
+ Computer:
+
+Device name LAPTOP-B23D8D1T
+
+Processor 11th Gen Intel(R) Core(TM) i5-11400H @ 2.70GHz 2.69 GHz
+
+System type 64-bit operating system, x64-based processor
+
+ Log file (Important) 
+
+ lively_log_20250119_201637.zip 
+
+ Reactions are currently unavailable 
+
+ Activity
+
+ Sign up for free to join this conversation on GitHub. Already have an account? Sign in to comment 
+
+ Metadata
+ Metadata
+ Assignees
+
+ No one assigned 
+
+ Labels
+
+ 24h2 Windows 11 24H2 update Windows 11 24H2 update bug Something isn't working Something isn't working 
+
+ Projects
+
+ No projects 
+
+ Milestone
+
+ No milestone 
+
+ Relationships
+
+ None yet 
+
+ Development
+
+ No branches or pull requests 
+
+ Issue actions
+
+ Open in GitHub Copilot app 
+
+ Footer
+
+ © 2026 GitHub, Inc.
+
+ Footer navigation
+
+ Terms 
+
+ Privacy 
+
+ Security 
+
+ Status 
+
+ Community 
+
+ Docs 
+
+ Contact 
+
+ Manage cookies
+
+ Do not share my personal information
+
+ You can’t perform that action at this time.

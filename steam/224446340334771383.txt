@@ -1,0 +1,502 @@
+I cannot run any "4K video" from workshop. :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ CONF1E. 
+
+ View Profile 
+ View Posts 
+
+ 9 Nov, 2016 @ 4:03am 
+
+   Report this post 
+
+ I cannot run any "4K video" from workshop. 
+
+ I tried like 8 videos wallps from workshop but not a single one works. Sometimes Wallpaper Engine pops a window with error: "video error occurred c00d5212". Sometimes its just white wallpaper screen. Tried to google it without success. Any suggestions? 
+
+ < 
+
+ > 
+
+ Showing 1 - 15 of 34 comments 
+
+ Rhy 
+
+ View Profile 
+ View Posts 
+
+ 9 Nov, 2016 @ 4:06am 
+
+   Report this post 
+
+ Did you try to verify integrity of software cache? 
+
+ #1 
+
+ CONF1E. 
+
+ View Profile 
+ View Posts 
+
+ 9 Nov, 2016 @ 4:23am 
+
+   Report this post 
+
+ Originally posted by Ass Pancakes |||||Team Instinct :
+Did you try to verify integrity of software cache? 
+no i dont think it could help. but i will definetly try it when im done with my game. 
+
+ #2 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 9 Nov, 2016 @ 6:23am 
+
+   Report this post 
+
+ Hey,
+Do you have Windows 7 by chance? Unfortunately Microsoft does not support 4k on Windows 7 in the video player.
+
+If that's not it, it may be a third-party codec interfering.
+
+Cheers 
+
+ #3 
+
+ CONF1E. 
+
+ View Profile 
+ View Posts 
+
+ 9 Nov, 2016 @ 8:16am 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+Hey,
+Do you have Windows 7 by chance? Unfortunately Microsoft does not support 4k on Windows 7 in the video player.
+
+If that's not it, it may be a third-party codec interfering.
+
+Cheers 
+Yeah I do.. Damn it so there's nothing I can do about it??
+
+Guess yours DeepSpace will do for now! 
+
+ Last edited by CONF1E. ;
+ 9 Nov, 2016 @ 8:17am 
+
+ #4 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 9 Nov, 2016 @ 8:33am 
+
+   Report this post 
+
+ I think the best chance you have is resampling the videos down to 1080p yourself after downloading them from Workshop (or just asking the uploader to upload a 1080p version).
+
+If you are feeling adventurous, you could probably try using a codec pack like 'K-Lite' and see if you can configure it to somehow enable 4k support. But trying that may do more harm than good in this case (someone else seemed to have additional issues because of K-Lite being installed). So I wouldn't really recommend it based on that. 
+
+ #5 
+
+ The Tęa Mastęr 
+
+ View Profile 
+ View Posts 
+
+ 10 Nov, 2016 @ 4:41am 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+I think the best chance you have is resampling the videos down to 1080p yourself after downloading them from Workshop (or just asking the uploader to upload a 1080p version).
+
+If you are feeling adventurous, you could probably try using a codec pack like 'K-Lite' and see if you can configure it to somehow enable 4k support. But trying that may do more harm than good in this case (someone else seemed to have additional issues because of K-Lite being installed). So I wouldn't really recommend it based on that. 
+Yo, first of all thanks for the nice program here, i like it :)
+
+I'm on Win 7 too and didn't want to change to 10.
+Is there realy no way to get us 4k somehow?
+Would love to use my 1440p Screen in all of its gloury :D 
+
+ #6 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 10 Nov, 2016 @ 11:01am 
+
+   Report this post 
+
+ Hey,
+Unfortunately I don't know of any better solution so far. In theory there might be a codec from some pack that might make this possible - basically any Windows Media Player/Media Foundation codec should be picked up by Wallpaper Engine through Windows too.
+
+So if there's a way to enable 4k support for mp4/H.264 in WMP on Win7, it should also make it possible here. 
+
+ Last edited by Biohazard ;
+ 10 Nov, 2016 @ 11:01am 
+
+ #7 
+
+ Gnathonic 
+
+ View Profile 
+ View Posts 
+
+ 10 Nov, 2016 @ 12:32pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+So if there's a way to enable 4k support for mp4/H.264 in WMP on Win7, it should also make it possible here. 
+Yeah, there is something different between the W.E. implementation and WMP. On Win7 I can get WMP to use a handful of 4k enabled decoders just fine, but enabling these causes all video backgrounds to stop working. No error message, just a white background and high cpu use from W.E. 
+
+ #8 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 10 Nov, 2016 @ 1:23pm 
+
+   Report this post 
+
+ Originally posted by Gnathonic :
+Yeah, there is something different between the W.E. implementation and WMP. On Win7 I can get WMP to use a handful of 4k enabled decoders just fine, but enabling these causes all video backgrounds to stop working. No error message, just a white background and high cpu use from W.E. 
+Which decoders are those exactly? Are they from some public pack I can try?
+
+But the fact that they affect Wallpaper Engine in some way probably proves that Windows seems to select the custom decoder at least, so I'm not really sure where to go from there yet. 
+
+ #9 
+
+ Gnathonic 
+
+ View Profile 
+ View Posts 
+
+ 10 Nov, 2016 @ 1:33pm 
+
+   Report this post 
+
+ k-lite.
+LAV or ffdshow decoder
+LAV or Haali splitter
+same result for either. WMP works. W.E. white background with no error message. 
+
+ #10 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 10 Nov, 2016 @ 1:54pm 
+
+   Report this post 
+
+ Hm looks like K-Lite only supports DirectShow and does optionally disable Media Foundation system wide, which explains why it can break Wallpaper Engine, because I'm using MF. 
+
+ #11 
+
+ Gnathonic 
+
+ View Profile 
+ View Posts 
+
+ 10 Nov, 2016 @ 2:10pm 
+
+   Report this post 
+
+ Not that this is the last word on this, but I couldn't find any replacement MF codecs for any format. I found some additional codecs that MF doesn't support out of the box but that was it. 
+
+ #12 
+
+ Der Hexer 
+
+ View Profile 
+ View Posts 
+
+ 11 Nov, 2016 @ 1:47am 
+
+   Report this post 
+
+ anyone knows the reason for "Media Foundation" nor supporting 4k on win7 or is this just another bad move of microsoft forcing their "old" customers to win10? 
+
+ #13 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 11 Nov, 2016 @ 3:33am 
+
+   Report this post 
+
+ I don't see any reason why Microsoft couldn't add support for 4k in Win7 through Media Foundation, other than just not wanting to spend resources on it at this point.
+
+The thing is, in fact, that Microsoft has abandoned DirectShow since Vista/Win7 and since then asks everyone to use Media Foundation instead. I don't know if DirectShow even supports H.264 natively at all or if that has been made possible through community codecs only. 
+
+ #14 
+
+ Gnathonic 
+
+ View Profile 
+ View Posts 
+
+ 11 Nov, 2016 @ 8:55am 
+
+   Report this post 
+
+ I was looking to see why Microsoft abandoned DirectShow. To see what the differences are that makes MF superior. Turns out MF doesn't replace DS yet, and for certain use cases DS is still the recommended solution per Microsoft. Wallpaper Engine, needing only to do decoding, would be recommended to use MF per their guidelines.
+
+DS native format support:
+ https://msdn.microsoft.com/en-us/library/windows/desktop/dd407173(v=vs.85).aspx 
+
+Edit:
+Also, the built in H.264 DirectShow codec wouldn't help us much. It only supports decoding videos up to 1920x1088. All users would have to install codecs to enable 4k support. 
+
+ Last edited by Gnathonic ;
+ 11 Nov, 2016 @ 9:03am 
+
+ #15 
+
+ < 
+
+ > 
+
+ Showing 1 - 15 of 34 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 9 Nov, 2016 @ 4:03am 
+ Posts: 34 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

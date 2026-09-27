@@ -1,0 +1,318 @@
+Black Flicker on loading videos :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Celessude 
+
+ View Profile 
+ View Posts 
+
+ 2 Jun, 2024 @ 9:49am 
+
+   Report this post 
+
+ Black Flicker on loading videos 
+
+ Starting from latest update, every time a video wallpaper loads, there is an ugly black flicker between videos.
+
+I use some times one sole video in a playlist (with a duplicate of the same in order to be able to create a playlist using one sole video. Thus the playlist has videos), and this makes the program useless because every 10 seconds the screen flickers black.
+
+Is it possible to fix this? Or at least offer a way to roll back to the previous version?
+Thanks 
+
+ Last edited by Celessude ;
+ 2 Jun, 2024 @ 10:15am 
+
+ < 
+
+ > 
+
+ Showing 1 - 5 of 5 comments 
+
+ Black★Rock 
+
+ View Profile 
+ View Posts 
+
+ 2 Jun, 2024 @ 9:37pm 
+
+   Report this post 
+
+ I'm getting a similar issue. Is your windows default wallpaper black? It seems to be flickering to windows for like 200ms before going to the next wallpaper. I tried the override windows setting, dynamic accents off, windows slideshow off and they didn't helpGoing back to the previous ver resolved it in properties -> betas. 
+
+ #1 
+
+ Deku Scrub 
+
+ View Profile 
+ View Posts 
+
+ 2 Jun, 2024 @ 9:57pm 
+
+   Report this post 
+
+ You can rollback to the previous version by going into Properties > Betas.
+I would recommend installing the beta first in case the issue is fixed on the latest beta.
+
+ https://steamcommunity.com/app/431960/discussions/1/1746720717352689476/ 
+
+ #2 
+
+ KrazyDrayz 
+
+ View Profile 
+ View Posts 
+
+ 2 Jun, 2024 @ 10:17pm 
+
+   Report this post 
+
+ I had the same issue. It showed my wallpaper for a split second between videos in a playlist. Rollback to previous version fixed it. 
+
+ #3 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 3 Jun, 2024 @ 1:27am 
+
+   Report this post 
+
+ If you set a playlist transition like "Fade" in the playlist configuration, does the issue go away? You could also reduce the transition time to something like 50 milliseconds if the fade is annoying you. 
+
+ #4 
+
+ Celessude 
+
+ View Profile 
+ View Posts 
+
+ 13 Jun, 2024 @ 9:45pm 
+
+   Report this post 
+
+ Thanks for the replies on the thread. Yes, I rolled back doing what Deku mentioned. To answer to the other ones, the first few times it went to black as I described. So I did that about the fade stuff, but it was futile and slow, and it was not compatible with looping animated wallpapers in a playlist which require a duplicate of the same file (this is required because you need 2 files at least to save a playlist). Then, since it was a crappy result, I posted this thread here, and let it be . After that, during the day, instead of the black screen it blinked into it started blinking into the default wallpaper (which is not black). Same thing I guess. So just got tired and rolled back for the time being 
+
+ #5 
+
+ < 
+
+ > 
+
+ Showing 1 - 5 of 5 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 2 Jun, 2024 @ 9:49am 
+ Posts: 5 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

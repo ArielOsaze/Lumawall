@@ -1,0 +1,322 @@
+It doesnt play 4k video well they stutter :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Hirasawa 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2020 @ 10:07pm 
+
+   Report this post 
+
+ It doesnt play 4k video well they stutter 
+
+ Like I have a 32GB ram and a i9900k and an rtx 2080...I have tried playing 4k video but it doesnt play them well .....I hope the devs r seeing this and make and update to play 4k videos. 
+
+ < 
+
+ > 
+
+ Showing 1 - 6 of 6 comments 
+
+ raw maw 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2020 @ 10:30pm 
+
+   Report this post 
+
+ Try updating your settings 
+
+ #1 
+
+ Hirasawa 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2020 @ 10:44pm 
+
+   Report this post 
+
+ thx which setting should I be looking into? 
+
+ #2 
+
+ raw maw 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2020 @ 10:58pm 
+
+   Report this post 
+
+ Originally posted by Seiya :
+thx which setting should I be looking into? When booting up the program, you can pick how it starts up. Under a installed wallpaper, you can also fiddle with performance; like FPS and alike. 
+The 'settings' option, top right, too could be useful to look into. 
+
+ #3 
+
+ Hirasawa 
+
+ View Profile 
+ View Posts 
+
+ 27 Nov, 2020 @ 12:26am 
+
+   Report this post 
+
+ thx 
+
+ #4 
+
+ Tim 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 27 Nov, 2020 @ 3:31am 
+
+   Report this post 
+
+ Videos are played through Windows Media Player (kind of simplified but accurate enough). If 4K videos stutter, there is likely an issue with your drivers or some Windows configuration, as all videos are rendered by your graphics card. Make sure you are not using the internal GPU of your Intel processor and that all displays are connected to your Nvidia graphics card (and not the Intel GPU). 
+
+ #5 
+
+ Hirasawa 
+
+ View Profile 
+ View Posts 
+
+ 27 Nov, 2020 @ 6:16am 
+
+   Report this post 
+
+ thx will check 
+
+ #6 
+
+ < 
+
+ > 
+
+ Showing 1 - 6 of 6 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 26 Nov, 2020 @ 10:07pm 
+ Posts: 6 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

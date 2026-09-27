@@ -1,0 +1,305 @@
+關於故障 :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ baimizhou 
+
+ View Profile 
+ View Posts 
+
+ 17 Sep @ 11:44pm 
+
+   Report this post 
+
+ 關於故障 
+
+ Title: wallpaper64.exe reliably crashes (0xc0000374 heap corruption) when enabling "Override lockscreen image" — not fixed by full reinstall
+
+Wallpaper Engine version: 2.8.42 (binaries dated 2026-09-07 11:24, Steam build 23967692)
+Windows: Windows 11 Pro 25H2, OS build 26200.9168
+Hardware: ASUS FX608JH, i7-13650HX, RTX 5050 Laptop (NVIDIA driver 610.62), MUX set to dGPU, 16 GB RAM
+Wallpaper type: Scene (Steam Workshop 3786225131)
+
+Summary:
+Toggling "Override lockscreen image" in Settings -> General crashes wallpaper64.exe within 1-20
+seconds, 100% reproducible. The crash is NOT fixed by a full uninstall + manual deletion of the
+install directory + reinstall: after reinstalling, the crash offset is byte-for-byte identical
+(ntdll.dll + 0x112165), which points to a deterministic code bug rather than a broken installation.
+
+Steps to reproduce:
+1. Start Wallpaper Engine 2.8.42 with a scene wallpaper running.
+2. Settings -> General -> enable "Override lockscreen image".
+3. wallpaper64.exe crashes.
+
+Evidence A - bin\wallpaperuilog.txt (UTC), immediately before every crash:
+ "JS Exception: Uncaught TypeError: window.toggleLockscreenOverrideCallback is not a function,
+ window.toggleLockscreenOverrideCallback();"
+ The same log shows "Created process: winrtutil64.exe" right before the exception.
+ Note: the string "toggleLockscreenOverrideCallback" does not exist anywhere in
+ ui\dist\scripts\scripts.js, i.e. the back-end calls a UI callback that the shipped UI never defines.
+
+Evidence B - Windows Application event log (local time UTC+8):
+ 2026-09-18 14:14:57 wallpaper64.exe 2.8.0.42, faulting module ntdll.dll 10.0.26100.8972,
+ exception 0xc0000374, fault offset 0x112165 <- AFTER full reinstall
+ 2026-09-18 13:49:16 same signature
+ 2026-09-18 13:44:45 same signature
+ 2026-09-18 13:41:19 wallpaper64.exe, exception 0xc0000005, fault offset 0x188f77
+
+Evidence C - the crash happens after the backup step already succeeded:
+ C:\Users\baimi\AppData\Roaming\Microsoft\Windows\Themes\WallpaperEngineBackupLockscreen.jpg
+ was written at 2026-09-18 14:14:55, i.e. one second before the 14:14:57 crash. The original
+ lockscreen image was backed up successfully; the crash occurs when writing the new image.
+ In the same folder, WallpaperEngineOverride.jpg / WallpaperEngineLockOverride.jpg dated
+ 2026-09-07 show that this feature worked correctly before the 2026-09-07 update.
+
+Crash dumps: A dump named wallpaper64_2_8_42V_2026-09-18T05_41_01Z.mdmp existed before the reinstall,
+ but it was deleted together with the install directory during a full uninstall/reinstall,
+ so no dump is available now. The crash signatures and timestamps above are all I can provide.
+ I can run your debug/scan tool to generate a fresh report if needed.
+WER bucket id: 1188104152208670216
+
+Additional notes:
+- No third-party antivirus (Microsoft Defender only).
+- "Wallpaper Engine Service" is running; wallpaperservice64.exe in System32 is validly signed.
+- No third-party module appears in the crash signature.
+- The error output also contains "LocalFileSchemeFactory: CefStreamReader::CreateForFile failed". 
+
+ < 
+
+ > 
+
+ Showing 1 - 0 of 0 comments 
+
+ < 
+
+ > 
+
+ Showing 1 - 0 of 0 comments 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 17 Sep @ 11:44pm 
+ Posts: 0 
+
+ Discussions Rules and Guidelines 
+
+ More discussions
+
+ 0 
+
+ Feature Request: Custom hotkeys for Workshop page navigation (mouse side button support) 
+
+ 0 
+
+ 壁纸加载不出来是怎么回事 
+
+ 1 
+
+ Stutters when using 60 fps instead of 30 
+
+ 0 
+
+ фывыфвф 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

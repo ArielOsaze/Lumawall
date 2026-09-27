@@ -1,0 +1,314 @@
+Only 4k videos stuttering :: Wallpaper Engine Problem Solving 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ synthyx 
+
+ View Profile 
+ View Posts 
+
+ 12 Mar, 2024 @ 3:23am 
+
+   Report this post 
+
+ Only 4k videos stuttering 
+
+ Hi. Kinda new to wallpaper engine so sorry if this is a stupid question. I'm on a laptop with a 1650 and running wallpaper engine on a hooked up 1080p 120hz monitor. It seems I can smoothly run pretty much all "scene" type 4k wallpapers at ultra settings and 60fps, but anytime I run a 4k video it starts stuttering pretty noticeably. From what I understand, video type wallpapers have a fixed fps and quality..? I'm wondering if this just means my system's specs just can't handle decoding the 4k videos or if there's an underlying problem here. Thanks. 
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Capt.Luke 
+
+ View Profile 
+ View Posts 
+
+ 12 Mar, 2024 @ 2:42pm 
+
+   Report this post 
+
+ an GTX 1650 Ti OC edition will run 4k video very smoothly
+a normal one , no
+
+I believe your laptop is just not strong enought to play 4k video files 
+
+ Last edited by Capt.Luke ;
+ 12 Mar, 2024 @ 2:43pm 
+
+ #1 
+
+ synthyx 
+
+ View Profile 
+ View Posts 
+
+ 12 Mar, 2024 @ 4:26pm 
+
+   Report this post 
+
+ Originally posted by Capt.Luke :
+an GTX 1650 Ti OC edition will run 4k video very smoothly
+a normal one , no
+
+I believe your laptop is just not strong enought to play 4k video files Thanks for the answer. Is that behavior normal for graphics cards? I find it weird how it has no problem rendering 4k scenes in real time but lags when decoding prerendered 4k videos. 
+
+ #2 
+
+ Capt.Luke 
+
+ View Profile 
+ View Posts 
+
+ 13 Mar, 2024 @ 10:55am 
+
+   Report this post 
+
+ Originally posted by synthyx :
+ Originally posted by Capt.Luke :
+an GTX 1650 Ti OC edition will run 4k video very smoothly
+a normal one , no
+
+I believe your laptop is just not strong enought to play 4k video files Thanks for the answer. Is that behavior normal for graphics cards? I find it weird how it has no problem rendering 4k scenes in real time but lags when decoding prerendered 4k videos. try a 2k video file
+ https://steamcommunity.com/sharedfiles/filedetails/?id=1864604777&searchtext= 
+
+ Last edited by Capt.Luke ;
+ 13 Mar, 2024 @ 10:56am 
+
+ #3 
+
+ synthyx 
+
+ View Profile 
+ View Posts 
+
+ 14 Mar, 2024 @ 3:08am 
+
+   Report this post 
+
+ Originally posted by Capt.Luke :
+ Originally posted by synthyx :
+Thanks for the answer. Is that behavior normal for graphics cards? I find it weird how it has no problem rendering 4k scenes in real time but lags when decoding prerendered 4k videos. try a 2k video file
+ https://steamcommunity.com/sharedfiles/filedetails/?id=1864604777&searchtext= Yeah, seems to run just fine on 2k60fps. I'm guessing my laptop just can't handle 4k like you said. Thanks for the help. 
+
+ #4 
+
+ < 
+
+ > 
+
+ Showing 1 - 4 of 4 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ Date Posted: 12 Mar, 2024 @ 3:23am 
+ Posts: 4 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

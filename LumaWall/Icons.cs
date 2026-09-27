@@ -42,6 +42,14 @@ namespace LumaWall
         public const string Power = "power";
         public const string Image = "image";
         public const string AllDisplays = "all-displays";
+        public const string Studio = "studio";
+        public const string Palette = "palette";
+        public const string Filter = "filter";
+        public const string Flip = "flip";
+        public const string Hdr = "hdr";
+        public const string Frame = "frame";
+        public const string Speed = "speed";
+        public const string Timer = "timer";
         public const string Close = "close";
         public const string Minimize = "minimize";
         public const string Maximize = "maximize";
@@ -233,6 +241,75 @@ namespace LumaWall
                     yield return "M14,4 L21,4 L21,10 L14,10 Z";
                     yield return "M3,13 L10,13 L10,19 L3,19 Z";
                     yield return "M14,13 L21,13 L21,19 L14,19 Z";
+                    break;
+
+                // Three sliders with the knobs at different positions: the page where
+                // a display's look is tuned. Deliberately not the monitor outline that
+                // the Displays page uses - two rail entries with the same icon read as
+                // a mistake, and at 19px a user cannot tell them apart at a glance.
+                case Studio:
+                    yield return "M4,7 L20,7";
+                    yield return "M4,12 L20,12";
+                    yield return "M4,17 L20,17";
+                    yield return "M9.5,4.6 L9.5,9.4";
+                    yield return "M15.5,9.6 L15.5,14.4";
+                    yield return "M8,14.6 L8,19.4";
+                    break;
+
+                // Painter's palette with a thumb hole: colour grading.
+                case Palette:
+                    yield return "M12,3.5 A8.5,8.5 0 1 0 12,20.5 A2.2,2.2 0 0 0 12,16 A1.6,1.6 0 0 1 12,12.8 A8.5,8.5 0 0 0 12,3.5 Z";
+                    yield return "M8.2,7.8 L8.2,7.9";
+                    yield return "M15.8,7.8 L15.8,7.9";
+                    yield return "M6.6,13 L6.7,13";
+                    break;
+
+                // Three overlapping circles, the classic filter mark.
+                case Filter:
+                    yield return "M9.5,6.5 A4.6,4.6 0 1 1 9.49,6.5 Z";
+                    yield return "M14.5,6.5 A4.6,4.6 0 1 1 14.49,6.5 Z";
+                    yield return "M12,11 A4.6,4.6 0 1 1 11.99,11 Z";
+                    break;
+
+                // A shape and its reflection about a dashed axis.
+                case Flip:
+                    yield return "M12,3 L12,21";
+                    yield return "M9.5,7 L4,12 L9.5,17 Z";
+                    yield return "M14.5,7 L20,12 L14.5,17 Z";
+                    break;
+
+                // A sun on the horizon: the HDR range.
+                case Hdr:
+                    yield return "M12,7.5 A4,4 0 1 1 11.99,7.5 Z";
+                    yield return "M12,2 L12,4.2";
+                    yield return "M12,10.8 L12,13";
+                    yield return "M4.5,7.5 L6.7,7.5";
+                    yield return "M17.3,7.5 L19.5,7.5";
+                    yield return "M3,16.5 L21,16.5";
+                    yield return "M3,20 L21,20";
+                    break;
+
+                // Crop marks around a frame: how the image sits in the screen.
+                case Frame:
+                    yield return "M3.5,8 L3.5,3.5 L8,3.5";
+                    yield return "M16,3.5 L20.5,3.5 L20.5,8";
+                    yield return "M20.5,16 L20.5,20.5 L16,20.5";
+                    yield return "M8,20.5 L3.5,20.5 L3.5,16";
+                    break;
+
+                // A speedometer needle over an arc: playback rate.
+                case Speed:
+                    yield return "M3.5,17.5 A8.5,8.5 0 0 1 20.5,17.5";
+                    yield return "M12,17.5 L16.6,10.8";
+                    yield return "M12,3 L12,5";
+                    yield return "M4.9,6.9 L6.3,8.3";
+                    yield return "M19.1,6.9 L17.7,8.3";
+                    break;
+
+                // Clock face with hands: the desktop timer.
+                case Timer:
+                    yield return "M12,4 A8.5,8.5 0 1 1 11.99,4 Z";
+                    yield return "M12,7.5 L12,12 L15.5,14";
                     break;
 
                 case Close:

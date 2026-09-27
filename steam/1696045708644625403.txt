@@ -1,0 +1,456 @@
+High CPU/RAM Usage? :: Wallpaper Engine General Discussions 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ skyydragonn 
+
+ View Profile 
+ View Posts 
+
+ 26 Apr, 2018 @ 9:44am 
+
+   Report this post 
+
+ High CPU/RAM Usage? 
+
+ Edit: Nevermind. It is wallpaper dependant. Switched to a different one and sys resources dropped instantly. Apparently 4k wallpapers crack up the usage!
+
+Anyone run into issue with wallpaper engine using a fairly high amount of CPU/RAM usage?
+Right now it's using up roughly %50 CPU (AMD FX 8 core@4.50Ghz) and %20 RAM (16GB)
+I'm pretty sure thats a touch higher than it should be. Is it dependant on the wallpaper that is curently running or something else entirely? 
+
+ Last edited by skyydragonn ;
+ 26 Apr, 2018 @ 9:49am 
+
+ < 
+
+ > 
+
+ Showing 1 - 12 of 12 comments 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 26 Apr, 2018 @ 10:01am 
+
+   Report this post 
+
+ If you use video wallpapers you need to check whether your OS and graphics card support hardware decoding for their resolution and codec. If they do support it, you will have next to no CPU usage on videos. If they don't support it you will have high CPU usage.
+
+If you're unsure you could link the wallpaper here. 
+
+ #1 
+
+ Qelris 
+
+ View Profile 
+ View Posts 
+
+ 27 Apr, 2018 @ 3:33am 
+
+   Report this post 
+
+ I've been using WPE for a while and never had any issues until lately. I haven't changed the wallpaper in a while either. Lately, I started playing Black Desert Online again. I noticed that my CPU usage for wallpaperx32(or whatever the proccess is called) would often jump to 99% while BDO is open. I'm pretty sure I did not have any issues with BDO last time I played. Now that just having that game open is an issue, I don't even dare to use WPE anymore because of the random 99% CPU usages on the wallpaper.
+
+Has there been any updates lately that affected the CPU usage? Is my card just starting to die? 
+
+ #2 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 27 Apr, 2018 @ 6:35am 
+
+   Report this post 
+
+ Originally posted by Qelris :
+I've been using WPE for a while and never had any issues until lately. I haven't changed the wallpaper in a while either. Lately, I started playing Black Desert Online again. I noticed that my CPU usage for wallpaperx32(or whatever the proccess is called) would often jump to 99% while BDO is open. I'm pretty sure I did not have any issues with BDO last time I played. Now that just having that game open is an issue, I don't even dare to use WPE anymore because of the random 99% CPU usages on the wallpaper.
+
+Has there been any updates lately that affected the CPU usage? Is my card just starting to die? 
+Your issue sounds different from the OP, can you do this and reply there (or make a new thread?): https://steamcommunity.com/app/431960/discussions/2/1696045708647979769/#c1696045708647990718 
+
+ #3 
+
+ banana_bread 
+
+ View Profile 
+ View Posts 
+
+ 28 Apr, 2018 @ 1:07am 
+
+   Report this post 
+
+ hi. im getting like 30-40% CPU (i5 4460) and same % with GPU (gtx 960) usage atm. can u help me?
+ https://pastebin.com/CbEnwXtm 
+ https://steamcommunity.com/sharedfiles/filedetails/?id=1139418455 
+
+but with this one its like 0-1% CPU and 20-30% GPU (on 750MHz tho)
+ https://steamcommunity.com/sharedfiles/filedetails/?id=1130942418 
+
+ Last edited by banana_bread ;
+ 28 Apr, 2018 @ 1:30am 
+
+ #4 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Apr, 2018 @ 3:28am 
+
+   Report this post 
+
+ The first one is a video, If a video has high CPU usage then the hardware doesn't support its specifications for hardware decoding. Try this one for comparison since it is definitely supported by a GTX 960: http://steamcommunity.com/sharedfiles/filedetails/?id=831595366 
+
+If this one has high CPU usage for you then the hardware video decoder is unusable because of something with the PC, driver/Windows/other software. 
+
+ #5 
+
+ banana_bread 
+
+ View Profile 
+ View Posts 
+
+ 28 Apr, 2018 @ 6:11am 
+
+   Report this post 
+
+ This one is going well, i guess. 0-1% CPU and 22% GPU (on 135MHz).
+Btw how do u know that this video is supported by GTX 960? 
+
+ Last edited by banana_bread ;
+ 28 Apr, 2018 @ 6:12am 
+
+ #6 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Apr, 2018 @ 6:26am 
+
+   Report this post 
+
+ Can you try this one: https://steamcommunity.com/sharedfiles/filedetails/?id=1363161580 
+
+I think it must be because it's 60 FPS or because of the resolution. The one I linked is 4k with 30 FPS. 
+
+ #7 
+
+ banana_bread 
+
+ View Profile 
+ View Posts 
+
+ 28 Apr, 2018 @ 6:35am 
+
+   Report this post 
+
+ Well, via task manager it says that my GPU usage at ~42% and CPU at 1-2%, but via gpu-z its 12% gpu with 760MHz.
+Idk what happened but the first one video that i linked b4 (cherry blossoms 60fps) is no longer using my CPU: its like 1-2% CPU and ~40% GPU(Task Manager); 15-20% GPU load on 760MHz (gpu-z).
+Also what's normal GPU (with clock rate) and CPU usage%? 
+
+ #8 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Apr, 2018 @ 6:41am 
+
+   Report this post 
+
+ Originally posted by Brrrrax :
+he first one video that i linked b4 (cherry blossoms 60fps) is no longer using my CPU 
+If you only have this error randomly, something might be causing it to break down. Someone had this due to a 'VR Dashboard' tool before, but it's unlikely that you have that installed too, or does that sound familiar?
+
+ Originally posted by Brrrrax :
+Also what's normal GPU (with clock rate) and CPU usage%? 
+With videos CPU usage should be ~1%, also note that this is again dependent on the current CPU multiplicator, but at least the task manager shows the CPU speed so it's easy to see.
+
+GPU usage with videos is entirely dependent on Nvidia's tech since it uses Nvidia's native decoder (unless that breaks and it has to use the CPU as you experienced). I personally would use 30 FPS videos, because 60 FPS will take twice as much performance and I think 30 FPS is enough, so if you want to optimize this, you could check the FPS the video was created with.
+
+For scenes it depends on the wallpaper and your performance settings, those can be tweaked there. 
+
+ #9 
+
+ banana_bread 
+
+ View Profile 
+ View Posts 
+
+ 28 Apr, 2018 @ 6:51am 
+
+   Report this post 
+
+ No, i dont have this thing installed, so i think it happend randomly.
+Well, speaking of clock rate: the less it is the better? I shouldn't use a video/scene if its using 40-50% of GPU and almost max clock rate, right? 
+
+ #10 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 28 Apr, 2018 @ 6:57am 
+
+   Report this post 
+
+ Originally posted by Brrrrax :
+I shouldn't use a video/scene if its using 40-50% of GPU and almost max clock rate, right? 
+That's not good, yeah, unless you are allowing 144 FPS or so.
+
+The wallpaper could be using too many layers/effects if you get that result, but high FPS on a completely empty wallpaper will push the clock rate up too, just because the screen is refreshed with nothing. 
+
+ #11 
+
+ banana_bread 
+
+ View Profile 
+ View Posts 
+
+ 28 Apr, 2018 @ 7:02am 
+
+   Report this post 
+
+ Ok, gotcha. Now i know more about this. Thank you for your help! :) 
+
+ #12 
+
+ < 
+
+ > 
+
+ Showing 1 - 12 of 12 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ General Discussions > 
+ Topic Details 
+
+ Date Posted: 26 Apr, 2018 @ 9:44am 
+ Posts: 12 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

@@ -1,0 +1,396 @@
+Hi VRAM usage :: Wallpaper Engine Problem Solving 
+
+ Sign in 
+
+ Store 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ Community 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ Support 
+
+ Change language 
+
+ Get the Steam Mobile App 
+
+ View desktop website 
+
+ © Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries. 
+ Privacy Policy 
+  |   Legal 
+  |   Accessibility 
+  |   Steam Subscriber Agreement 
+  |   Refunds 
+  |   Cookies 
+
+ STORE 
+
+ Home 
+
+ Discovery Queue 
+
+ Wishlist 
+
+ Points Shop 
+
+ News 
+
+ Charts 
+
+ COMMUNITY 
+
+ Home 
+
+ Discussions 
+
+ Workshop 
+
+ Market 
+
+ Broadcasts 
+
+ About 
+
+ SUPPORT 
+
+ Install Steam 
+
+ sign in 
+  | 
+ language 
+
+ 简体中文 (Simplified Chinese) 
+
+ 繁體中文 (Traditional Chinese) 
+
+ 日本語 (Japanese) 
+
+ 한국어 (Korean) 
+
+ ไทย (Thai) 
+
+ Bahasa Indonesia (Indonesian) 
+
+ Bahasa Melayu (Malay) BETA 
+
+ Български (Bulgarian) 
+
+ Čeština (Czech) 
+
+ Dansk (Danish) 
+
+ Deutsch (German) 
+
+ Español - España (Spanish - Spain) 
+
+ Español - Latinoamérica (Spanish - Latin America) 
+
+ Ελληνικά (Greek) 
+
+ Français (French) 
+
+ Italiano (Italian) 
+
+ Magyar (Hungarian) 
+
+ Nederlands (Dutch) 
+
+ Norsk (Norwegian) 
+
+ Polski (Polish) 
+
+ Português (Portuguese - Portugal) 
+
+ Português - Brasil (Portuguese - Brazil) 
+
+ Română (Romanian) 
+
+ Русский (Russian) 
+
+ Suomi (Finnish) 
+
+ Svenska (Swedish) 
+
+ Türkçe (Turkish) 
+
+ Tiếng Việt (Vietnamese) 
+
+ Українська (Ukrainian) 
+ Report a translation problem 
+
+ Store Page 
+
+ Wallpaper Engine
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ All 
+
+ Discussions 
+
+ Screenshots 
+
+ Artwork 
+
+ Broadcasts 
+
+ Videos 
+
+ Workshop 
+
+ News 
+
+ Guides 
+
+ Reviews 
+
+ Wallpaper Engine
+
+ Store Page 
+
+ View Stats:
+
+ Global Achievements 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 1:41pm 
+
+   Report this post 
+
+ Hi VRAM usage 
+
+ Hello,
+I've got a GTX 1660 Gaming X 6GB and when I'm not using WE my VRAM stays at 20%; as soon as I open WE it goes up to 33% utilization.
+
+I'm running a single animated wallpaper - which is very simple - on a dual monitor setup.
+Since I don't know what info are needed, feel free to ask.
+
+Thanks 
+
+ Last edited by roughnecks ;
+ 26 Nov, 2021 @ 2:06pm 
+
+ The author of this topic has marked a post as the answer to their question.
+
+ Click here to jump to that post. 
+
+ Originally posted by Biohazard :
+
+ Thanks, the VRAM usage is so high because it's a GIF with a large resolution. If you download the video from the source and use it as a video, then it won't be unpacked for GPU-only rendering and not use as much VRAM. 
+
+ < 
+
+ > 
+
+ Showing 1 - 9 of 9 comments 
+
+ Gariam 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 1:48pm 
+
+   Report this post 
+
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+
+ #1 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 2:04pm 
+
+   Report this post 
+
+ Originally posted by Gariam :
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+I'm talking about Video Memory, not load. 
+
+ Last edited by roughnecks ;
+ 26 Nov, 2021 @ 2:05pm 
+
+ #2 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 2:33pm 
+
+   Report this post 
+
+ It isn't a very big deal since VRAM gets cleared every time an application goes fullscreen (I set WE to stop), but it's still kinda high values. 
+
+ #3 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 26 Nov, 2021 @ 2:35pm 
+
+   Report this post 
+
+ Please share a link to the wallpaper you are using then we can compare it to what it's using on our systems. 
+
+ #4 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 2:44pm 
+
+   Report this post 
+
+ Sure, thanks.
+
+ https://steamcommunity.com/sharedfiles/filedetails/?id=1350472513 
+
+ #5 
+
+ The author of this thread has indicated that this post answers the original topic. 
+
+ Biohazard 
+
+ View Profile 
+ View Posts 
+
+  [developer] 
+
+ 26 Nov, 2021 @ 2:49pm 
+
+   Report this post 
+
+ Thanks, the VRAM usage is so high because it's a GIF with a large resolution. If you download the video from the source and use it as a video, then it won't be unpacked for GPU-only rendering and not use as much VRAM. 
+
+ #6 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 3:08pm 
+
+   Report this post 
+
+ Originally posted by Biohazard :
+Thanks, the VRAM usage is so high because it's a GIF with a large resolution. If you download the video from the source and use it as a video, then it won't be unpacked for GPU-only rendering and not use as much VRAM. 
+I just created a video wallpaper from source and it actually uses less VRAM, but GPU load increased a bit.. I guess perfection doesn't exist 
+
+ #7 
+
+ Gariam 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 3:19pm 
+
+   Report this post 
+
+ Originally posted by roughnecks :
+ Originally posted by Gariam :
+ https://help.wallpaperengine.io/en/performance/gpu.html 
+I'm talking about Video Memory, not load. My bad, sorry. So many people ask about that, so i just acted without really understanding what you wrote, thinking it was the same. 
+
+ #8 
+
+ roughnecks 
+
+ View Profile 
+ View Posts 
+
+ 26 Nov, 2021 @ 3:27pm 
+
+   Report this post 
+
+ Originally posted by Gariam :
+ Originally posted by roughnecks :
+
+I'm talking about Video Memory, not load. My bad, sorry. So many people ask about that, so i just acted without really understanding what you wrote, thinking it was the same. 
+Yeah, no problem; thanks anyway! 
+
+ #9 
+
+ < 
+
+ > 
+
+ Showing 1 - 9 of 9 comments 
+
+ Per page: 15 30 50 
+
+ Wallpaper Engine > 
+ Problem Solving > 
+ Topic Details 
+
+ Date Posted: 26 Nov, 2021 @ 1:41pm 
+ Posts: 9 
+
+ Discussions Rules and Guidelines 
+
+ Report this post
+
+ REASON
+
+ Note: This is ONLY to be used to report spam, advertising, and problematic (harassment, fighting, or rude) posts.

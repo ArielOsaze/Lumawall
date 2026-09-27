@@ -67,6 +67,8 @@ CHECKS = [
      ['python', 'tools/check-i18n.py']),
     ('the memory work is intact and the trim traps are absent',
      ['python', 'tools/check-memory-plan.py']),
+    ('every translation key the UI asks for exists',
+     ['python', 'tools/check-translations.py']),
     ('the wallpapers are actually rendering',
      ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'tools/check-wallpaper-alive.ps1']),

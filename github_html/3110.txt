@@ -1,0 +1,333 @@
+Wallpaper pausing issue with multiple monitors · Issue #3110 · rocksdanister/lively · GitHub 
+
+ Skip to content 
+
+ Navigation Menu
+
+ Sign in 
+ Appearance settings
+
+ Platform 
+ AI CODE CREATION 
+
+ GitHub Copilot Write better code with AI 
+
+ GitHub Copilot app Direct agents from issue to merge 
+
+ MCP Registry Integrate external tools 
+
+ DEVELOPER WORKFLOWS 
+ Actions Automate any workflow 
+
+ Codespaces Instant dev environments 
+
+ Issues Plan and track work 
+
+ Code Review Manage code changes 
+
+ Code Quality Enforce quality at merge 
+
+ APPLICATION SECURITY 
+ GitHub Advanced Security Find and fix vulnerabilities 
+
+ Code security Secure your code as you build 
+
+ Secret protection Stop leaks before they start 
+
+ EXPLORE Why GitHub 
+ Documentation 
+
+ Blog 
+
+ Changelog 
+
+ Marketplace 
+
+ View all features 
+
+ Solutions 
+ BY COMPANY SIZE Enterprises 
+ Small and medium teams 
+ Startups 
+ Nonprofits 
+
+ BY USE CASE App Modernization 
+ DevSecOps 
+ DevOps 
+ CI/CD 
+ View all use cases 
+
+ BY INDUSTRY Healthcare 
+ Financial services 
+ Manufacturing 
+ Government 
+ View all industries 
+
+ View all solutions 
+
+ Resources 
+ EXPLORE BY TOPIC AI 
+ Software Development 
+ DevOps 
+ Security 
+ View all topics 
+
+ EXPLORE BY TYPE Customer stories 
+ Events & webinars 
+ Ebooks & reports 
+ Business insights 
+ GitHub Skills 
+
+ SUPPORT & SERVICES Documentation 
+
+ Customer support 
+
+ Community forum 
+ Trust center 
+ Partners 
+
+ View all resources 
+
+ Open Source 
+ COMMUNITY 
+ GitHub Sponsors Fund open source developers 
+
+ PROGRAMS Security Lab 
+
+ Maintainer Community 
+
+ GitHub Stars 
+
+ Archive Program 
+
+ REPOSITORIES Topics 
+ Trending 
+ Collections 
+
+ Enterprise 
+ ENTERPRISE SOLUTIONS 
+ Enterprise platform AI-powered developer platform 
+
+ AVAILABLE ADD-ONS 
+ GitHub Advanced Security Enterprise-grade security features 
+
+ Copilot for Business Enterprise-grade AI features 
+
+ Premium Support Enterprise-grade 24/7 support 
+
+ Pricing 
+
+ Search / 
+
+ Sign in 
+ Sign up 
+ Appearance settings
+
+ You signed in with another tab or window. Reload to refresh your session. 
+ You signed out in another tab or window. Reload to refresh your session. 
+ You switched accounts on another tab or window. Reload to refresh your session. 
+
+ Dismiss alert 
+
+ {{ message }}
+
+ rocksdanister
+
+ / 
+
+ lively 
+
+ Public 
+
+ Uh oh!
+
+ There was an error while loading. Please reload this page .
+
+ Notifications
+ You must be signed in to change notification settings 
+
+ Fork
+ 1.4k 
+
+ Star
+ 19.7k 
+
+ Code 
+
+ Issues 
+ 392 
+
+ Pull requests 
+ 1 
+
+ Discussions 
+
+ Actions 
+
+ Projects 
+
+ Wiki 
+
+ Security and quality 
+ 0 
+
+ Insights 
+
+ Additional navigation options 
+
+ Code
+
+ Issues
+
+ Pull requests
+
+ Discussions
+
+ Actions
+
+ Projects
+
+ Wiki
+
+ Security and quality
+
+ Insights
+
+ Wallpaper pausing issue with multiple monitors   #3110 
+
+ New issue 
+
+ Copy link 
+
+ New issue 
+
+ Copy link 
+
+ Open 
+
+ Open 
+ Wallpaper pausing issue with multiple monitors #3110 
+
+ Copy link 
+
+ Labels
+ bug Something isn't working Something isn't working 
+
+ Description
+
+ Sree-Siddhaarth 
+ opened on Feb 15, 2026 
+
+ Issue body actions 
+
+ Describe the bug
+
+ When using the pause feature of wallaper with multiple monitors , there are certain issues. context : both pause on focus and pause on fullscreen is on.
+
+ When pausing is set to per screen :
+
+monitor 1 has a window maximised
+
+monitor 2 has a window full screened
+
+when i switch the focus from monitor 2 to monitor 1 and vice versa , the unfocused monitor's wallpaper starts playing even though there is a fullscreen window in that monitor.
+
+ When pausing is set to all screens :
+
+Expected behaviour . opening one application in one monitor causes wallpaper to pause on all monitors.
+
+ The main issue is that the wallpaper running on the unfocused monitor with the full screen or maximised application , causes the life of the gpu to reduce and break quicker.
+
+ Steps to reproduce
+
+ Set a live wallpaper on both the screens. I encountered this bug with different wallpapers .
+
+ open a window on each monitor either full screen or maximised.
+
+ switch focus from one monitor to other and check the difference of gpu usgae using task manager or similar software
+
+ Expected behavior
+
+ I expect the wallpaper to stop playing on a monitor when an apllication is open regardless if the monitor is focused or not
+
+ Screenshots/Video
+
+ No response 
+
+ Operating system
+
+ Windows 11 23H2
+
+ Wallpaper running at the time (if any)
+
+ No response 
+
+ Additional context
+
+ No response 
+
+ Log file
+
+ lively_log_20260215_124617.zip 
+
+ Reactions are currently unavailable 
+
+ Activity
+
+ Sign up for free to join this conversation on GitHub. Already have an account? Sign in to comment 
+
+ Metadata
+ Metadata
+ Assignees
+
+ No one assigned 
+
+ Labels
+
+ bug Something isn't working Something isn't working 
+
+ Projects
+
+ No projects 
+
+ Milestone
+
+ No milestone 
+
+ Relationships
+
+ None yet 
+
+ Development
+
+ No branches or pull requests 
+
+ Issue actions
+
+ Open in GitHub Copilot app 
+
+ Footer
+
+ © 2026 GitHub, Inc.
+
+ Footer navigation
+
+ Terms 
+
+ Privacy 
+
+ Security 
+
+ Status 
+
+ Community 
+
+ Docs 
+
+ Contact 
+
+ Manage cookies
+
+ Do not share my personal information
+
+ You can’t perform that action at this time.
