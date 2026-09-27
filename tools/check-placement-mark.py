@@ -119,7 +119,7 @@ def click(x, y):
     is the standard way to force it: the topmost bounce brings the window forward and the
     second call removes topmost so the app is not left floating above everything.
     """
-    ps(r'''
+    out = ps(r'''
 Add-Type @"
 using System;using System.Runtime.InteropServices;
 public class N {
@@ -130,11 +130,13 @@ public class N {
  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
+ [DllImport("user32.dll")] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
+ public static string Title(IntPtr h){ var sb=new System.Text.StringBuilder(300); GetWindowTextW(h,sb,300); return sb.ToString(); }
  public static bool Focus(IntPtr h) {
    ShowWindow(h, 9);
    BringWindowToTop(h);
-   SetWindowPos(h, new IntPtr(-1), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);   // HWND_TOPMOST
-   SetWindowPos(h, new IntPtr(-2), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);   // HWND_NOTOPMOST
+   SetWindowPos(h, new IntPtr(-1), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);
+   SetWindowPos(h, new IntPtr(-2), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);
    SetForegroundWindow(h);
    System.Threading.Thread.Sleep(250);
    return GetForegroundWindow() == h;
@@ -145,10 +147,15 @@ public class N {
 $p = Get-Process LumaWall -ErrorAction SilentlyContinue |
       Where-Object { $_.MainWindowHandle -ne 0 } | Sort-Object StartTime | Select-Object -First 1
 if (-not $p) { Write-Output 'NO_PROCESS'; exit 1 }
-$focused = [N]::Focus($p.MainWindowHandle)
-Write-Output ('FOCUSED ' + $focused)
+[void][N]::Focus($p.MainWindowHandle)
+# What actually has the focus at the moment of the click? If it is not LumaWall the click
+# lands somewhere else, and the checker would blame the app for a click it never delivered.
+Write-Output ('BEFORE ' + [N]::Title([N]::GetForegroundWindow()))
 [N]::Click(%d, %d)
+Start-Sleep -Milliseconds 120
+Write-Output ('AFTER  ' + [N]::Title([N]::GetForegroundWindow()))
 ''' % (int(x), int(y)), timeout=60)
+    return out
 
 
 def find_mark():
@@ -326,15 +333,22 @@ def main():
         pad_x = mark['cx'] + ox - PAD * FRACTION[rec_col]
         pad_y = mark['cy'] + oy - PAD * FRACTION[rec_row]
 
-        click(pad_x + PAD * want_x, pad_y + PAD * want_y)
+        click_out = click(pad_x + PAD * want_x, pad_y + PAD * want_y)
         time.sleep(1.2)
 
         # Proof the click landed on the cell it aimed at.
         recorded = config_position()
         if recorded != position:
-            failures.append('%s: the app recorded %r, so the click missed the cell'
-                            % (position, recorded))
-            print('  %-14s click recorded as %-14s <<< MISSED THE CELL' % (position, recorded))
+            # Report what had the focus, so a click that never reached the app is not
+            # mistaken for an app that ignored it.
+            focus = ''
+            for line in click_out.splitlines():
+                if line.startswith('BEFORE') or line.startswith('AFTER'):
+                    focus += line + '  '
+            failures.append('%s: the app recorded %r, so the click missed the cell (%s)'
+                            % (position, recorded, focus.strip() or 'no focus report'))
+            print('  %-14s click recorded as %-14s <<< MISSED THE CELL  %s'
+                  % (position, recorded, focus.strip()))
             continue
 
         mark = find_mark()
