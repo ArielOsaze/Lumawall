@@ -1352,7 +1352,7 @@ namespace LumaWall
         private UIElement StudioResetCard()
         {
             Border card;
-            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Restore, CMuted, out card);
+            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Reset, CMuted, out card);
             host.Children.Add(StudioResetRow());
             return card;
         }

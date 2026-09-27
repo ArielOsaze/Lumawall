@@ -258,3 +258,119 @@ node tools/verify-live.mjs
 A scene that throws renders as black frames while the renderer still reports
 success — that happened once and cost 46 of 52 seconds. `SceneBoundary` and
 `window.__sceneErrors` exist to make it loud instead.
+
+## Building a catalogue from other people's sites
+
+### A page's stated resolution describes its images, not its video
+
+Every detail page on the source site said 1920x1080. The file it linked was 960x540. The
+resolution text was about the page's own thumbnails, and reading it produced a catalogue of
+SD files labelled as HD - the exact "pecah" the catalogue was supposed to avoid.
+
+Measure the file. `ffprobe` on a Range-fetched head and tail is enough, because the MP4
+header sits at one end or the other. Anything that cannot be measured is dropped, not
+assumed: unknown is not good enough when the promise is "HD".
+
+### A claimed resolution from a collection script is not evidence either
+
+A collection of 7688 entries arrived with `w` and `h` fields. A sample of 30 files showed 1
+claim out of 10 exact - a file claiming 3840x2160 was really 1280x720. Adopting those numbers
+would have shipped a catalogue where a seventh of the entries look broken.
+
+Re-measure every file before adopting it. The measurement is the only thing that goes in the
+catalogue.
+
+### The site's tag menu is not the page's tags
+
+The page carries a site-wide tag menu listing hundreds of tags - football, ronaldo, japan,
+torii - and a regex over the whole document picks those up instead of the page's own. That
+filed the entire catalogue under Anime Girls. The page's own tags are in the `subtags` list.
+
+The same mistake in the other direction: on a second source the tags field held
+`' + encodeURIComponent(data.matchedTag.slug) + '`, a JavaScript template that was never
+rendered. A tag that looks like source code is a parser bug, not a tag.
+
+### A sitemap index can under-report the sitemap
+
+`app-sitemap.xml` was read as 28 pages, from the index. Probing page 29 onwards found 1000
+urls each, up to page 68: 67679 urls instead of 28005. The index listed fewer pages than
+existed, so the collection was missing 60% of the site and there was no error to notice.
+
+Probe past the last page the index mentions until several consecutive pages come back empty.
+
+### 429 is "ask again later", not "gone"
+
+The site rate-limits by IP. Two collection processes sharing one IP made 3400 files fail
+measurement, and every one was recorded as unmeasurable. A retry with a growing pause (2, 6,
+14 seconds) recovers them; treating 429 as a failure silently discards good entries.
+
+Never run two collectors against the same host at once, and never let a checker count a 429
+as a dead url - it reports the catalogue as broken when the files are fine.
+
+### urllib refuses a path it cannot encode
+
+Files whose titles are Japanese or Chinese produced `UnicodeEncodeError` on every request,
+and a third of one collection was recorded as unmeasurable when the files were fine.
+Percent-encode the path before the request. The same fault exists in every tool that fetches
+a url, so the helper lives in one place and is imported.
+
+### Write shared state atomically
+
+The catalogue state was read while a collector was writing it, and the read failed with
+"Expecting value: line 1 column 1" - the file existed but was empty at that instant.
+`write_text` truncates first and fills afterwards, so there is a window where the file is
+invalid. Write to a temporary file in the same directory and `os.replace` it: a reader sees
+the old file or the new one, never a partial one.
+
+### A category word list can have a word in two lists
+
+"skyline" was in the Cars list as a Nissan model and in the City list as a city horizon. The
+classifier tries Cars first, so 79 city wallpapers were filed under Cars. "dragon" sat in
+Animals and Fantasy, "butterfly" in Animals and Nature, "racing" in Cars and Sports. A word
+in two lists is not untidiness - it silently moves entries, and the total stays the same so
+the counts look fine.
+
+Write a checker that reports every overlap. Then decide the owner deliberately and say so in
+a comment beside the word.
+
+### A category rule order is a design decision, and it was wrong
+
+Anime was checked before games, so 792 entries that the source tags as both "anime" and
+"games" were filed under Anime Loop. A League of Legends or Genshin wallpaper is a game
+wallpaper, and a browser filtering for Gaming should find it. Gaming went from 1470 to 4262
+entries once the order was fixed.
+
+### A checker must not read its own explanations as data
+
+The overlap checker reported "skyline" as still present after it had been moved into a
+comment - because the loader read the comment. `#   "skyline" - also a city horizon` put the
+word straight back into the list. Strip comments before parsing, or the checker reports a
+fault that is not there and hides the ones that are.
+
+### Counts can be right while the contents are wrong
+
+A category filter test passed - every category non-empty, every title distinct - while the
+samples it printed showed "AI Girl" in City, One Piece wallpapers scattered across seven
+categories, and 118 titles beginning with "2K". Print the sample titles, not just the
+numbers. The number is what you hoped for; the titles are what a user sees.
+
+### A title is not the wallpaper's name
+
+The page title carries the site's own boilerplate: "... Live Wallpaper - Free Animated
+Desktop Background | 67,000+ Free Live & Animated Wallpapers for PC". 11949 of 12090 titles
+needed cleaning, and 335512 characters of boilerplate came out. Strip the suffix, the
+resolution prefix ("2K Ganyu Genshin Impact"), and the uploader's file id
+("GD035WAnQoVn603_Ai Generated Girl").
+
+The file id matters twice: it is noise in the name, and its underscore is why an AI filter
+using `\b` missed it - `_` is a word character, so the boundary never matched. Use
+`(?<![a-z0-9])` instead.
+
+### Generated art is labelled in the title when there is no tag
+
+One source tags generated images with "ai"; the other has no such tag and says it only in the
+title: "Midjourney Ai Fox Girl", "GD035WAnQoVn603_Ai Generated Girl". A filter that only
+reads tags misses both. Check the title, the url and the description.
+
+But check it precisely: "Ai Hoshino" is a character's name, not a statement that the image
+was generated. A pattern that flags the word "ai" alone removes real artwork.

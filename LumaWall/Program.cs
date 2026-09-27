@@ -1420,10 +1420,17 @@ namespace LumaWall
         private string BuildMediaHtml()
         {
             return @"<!doctype html><html><head><meta charset='utf-8'><style>
- html,body,#stage{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
+ html,body,#stage{width:100%;height:100%;margin:0;overflow:hidden;background:#000}
  #stage{position:relative}
+ /* The stage is black, not transparent, and the video sits on top of it.
+    Transparent was the original design and it is what let a desktop show through for one
+    frame during a swap - which reads as the wallpaper flashing black. A black stage can
+    only ever show black, which is indistinguishable from a very dark wallpaper and never
+    shows the user's icons. The element itself is still opaque, so in normal play nothing
+    of the stage is visible at all. */
  .media{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;opacity:1;z-index:1;
-        object-fit:cover;object-position:50% 50%;transform-origin:50% 50%;backface-visibility:hidden}
+        object-fit:cover;object-position:50% 50%;transform-origin:50% 50%;backface-visibility:hidden;
+        background:#000}
  #tone{position:absolute;width:0;height:0;pointer-events:none}
 </style></head><body><div id='stage'></div><svg id='tone' xmlns='http://www.w3.org/2000/svg'><filter id='lumaTone' color-interpolation-filters='sRGB'><feComponentTransfer><feFuncR id='toneR' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncG id='toneG' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncB id='toneB' type='table' tableValues='0 0.0625 0.125 0.1875 0.25 0.3125 0.375 0.4375 0.5 0.5625 0.625 0.6875 0.75 0.8125 0.875 0.9375 1'/><feFuncA id='toneA' type='table' tableValues='0 1'/></feComponentTransfer></filter></svg>
 <script>
@@ -1628,10 +1635,86 @@ namespace LumaWall
   }
 
   function nextPaint(fn){var fired=false;function once(){if(fired)return;fired=true;try{fn()}catch(e){}}try{requestAnimationFrame(once)}catch(e){}setTimeout(once,50)}
-  function firstFrame(el,isImage,ok,fail){var done=false;function ready(){if(done)return;done=true;if(isImage||paused||el.paused||!el.requestVideoFrameCallback){nextPaint(ok);return}var fired=false;var timer=setTimeout(function(){if(fired)return;fired=true;ok()},500);el.requestVideoFrameCallback(function(){if(fired)return;fired=true;clearTimeout(timer);ok()})}if(isImage){el.onload=ready;el.onerror=fail}else{el.addEventListener('loadeddata',ready,{once:true});el.addEventListener('canplay',ready,{once:true});el.addEventListener('error',fail,{once:true});if(el.readyState>=2)ready()}}
+  // Is there a decoded frame to show? readyState 2 (HAVE_CURRENT_DATA) is exactly that
+  // question, and it is answered without the compositor - which matters because the
+  // compositor does not run for an occluded window.
+  //
+  // This used to route through nextPaint() whenever requestVideoFrameCallback was
+  // unavailable, so in an occluded window it waited on requestAnimationFrame and then on a
+  // 50ms timer that Chromium throttles to about a second. The video was decoded and the
+  // screen stayed black for the difference.
+  function firstFrame(el,isImage,ok,fail){
+    var done=false;
+    function ready(){
+      if(done)return;done=true;
+      if(isImage||el.readyState>=2){ok();return}
+      // Not decoded yet: wait for the event that says it is, with a timer as the net.
+      var fired=false;
+      function once(){if(fired)return;fired=true;ok()}
+      var timer=setTimeout(once,2000);
+      el.addEventListener('loadeddata',function(){clearTimeout(timer);once()},{once:true});
+      el.addEventListener('canplay',function(){clearTimeout(timer);once()},{once:true});
+    }
+    if(isImage){el.onload=ready;el.onerror=fail}else{el.addEventListener('error',fail,{once:true});ready()}
+  }
   function element(src,isImage){var el=document.createElement(isImage?'img':'video');el.className='media';el.style.opacity='0';el.src=src;if(!isImage){el.preload='auto';el.playsInline=true;el.loop=true;el.muted=muted;el.disablePictureInPicture=true}stage.appendChild(el);return el}
   function watchLoop(video,myGeneration){var last=0;function tick(){if(myGeneration!==generation||video!==active||!video.isConnected)return;var now=video.currentTime||0;if(last>0.5&&now+0.5<last)report('loop-seamless');last=now;if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(tick);else setTimeout(tick,50)}
-  function prepare(src,isImage,newMuted,token,fps){generation++;var myGeneration=generation;muted=newMuted;var next=element(src,isImage);applyTo(next);if(!isImage){next.muted=muted;next.play().catch(function(){})}firstFrame(next,isImage,function(){if(myGeneration!==generation){remove(next);return}var previous=active;next.style.zIndex='2';next.style.transition='opacity 120ms linear';active=next;applyTo(next);if(paused&&!isImage)active.pause();nextPaint(function(){next.style.opacity='1'});setTimeout(function(){if(myGeneration!==generation)return;next.style.transition='';if(previous)remove(previous);if(!isImage){watchLoop(next,myGeneration);watchDirection(next,myGeneration)}},150);report('media-ready:'+token)},function(){if(myGeneration!==generation)return;remove(next);report('media-error:'+token)})}
+
+  // ── the swap ──────────────────────────────────────────────────────────────
+  //
+  // The element is made visible immediately, in the same turn that it becomes active, and
+  // the outgoing one is dropped two presented frames later.
+  //
+  // ── what the earlier versions got wrong ──────────────────────────────────────────
+  //
+  // The original faded the new element in over 120ms and dropped the old one on a 150ms
+  // timer. It flashed black, for three separate reasons, and only the third was the
+  // interesting one:
+  //
+  //   1. A CSS transition is advanced by the compositor. In an occluded window - the
+  //      normal state for a wallpaper on a covered monitor - the compositor stops
+  //      advancing transitions, so `opacity: 1` with a transition on it can sit at 0
+  //      indefinitely. The element is present and decoding and draws as nothing.
+  //   2. The 150ms timer assumed the fade had finished. In that case it had not, so the
+  //      old element was destroyed while the new one was still invisible.
+  //   3. Even with the fade gone, the opacity was still applied from inside nextPaint(),
+  //      which waits for requestAnimationFrame - and rAF does not run in an occluded
+  //      window either. Its setTimeout(50) backstop is throttled to about a second there.
+  //      Measured: the video reached readyState 4 at 1650ms and was still at opacity 0 at
+  //      2090ms, then appeared at 2152ms. Six hundred milliseconds of black, every time.
+  //
+  // The lesson is one thing, and it applies to every line in this function: nothing that
+  // has to happen for the picture to be on screen may depend on the compositor running.
+  // Opacity, source selection and element removal are all set directly now. Only the
+  // removal of the old element waits for a frame, and it has a timer net, because being
+  // late there costs memory rather than a black screen.
+  function reveal(next,previous,myGeneration,isImage){
+    var settled=false;
+    function settle(){
+      if(settled)return;settled=true;
+      if(myGeneration!==generation)return;
+      if(previous)remove(previous);
+      if(!isImage){watchLoop(next,myGeneration);watchDirection(next,myGeneration)}
+    }
+    // Direct, in this turn. `transition:'none'` first, because a transition left on the
+    // element from an earlier swap would otherwise still apply to this change.
+    next.style.transition='none';
+    next.style.opacity='1';
+    // The old element is removed once the new one has presented a frame while opaque, so
+    // the composite is never empty. Two frames rather than one: the first callback can be
+    // for a frame that was already queued before the opacity changed.
+    if(!isImage&&next.requestVideoFrameCallback){
+      next.requestVideoFrameCallback(function(){
+        next.requestVideoFrameCallback(function(){settle()});
+      });
+      // The net for a window that is not presenting at all. It only decides when the old
+      // element stops decoding - the new one is already opaque - so it is generous.
+      setTimeout(settle,700);
+    }else{
+      setTimeout(settle,0);
+    }
+  }
+  function prepare(src,isImage,newMuted,token,fps){generation++;var myGeneration=generation;muted=newMuted;var next=element(src,isImage);applyTo(next);if(!isImage){next.muted=muted;next.play().catch(function(){})}firstFrame(next,isImage,function(){if(myGeneration!==generation){remove(next);return}var previous=active;next.style.zIndex='2';active=next;applyTo(next);if(paused&&!isImage)active.pause();reveal(next,previous,myGeneration,isImage);report('media-ready:'+token)},function(){if(myGeneration!==generation)return;remove(next);report('media-error:'+token)})}
   function setPlayback(isPaused,isMuted){
     paused=isPaused;muted=isMuted;
     if(!active||active.tagName!=='VIDEO'){report('pb-noactive:'+(active?active.tagName:'null'));return}
