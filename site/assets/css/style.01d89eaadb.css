@@ -917,3 +917,43 @@ p { text-wrap: pretty; }
   .foot-in { grid-template-columns: 1fr; gap: 2rem; }
   .foot-bottom { flex-direction: column; align-items: flex-start; gap: .5rem; }
 }
+
+/* The scrollbar.
+   The page is dark and the browser's default bar is light: on Windows that is a white
+   strip down the right edge of a near-black page. `color-scheme: dark` alone is not
+   enough in Chromium, which needs the ::-webkit-scrollbar rules as well, so both are
+   here. The thumb is a translucent white so it reads on the dark surface without
+   becoming a bright element of its own, and it is the same tone the app uses. */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .22) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, .3);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

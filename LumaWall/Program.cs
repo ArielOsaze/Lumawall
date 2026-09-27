@@ -93,6 +93,108 @@ namespace LumaWall
             return style;
         }
 
+        /// <summary>
+        /// A dark scrollbar for the whole app.
+        ///
+        /// WPF's built-in ScrollBar template is the Aero2 one, which draws a light grey
+        /// track with a slightly lighter thumb - the values are hard-coded in the theme, so
+        /// setting Background on the ScrollViewer does nothing. On a near-black window that
+        /// reads as a white bar down the right edge, which is what it looked like.
+        ///
+        /// This replaces the template process-wide. The bar is drawn as a thin thumb on a
+        /// transparent track, so the chrome stays out of the way and the thumb is the only
+        /// part that is visible - the shape most desktop apps have used for years.
+        /// </summary>
+        private static System.Windows.Style BuildDefaultScrollBarStyle()
+        {
+            // Two templates: the vertical bar and the horizontal one. Each is a Track with
+            // a Thumb; there are no arrow buttons, which is why no line buttons are needed.
+            const string vertical = @"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                 xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                 TargetType='ScrollBar'>
+  <Grid Background='Transparent'>
+    <Track x:Name='PART_Track' IsDirectionReversed='True'>
+      <Track.DecreaseRepeatButton>
+        <RepeatButton Command='ScrollBar.PageUpCommand' Opacity='0' Focusable='False' />
+      </Track.DecreaseRepeatButton>
+      <Track.Thumb>
+        <Thumb>
+          <Thumb.Template>
+            <ControlTemplate TargetType='Thumb'>
+              <Border x:Name='Bar' Background='#33FFFFFF' CornerRadius='4' Margin='2,0' />
+              <ControlTemplate.Triggers>
+                <Trigger Property='IsMouseOver' Value='True'>
+                  <Setter TargetName='Bar' Property='Background' Value='#59FFFFFF' />
+                </Trigger>
+                <Trigger Property='IsDragging' Value='True'>
+                  <Setter TargetName='Bar' Property='Background' Value='#8CFFFFFF' />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Thumb.Template>
+        </Thumb>
+      </Track.Thumb>
+      <Track.IncreaseRepeatButton>
+        <RepeatButton Command='ScrollBar.PageDownCommand' Opacity='0' Focusable='False' />
+      </Track.IncreaseRepeatButton>
+    </Track>
+  </Grid>
+</ControlTemplate>";
+
+            const string horizontal = @"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                 xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                 TargetType='ScrollBar'>
+  <Grid Background='Transparent'>
+    <Track x:Name='PART_Track' IsDirectionReversed='False'>
+      <Track.DecreaseRepeatButton>
+        <RepeatButton Command='ScrollBar.PageLeftCommand' Opacity='0' Focusable='False' />
+      </Track.DecreaseRepeatButton>
+      <Track.Thumb>
+        <Thumb>
+          <Thumb.Template>
+            <ControlTemplate TargetType='Thumb'>
+              <Border x:Name='Bar' Background='#33FFFFFF' CornerRadius='4' Margin='0,2' />
+              <ControlTemplate.Triggers>
+                <Trigger Property='IsMouseOver' Value='True'>
+                  <Setter TargetName='Bar' Property='Background' Value='#59FFFFFF' />
+                </Trigger>
+                <Trigger Property='IsDragging' Value='True'>
+                  <Setter TargetName='Bar' Property='Background' Value='#8CFFFFFF' />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Thumb.Template>
+        </Thumb>
+      </Track.Thumb>
+      <Track.IncreaseRepeatButton>
+        <RepeatButton Command='ScrollBar.PageRightCommand' Opacity='0' Focusable='False' />
+      </Track.IncreaseRepeatButton>
+    </Track>
+  </Grid>
+</ControlTemplate>";
+
+            var style = new System.Windows.Style(typeof(System.Windows.Controls.Primitives.ScrollBar));
+            style.Setters.Add(new Setter(System.Windows.Controls.Control.TemplateProperty,
+                System.Windows.Markup.XamlReader.Parse(vertical)));
+
+            // The vertical template is the default; a horizontal bar gets its own, because
+            // a vertical Track scrolls the wrong way and the page buttons point the wrong
+            // way. The whole page uses one orientation or the other, never both, so this is
+            // the only branch needed.
+            var orientation = new Trigger
+            {
+                Property = System.Windows.Controls.Primitives.ScrollBar.OrientationProperty,
+                Value = System.Windows.Controls.Orientation.Horizontal
+            };
+            orientation.Setters.Add(new Setter(System.Windows.Controls.Control.TemplateProperty,
+                System.Windows.Markup.XamlReader.Parse(horizontal)));
+            style.Triggers.Add(orientation);
+
+            return style;
+        }
+
         [STAThread]
         private static void Main()
         {
@@ -124,6 +226,12 @@ namespace LumaWall
                 // cannot reintroduce it. Buttons that want a hover of their own
                 // still set one; this only removes the blue.
                 app.Resources[typeof(System.Windows.Controls.Button)] = BuildDefaultButtonStyle();
+
+                // The same treatment for the scrollbar: its built-in template is the light
+                // Aero2 one, which draws a white bar down the right edge of a near-black
+                // window.
+                app.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)] =
+                    BuildDefaultScrollBarStyle();
 
                 // Production safety net. Without these, any exception that
                 // escapes a handler kills the process with no trace - the app

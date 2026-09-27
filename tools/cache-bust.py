@@ -140,6 +140,28 @@ def main():
                     continue
                 on_disk = os.path.join(folder_path, referenced_name)
                 if not os.path.exists(on_disk):
+                    # The page names a file that is gone. This is the state a rename
+                    # leaves behind when the run that renamed it did not get to rewrite
+                    # the page - which happened, and left index.html pointing at a CSS
+                    # file that no longer existed. Recover instead of refusing: if a
+                    # versioned file for this asset is on disk, the page simply needs to
+                    # be pointed at it.
+                    candidates = sorted(
+                        f for f in os.listdir(folder_path)
+                        if re.match(re.escape(stem) + r'\.[0-9a-f]{%d}' % HASH_LEN
+                                    + re.escape(ext) + r'$', f))
+                    if len(candidates) == 1:
+                        fixed = candidates[0]
+                        if check_only:
+                            print('  %-38s BROKEN in %s - points at %s, should be %s'
+                                  % (rel, os.path.basename(p), referenced_name, fixed))
+                            continue
+                        html[p] = html[p].replace(referenced_name, fixed)
+                        refs[p] = fixed
+                        print('  %-38s repointed %s -> %s'
+                              % (rel, referenced_name, fixed))
+                        handled = True
+                        continue
                     print('  %-38s BROKEN - %s points at %s, which does not exist'
                           % (rel, os.path.basename(p), referenced_name))
                     return 1
@@ -168,6 +190,12 @@ def main():
                             html[q] = html[q].replace(referenced_name, fixed)
                     moved.append((rel, os.path.join(folder, fixed)))
                     print('  %-38s renamed to %s (content changed)' % (rel, fixed))
+                    # Stop looking at the other pages for this asset. The rename has
+                    # already happened, so the name every later page looks for is gone,
+                    # and the loop read that as a broken reference and gave up - which is
+                    # how index.html ended up pointing at a CSS file that did not exist.
+                    # `moved` records the change; the pages were rewritten above.
+                    break
                 else:
                     print('  %-38s up to date (%s)' % (rel, referenced_name))
                     break
