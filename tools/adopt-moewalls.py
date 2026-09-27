@@ -57,11 +57,15 @@ FFPROBE = shutil.which("ffprobe") or shutil.which("ffprobe.exe")
 
 # The words that make an entry mature. These sites file swimwear, lingerie and boudoir under
 # their own categories, and the tag list says the same thing in words.
-MATURE_WORDS = {
-    "nsfw", "ecchi", "lewd", "sexy", "seductive", "sensual", "sultry", "provocative",
-    "lingerie", "bikini", "swimsuit", "cleavage", "boudoir", "gravure", "pin-up", "pinup",
-    "bath", "shower", "hot", "seductive", "risque", "suggestive", "sexy-girl", "hot-girl",
-}
+# Mature is decided by the visual review, not by words.
+#
+# A word list cannot do this job: it put "Deadpool Bathing" (a comic character in a bath),
+# "Jane Doe Blindspot", "Onsen Hot Springs" and a couple in swimsuits at the beach into
+# Mature 18+, because each carries the word "bath" or "swimsuit". The project rule is that
+# an entry reaches Mature only through the reviewed selection, so nothing is classified
+# here. The lists are kept because the tag rules below still use them as a signal to keep
+# an entry OUT of Mature - an ordinary subject never becomes adult because of one word.
+MATURE_WORDS = set()
 
 # Subjects that mean an entry is NOT mature, whatever else its words say. A landscape with
 # the word "hot" in its title - "Hot Desert" - is a landscape.
@@ -72,6 +76,8 @@ SAFE_WORDS = {
     "space", "galaxy", "planet", "star", "nebula", "abstract", "particle", "gradient",
     "cat", "dog", "wolf", "lion", "tiger", "bird", "eagle", "fish", "shark", "horse",
     "logo", "text", "map", "clock", "calendar", "chart", "graph",
+    "bath", "shower", "swimsuit", "bikini", "hot-springs", "onsen", "beach", "comics",
+    "marvel", "superhero", "deadpool", "tv-series", "couple",
 }
 
 
@@ -247,7 +253,14 @@ def is_generated(entry):
 
 
 def categorise(entry, tags, title):
-    """The category, from the site's own category first and the tags second."""
+    """The category, from the site's own category first and the tags second.
+
+    The site's category is a real classification and it outranks anything the tags or the
+    title can suggest. Skipping it cost accuracy: "Sagiri Yamada Asaemon Jigokuraku" is
+    filed under anime by the site, but the tags it carries are "flower-petals", "katana"
+    and "samurai", so it was placed in Nature - a landscape category - while the site's own
+    answer sat unread in the record.
+    """
     words = set()
     for t in tags:
         words |= set(re.split(r"[^a-z0-9]+", str(t).lower())) - {""}
@@ -256,6 +269,33 @@ def categorise(entry, tags, title):
     # Mature needs both a justifying word and no plainly ordinary subject.
     if words & MATURE_WORDS and not (words & SAFE_WORDS):
         return "Mature 18+"
+
+    # The site's own category, which is a classification rather than a guess. It is stored
+    # as pageCategory: reading entry["cat"] here silently returned nothing for every entry,
+    # so the classification was never consulted at all.
+    site = (entry.get("pageCategory") or entry.get("cat") or "").strip().lower()
+    if site == "anime":
+        girl = {"girl", "girls", "waifu", "woman", "female", "maid", "princess", "queen"}
+        return "Anime Girls" if (words & girl) else "Anime Loop"
+    if site == "games":
+        return "Gaming"
+    if site == "fantasy":
+        return "Fantasy"
+    if site == "landscape":
+        return "Nature"
+    if site == "sci-fi":
+        return "Space"
+    if site == "movies":
+        return "Movies"
+    if site == "abstract":
+        return "Abstract"
+    if site == "vehicle":
+        return "Cars"
+    if site == "animal":
+        return "Animals"
+    if site == "lifestyle":
+        return "Dynamic"
+    # "pixel-art" and "others" carry no subject, so they fall through to the tag rules.
 
     rules = [
         ("Gaming", {"game", "games", "gaming", "valorant", "league", "genshin", "honkai",

@@ -41,8 +41,11 @@ MATURE_SELECTED = ROOT / "mature-audit" / "selected.json"
 # Named games. An entry that names one is a game wallpaper even when it also names an anime,
 # because the character it shows belongs to that game.
 GAMES = {
-    "games", "game", "gaming", "valorant", "league-of-legends", "dota", "counter-strike",
+    "video-games", "videogames", "video-game", "game", "games", "gaming",
+    "game-landscape", "game-character", "game-art", "gameplay",
+    "valorant", "league-of-legends", "dota", "counter-strike",
     "csgo", "cs2", "fortnite", "apex-legends", "apex", "overwatch", "minecraft",
+    "dark-souls", "dark-souls-3", "dark-souls-remastered", "bloodborne", "sekiro",
     "cyberpunk-2077", "elden-ring", "witcher", "gta", "call-of-duty", "codm",
     "battlefield", "pubg", "roblox", "zelda", "mario", "pokemon", "sonic",
     "genshin-impact", "honkai-star-rail", "honkai", "zenless-zone-zero", "wuthering-waves",
@@ -61,6 +64,24 @@ ANIME = {
     "attack-on-titan", "aot", "chainsaw-man", "bleach", "dragon-ball", "solo-leveling",
     "tokyo-ghoul", "tokyo-revengers", "spy-x-family", "sword-art-online", "rezero",
     "re-zero", "sakura", "sasuke", "satoru-gojo", "gojo", "tanjiro-kamado", "zenitsu",
+    # Dragon Ball's own cast. The series name was listed but none of its characters were,
+    # so "Goku Sunset" and "Super Saiyan Blue Goku" fell through to Nature - the only word
+    # the classifier could see was "sunset".
+    #
+    # Only names that cannot mean something else are here. "cell", "ace", "law", "pain",
+    # "trunks", "robin", "brook" and "chopper" are all ordinary English words - a bird, a
+    # stream, a helicopter - and listing them would pull wildlife and landscape wallpapers
+    # into the anime categories. That is the same mistake this file exists to fix.
+    "goku", "vegeta", "gohan", "goten", "bulma", "krillin", "piccolo", "frieza",
+    "buu", "broly", "beerus", "whis", "gogeta", "vegito", "super-saiyan",
+    # One Piece's cast, for the same reason.
+    "luffy", "zoro", "sanji", "nami", "usopp", "franky", "shanks",
+    "kaido", "big-mom", "katakuri", "doflamingo", "mihawk",
+    # Naruto's, which were also thin.
+    "kakashi", "itachi", "sakura-haruno", "hinata", "gaara", "rock-lee", "jiraya",
+    "orochimaru", "tsunade", "madara", "obito", "boruto", "sasori", "deidara",
+    "konan", "nagato", "minato", "kushina", "shikamaru", "choji", "kiba", "shino",
+    "neji", "tenten", "kurenai", "asuma", "jiraiya",
     "tengen-uzui", "yoriichi", "yuji-itadori", "ryomen-sukuna", "sukuna", "toji-fushiguro",
     "yuta", "choso", "rengoku", "akaza", "shinobu", "yae-miko", "raiden", "nahida",
     "ayaka", "shenhe", "ganyu", "kokomi", "hutao", "hollow", "anime-nature", "anime-girl",
@@ -220,6 +241,7 @@ def load_tags():
     """
     by_id = {}
     by_url = {}
+    site_by_url = {}
 
     data = read_json(MB_STATE, None)
     if data:
@@ -240,14 +262,22 @@ def load_tags():
     # live in the adopter's output because the merger drops private fields before the
     # catalogue is written - which is why 6792 entries were recategorised from their
     # titles alone and "Autumn Jiraiya" ended up in Abstract.
+    #
+    # The adopter also records the category it computed from the site's own category, and
+    # that is a classification rather than a guess: the site files "Sagiri Yamada Asaemon
+    # Jigokuraku" under anime, and no word list here knows the series.
     data = read_json(MW_ADOPTED, None)
     if isinstance(data, list):
         for item in data:
+            url = item.get("videoUrl", "")
             tags = {str(t).lower() for t in (item.get("_tags") or [])}
             if tags:
-                by_url[item.get("videoUrl", "")] = tags
+                by_url[url] = tags
+            site = item.get("_source_category")
+            if site:
+                site_by_url[url] = site
 
-    return by_id, by_url
+    return by_id, by_url, site_by_url
 
 
 def entry_words(entry, by_id, by_url):
@@ -285,7 +315,7 @@ def entry_words(entry, by_id, by_url):
     return words
 
 
-def classify(entry, words, mature_ids):
+def classify(entry, words, mature_ids, site_by_url=None):
     """The category the evidence supports."""
     media = re.search(r"/media/(\d+)/", entry.get("videoUrl", ""))
     media_id = media.group(1) if media else ""
@@ -317,7 +347,15 @@ def classify(entry, words, mature_ids):
     if words & ANIME:
         return "Anime Loop"
 
-    # 5. The rest, most specific first.
+    # 5. The site's own classification, when the word lists found nothing. It is a real
+    #    category, and no list here can know every series: "Jigokuraku" is anime to the
+    #    site and merely a word to us.
+    if site_by_url:
+        site = site_by_url.get(entry.get("videoUrl", ""))
+        if site and not (words & ANIME) and not (words & GAMES):
+            return site
+
+    # 6. The rest, most specific first.
     for name, keys in ORDER:
         if keys and (words & keys):
             return name
@@ -331,7 +369,7 @@ def main():
     args = ap.parse_args()
 
     entries = read_json(CATALOG, [])
-    by_id, by_url = load_tags()
+    by_id, by_url, site_by_url = load_tags()
     selected = read_json(MATURE_SELECTED, []) or []
     mature_ids = {str(s["motionId"]) for s in selected}
 
@@ -344,7 +382,7 @@ def main():
     changed = Counter()
     for entry in entries:
         words = entry_words(entry, by_id, by_url)
-        new = classify(entry, words, mature_ids)
+        new = classify(entry, words, mature_ids, site_by_url)
         old = entry.get("category")
         if new != old:
             changed[(old, new)] += 1
