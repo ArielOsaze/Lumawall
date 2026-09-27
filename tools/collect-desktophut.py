@@ -18,6 +18,7 @@ Run: python tools/collect-desktophut.py [--limit N] [--workers N]
 import argparse
 import concurrent.futures as cf
 import json
+import os
 import re
 import shutil
 import ssl
@@ -305,6 +306,48 @@ def load():
     return {"slugs": [], "items": [], "failed": {}}
 
 
+LOCK = OUT / "collector.lock"
+
+
+def take_lock():
+    """Refuse to start when another collector is already writing this state file.
+
+    Two collectors writing done.json at once is what killed two runs with
+    `PermissionError [WinError 5]` on os.replace: Windows will not replace a file another
+    process holds open, and the retry window is not long enough for a run that writes every
+    50 entries. The run that lost the race died after 11650 URLs.
+
+    The lock records the pid so a stale lock - from a run that was killed, not one that is
+    running - can be told apart and cleared.
+    """
+    if LOCK.exists():
+        try:
+            other = json.loads(LOCK.read_text(encoding="utf-8"))
+            pid = int(other.get("pid", 0))
+        except Exception:
+            pid = 0
+        alive = False
+        if pid:
+            import subprocess
+            out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
+                                 capture_output=True, text=True)
+            alive = str(pid) in (out.stdout or "")
+        if alive:
+            print("  another collector is already running (pid %d)." % pid)
+            print("  Two writers on one state file lose writes: stop it, or wait.")
+            return False
+        print("  clearing a stale lock from pid %d" % pid)
+    LOCK.write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
+    return True
+
+
+def drop_lock():
+    try:
+        LOCK.unlink()
+    except OSError:
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
@@ -320,6 +363,10 @@ def main():
         return 1
 
     OUT.mkdir(parents=True, exist_ok=True)
+
+    if not take_lock():
+        return 1
+
     state = load()
     seen = set(state["slugs"])
 
@@ -367,6 +414,7 @@ def main():
 
     if not todo:
         print("  nothing to do")
+        drop_lock()
         return 0
 
     done = 0
@@ -387,8 +435,16 @@ def main():
                 state["failed"][result["slug"]] = result["status"]
 
             if len(batch) >= 50:
-                write_json(DONE, state)
-                print("  %5d/%d  ok=%-5d" % (done, len(todo), ok))
+                # A state write that cannot land must not kill the run. Losing one snapshot
+                # costs at most 50 URLs; dying costs everything collected so far, which is
+                # what happened twice before the lock was added.
+                try:
+                    write_json(DONE, state)
+                except Exception as e:
+                    print("  %5d/%d  ok=%-5d  (state write deferred: %s)"
+                          % (done, len(todo), ok, type(e).__name__))
+                else:
+                    print("  %5d/%d  ok=%-5d" % (done, len(todo), ok))
                 batch = []
 
     write_json(DONE, state)
