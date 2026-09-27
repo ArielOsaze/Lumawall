@@ -979,10 +979,24 @@ namespace LumaWall
         /// Nine chips labelled "Kiri atas, Tengah atas, Kanan atas, ..." is a list of nine
         /// near-identical phrases. The grid is the same choice made visible: the dot a
         /// user clicks is where the timer will be.
+        ///
+        /// The pad is SQUARE, and that is not decoration. It was 126x92, which made every
+        /// cell 42x30.67 - a grid that represents the screen, drawn as a shape that is not
+        /// the shape of a screen. The rows read as squashed, the whole pad sat high
+        /// against the label beside it, and the complaint was "placement di luma studio aga
+        /// berantakan". 126x126 gives nine 42x42 cells and a pad whose proportions match
+        /// the choice it represents.
         /// </summary>
         private UIElement StudioPositionPad()
         {
-            var grid = new UniformGrid { Columns = 3, Width = 126, Height = 92 };
+            const double cell = 42;
+            const double gap = 2;
+            var grid = new UniformGrid
+            {
+                Columns = 3,
+                Width = cell * 3,
+                Height = cell * 3,
+            };
             string[] keys =
             {
                 "top-left", "top-center", "top-right",
@@ -995,49 +1009,56 @@ namespace LumaWall
                 string captured = key;
                 bool chosen = config.Timer.Position == key;
 
-                var cell = new Border
+                var cellBorder = new Border
                 {
-                    Margin = new Thickness(2),
+                    // Gap in the middle, half of it at the edges: the pad then reads as one
+                    // grid rather than as a block of tiles.
+                    Margin = new Thickness(gap, gap, gap, gap),
                     CornerRadius = new CornerRadius(6),
                     Background = new SolidColorBrush(chosen ? CPrimary : CSurface2),
                     BorderBrush = new SolidColorBrush(chosen ? CPrimaryHi : CBorder),
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                 };
-                cell.Child = new System.Windows.Shapes.Ellipse
+                cellBorder.Child = new System.Windows.Shapes.Ellipse
                 {
-                    Width = 7,
-                    Height = 7,
+                    Width = 8,
+                    Height = 8,
                     Fill = new SolidColorBrush(chosen ? Colors.White : CDim),
                 };
-                cell.MouseLeftButtonUp += delegate
+                cellBorder.MouseLeftButtonUp += delegate
                 {
                     config.Timer.Position = captured;
                     timerRefresh();
                     store.Save(config);
                     ReloadCurrentPage();
                 };
-                cell.MouseEnter += delegate { if (!chosen) cell.Background = new SolidColorBrush(CSurfaceHover); };
-                cell.MouseLeave += delegate { if (!chosen) cell.Background = new SolidColorBrush(CSurface2); };
+                cellBorder.MouseEnter += delegate { if (!chosen) cellBorder.Background = new SolidColorBrush(CSurfaceHover); };
+                cellBorder.MouseLeave += delegate { if (!chosen) cellBorder.Background = new SolidColorBrush(CSurface2); };
 
-                grid.Children.Add(cell);
+                grid.Children.Add(cellBorder);
             }
 
-            var host = new StackPanel { Orientation = Orientation.Horizontal };
-            host.Children.Add(grid);
-
-            // The current choice in words beside it, because nine dots do not say what the
-            // choice is called - and the name is what a user would search for.
-            host.Children.Add(new TextBlock
+            // The name of the current choice sits BESIDE the pad, vertically centred on it,
+            // and the two are one row - so the pad's centre line and the text's centre line
+            // are the same line.
+            var name = new TextBlock
             {
                 Text = StudioPositionLabel(config.Timer.Position),
                 FontSize = 11.5,
                 Foreground = new SolidColorBrush(CText),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(16, 0, 0, 0),
-                Width = 100,
                 TextWrapping = TextWrapping.Wrap,
-            });
+            };
+
+            var host = new Grid { HorizontalAlignment = HorizontalAlignment.Left };
+            host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(grid, 0);
+            Grid.SetColumn(name, 1);
+            name.Margin = new Thickness(16, 0, 0, 0);
+            host.Children.Add(grid);
+            host.Children.Add(name);
             return host;
         }
 

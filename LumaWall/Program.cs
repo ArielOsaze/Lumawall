@@ -866,6 +866,27 @@ namespace LumaWall
         {
             IntPtr progman = FindWindow("Progman", null);
             if (progman == IntPtr.Zero || progman == preparedProgman) return;
+
+            // If the shell ALREADY has a wallpaper WorkerW, there is nothing to prepare.
+            //
+            // This is the whole startup cost. Message 0x052C makes Explorer tear down its
+            // desktop layout and build a new WorkerW, and it is sent twice with a one
+            // second timeout each - measured at 2.9 seconds of dead time between the first
+            // renderer being ready and the first wallpaper being attached. That is the
+            // "pas pertama buka lumawall setelah smua di close lumayan ngelag".
+            //
+            // The message is only needed when no WorkerW exists: on a freshly started
+            // Explorer, and on a raised desktop where Progman composites its own wallpaper.
+            // When the app is restarted while Explorer keeps running - the normal case -
+            // the WorkerW from the previous run is still there and can be reused as-is.
+            if (FindWindowEx(progman, IntPtr.Zero, "WorkerW", null) != IntPtr.Zero)
+            {
+                preparedProgman = progman;
+                AppLog.Write("Desktop already prepared (existing WorkerW reused; "
+                             + "0x052C not sent)");
+                return;
+            }
+
             preparedProgman = progman;
 
             IntPtr ignored;
