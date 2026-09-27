@@ -199,6 +199,32 @@ python tools/check-deploy-config.py
 That script also verifies the alias points at a deployment that serves the real
 site, which is the failure the CLI cannot see.
 
+### Cause 3 - `npx vercel --prod` from the repository root
+
+Running the CLI from the repository root does not work, and the error does not
+say why:
+
+```
+Error: An unexpected error occurred!
+Error: Upload aborted
+```
+
+It is uploading the entire repository - the app's `bin/`, the promo render's
+`dist/`, the 42MB of installers under `site/assets/downloads/` - and the upload
+is aborted part way. The CLI cannot know that `rootDirectory: site` means "start
+here": it uploads what it is given, and the server then looks for `site/site`
+inside it.
+
+So there are exactly two working paths, and `vercel` from the root is neither:
+
+| what you want | how |
+|---|---|
+| normal deploy after a change | `git push` - the Git build handles it |
+| deploy without pushing | `powershell -File tools/deploy-vercel.ps1` |
+
+Both verified end to end. Reach for `git push`: it is what the project is wired
+for, and it produces a `READY` production deployment with the alias attached.
+
 ## Deployment protection
 
 The project has `ssoProtection: all_except_custom_domains`, so every
