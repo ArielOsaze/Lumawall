@@ -304,6 +304,13 @@ namespace LumaWall
         private static readonly Color CPrimary = Color.FromRgb(255, 46, 67);
         private static readonly Color CPrimaryHi = Color.FromRgb(255, 96, 116);
         private static readonly Color CPrimarySoft = Color.FromRgb(46, 13, 21);
+        // Every icon draws in one colour: the app's own crimson.
+        //
+        // The icons used to arrive in whatever hue their section had - cyan for the
+        // monitor tiles, amber for the warning, cyan again for performance. That is
+        // six colours across a page of icons, none of which told the user anything:
+        // the label under each icon already says what it is.
+        private static readonly Color CIcon = CPrimary;
         private static readonly Color CAccent = Color.FromRgb(34, 211, 238);
         private static readonly Color CAccentSoft = Color.FromRgb(10, 40, 48);
         private static readonly Color CWarning = Color.FromRgb(250, 184, 72);
@@ -1089,9 +1096,9 @@ namespace LumaWall
             content.Children.Add(BuildHero(featurePath));
 
             var stats = new System.Windows.Controls.Primitives.UniformGrid { Columns = 4, Margin = new Thickness(0, 18, 0, 6) };
-            stats.Children.Add(MetricTile(Forms.Screen.AllScreens.Length.ToString(), Tr("metric.monitor"), Icons.Displays, CAccent));
+            stats.Children.Add(MetricTile(Forms.Screen.AllScreens.Length.ToString(), Tr("metric.monitor"), Icons.Displays, CIcon));
             stats.Children.Add(MetricTile(config.MonitorVideos.Count(x => File.Exists(x.Value)).ToString(), Tr("metric.active"), Icons.Apply, CPrimaryHi));
-            stats.Children.Add(MetricTile(config.Library.Count(File.Exists).ToString(), Tr("metric.library"), Icons.Library, CAccent));
+            stats.Children.Add(MetricTile(config.Library.Count(File.Exists).ToString(), Tr("metric.library"), Icons.Library, CIcon));
             stats.Children.Add(MetricTile(catalogItems.Count.ToString(), Tr("metric.catalog"), Icons.Catalog, CPrimaryHi));
             content.Children.Add(stats);
 
@@ -1745,7 +1752,7 @@ namespace LumaWall
             var inspectorHeader = new Grid { Background = new SolidColorBrush(Color.FromRgb(14, 17, 23)) };
             inspectorHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
             inspectorHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var headerGlyph = Icons.Build(Icons.Library, 13, new SolidColorBrush(CPrimaryHi));
+            var headerGlyph = Icons.Build(Icons.Library, 13, new SolidColorBrush(CIcon));
             headerGlyph.HorizontalAlignment = HorizontalAlignment.Center;
             inspectorHeader.Children.Add(headerGlyph);
             var inspectorTitle = new TextBlock { Text = Tr("library.selected"), Foreground = new SolidColorBrush(CText), FontSize = 12, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
@@ -2021,8 +2028,8 @@ namespace LumaWall
                 Background = new SolidColorBrush(CSurface)
             };
             var noteStack = new StackPanel { Orientation = Orientation.Horizontal };
-            var noteIcon = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(CAccentSoft), VerticalAlignment = VerticalAlignment.Top };
-            noteIcon.Child = Icons.Build(Icons.Performance, 15, new SolidColorBrush(CAccent));
+            var noteIcon = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(CPrimarySoft), VerticalAlignment = VerticalAlignment.Top };
+            noteIcon.Child = Icons.Build(Icons.Performance, 15, new SolidColorBrush(CIcon));
             noteStack.Children.Add(noteIcon);
             noteStack.Children.Add(new TextBlock { Text = Tr("perf.note"), Foreground = new SolidColorBrush(CMuted), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(14, 0, 0, 0), MaxWidth = 760, VerticalAlignment = VerticalAlignment.Center });
             note.Child = noteStack;
@@ -2057,9 +2064,9 @@ namespace LumaWall
             // unit, and the third metric moves to its own row.
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            telemetryCpu = TelemetryCell(grid, 0, 0, Tr("stat.cpu"), CAccent, Icons.Cpu, out telemetryCpuDetail);
+            telemetryCpu = TelemetryCell(grid, 0, 0, Tr("stat.cpu"), CIcon, Icons.Cpu, out telemetryCpuDetail);
             telemetryRam = TelemetryCell(grid, 1, 0, Tr("stat.ram"), CPrimaryHi, Icons.Memory, out telemetryRamDetail);
-            telemetryActive = TelemetryCell(grid, 0, 1, Tr("stat.active"), CWarning, Icons.Apply, out telemetryActiveDetail);
+            telemetryActive = TelemetryCell(grid, 0, 1, Tr("stat.active"), CIcon, Icons.Apply, out telemetryActiveDetail);
             stack.Children.Add(grid);
             card.Child = stack;
             UpdateTelemetry();
@@ -2442,7 +2449,7 @@ namespace LumaWall
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var heading = new StackPanel { Orientation = Orientation.Horizontal };
-            var icon = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(Color.FromRgb(66, 49, 30)), Child = Icons.Build(Icons.Warning, 16, new SolidColorBrush(CWarning)) };
+            var icon = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(18), Background = new SolidColorBrush(CPrimarySoft), Child = Icons.Build(Icons.Warning, 16, new SolidColorBrush(CIcon)) };
             heading.Children.Add(icon);
             heading.Children.Add(new TextBlock { Text = Tr("mature.title"), Foreground = new SolidColorBrush(CText), FontSize = 19, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) });
             root.Children.Add(heading);

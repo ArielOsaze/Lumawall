@@ -1,13 +1,13 @@
 {
   "installer": {
-    "path": "site/assets/downloads/LumaWall-Setup-4.2.3.0.exe",
-    "sha256": "ee0e4150f69feba3b9866e73619f4da185d9372ee44529445a68d4ec49697132",
-    "bytes": 16257896
+    "path": "site/assets/downloads/LumaWall-Setup-4.3.0.0.exe",
+    "sha256": "71d4f8a073020601466289489fe42807d973d7c4e4faf6411bca405f4226015e",
+    "bytes": 16244384
   },
   "built_from": {
     "LumaWall.exe": {
-      "sha256": "891ebab130fe9f4579b006ba9b89a9ea3945b7c3a1f2f4294d45c5bbbc68962f",
-      "bytes": 346112
+      "sha256": "1a0c0b9d09fe0fcd754607360ce61185c9f295e9fae2458b8a64a0be07901020",
+      "bytes": 341504
     }
   }
 }

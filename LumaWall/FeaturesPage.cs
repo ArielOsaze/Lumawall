@@ -62,13 +62,18 @@ namespace LumaWall
         // The slider template, parsed once and shared by every slider on the page.
         private static ControlTemplate studioSliderTemplate;
 
-        // Per-group accents. Chosen to sit apart from each other on the dark surface
-        // without competing with the crimson primary, and to be distinguishable by
-        // someone who cannot separate red from green: cyan, amber, violet, mint.
-        private static readonly Color CStudioColour = Color.FromRgb(34, 211, 238);
-        private static readonly Color CStudioHdr = Color.FromRgb(250, 184, 72);
-        private static readonly Color CStudioFrame = Color.FromRgb(167, 139, 250);
-        private static readonly Color CStudioPlay = Color.FromRgb(52, 211, 153);
+        // Per-group accents. There is one.
+        //
+        // These were four separate hues - cyan for colour, amber for HDR, violet for
+        // framing, mint for playback - chosen so each group looked distinct. On screen it
+        // read as six different colours across ten cards, which is decoration rather than
+        // information: none of it told the user anything. The page now uses the app's own
+        // crimson for every icon, and the tile behind each icon is that same hue at 15%.
+        private static readonly Color CStudioAccent = CPrimary;
+        private static readonly Color CStudioColour = CStudioAccent;
+        private static readonly Color CStudioHdr = CStudioAccent;
+        private static readonly Color CStudioFrame = CStudioAccent;
+        private static readonly Color CStudioPlay = CStudioAccent;
 
         private UIElement BuildStudio()
         {
@@ -134,7 +139,7 @@ namespace LumaWall
         private UIElement StudioDisplayPicker(Forms.Screen[] screens)
         {
             Border card;
-            var host = StudioCard(Tr("studio.display"), null, Icons.Displays, CAccent, out card);
+            var host = StudioCard(Tr("studio.display"), null, Icons.Displays, CStudioAccent, out card);
 
             foreach (Forms.Screen screen in screens)
             {
@@ -213,7 +218,7 @@ namespace LumaWall
         private UIElement StudioPreviewCard()
         {
             Border card;
-            var host = StudioCard(Tr("studio.preview"), Tr("studio.previewHint"), Icons.Wallpaper, CPrimaryHi, out card);
+            var host = StudioCard(Tr("studio.preview"), Tr("studio.previewHint"), Icons.Wallpaper, CStudioAccent, out card);
 
             var frame = new Border
             {
@@ -460,9 +465,12 @@ namespace LumaWall
                 button.Margin = new Thickness(0, 0, 6, 6);
                 if (chosen)
                 {
-                    button.Background = new SolidColorBrush(CStudioPlay);
-                    button.Foreground = new SolidColorBrush(Color.FromRgb(6, 20, 15));
-                    button.BorderBrush = new SolidColorBrush(CStudioPlay);
+                    button.Background = new SolidColorBrush(CStudioAccent);
+                    // Near-black text on the crimson chip, the same tone the app draws its
+                    // chrome on. This was a dark green, which only made sense while the
+                    // chosen chip was mint.
+                    button.Foreground = new SolidColorBrush(Color.FromRgb(10, 12, 16));
+                    button.BorderBrush = new SolidColorBrush(CStudioAccent);
                 }
                 button.Click += delegate
                 {
@@ -497,7 +505,7 @@ namespace LumaWall
         private UIElement StudioSpanCard()
         {
             Border card;
-            var host = StudioCard(Tr("studio.span"), Tr("studio.spanHint"), Icons.AllDisplays, CAccent, out card);
+            var host = StudioCard(Tr("studio.span"), Tr("studio.spanHint"), Icons.AllDisplays, CStudioAccent, out card);
 
             Forms.Screen[] screens = Forms.Screen.AllScreens;
             if (screens.Length < 2)
@@ -1352,7 +1360,7 @@ namespace LumaWall
         private UIElement StudioResetCard()
         {
             Border card;
-            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Reset, CMuted, out card);
+            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Reset, CStudioAccent, out card);
             host.Children.Add(StudioResetRow());
             return card;
         }

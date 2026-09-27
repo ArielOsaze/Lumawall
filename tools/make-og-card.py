@@ -62,7 +62,7 @@ CARDS = {
         'sub': 'Wallpaper hidup untuk Windows',
         'claim1': 'Wallpaper bergerak,',
         'claim2': 'komputer tetap tenang',
-        'facts': ['5.000+ wallpaper', 'CPU di bawah 1%', 'Gratis, tanpa iklan'],
+        'facts': ['22.000+ wallpaper', 'CPU di bawah 1%', 'Gratis, tanpa iklan'],
     },
     'en': {
         'out': os.path.join(SHOTS, 'og-card-en.png'),
@@ -70,7 +70,7 @@ CARDS = {
         'sub': 'Live wallpaper for Windows',
         'claim1': 'Wallpaper that moves,',
         'claim2': 'a computer that stays quiet',
-        'facts': ['5,000+ wallpapers', 'CPU under 1%', 'Free, no ads'],
+        'facts': ['22,000+ wallpapers', 'CPU under 1%', 'Free, no ads'],
     },
 }
 
@@ -219,12 +219,17 @@ def build(spec):
     # ── the facts ────────────────────────────────────────────────────────────
     #
     # Set at FACT_SIZE, which is 30px - readable at 400px wide, where the first
-    # version's 21px was not. Each fact gets a coloured tick so the three read as a list
-    # at a glance rather than as three lines of prose.
-    colours = [(58, 208, 224), (53, 224, 122), (255, 176, 32)]
+    # version's 21px was not. Each fact gets a tick in the brand colour, so the three read
+    # as a list at a glance rather than as three lines of prose.
+    #
+    # The ticks were cyan, green and orange. Three hues for three bullets that are all
+    # equally true is decoration: the colour says nothing the text does not, and a row of
+    # differently coloured marks is the look that reads as machine-made. They are all the
+    # same crimson as the brand line above them.
+    tick = (255, 74, 100)
     y = Y_FACTS
-    for text, colour in zip(spec['facts'], colours):
-        draw.rounded_rectangle([X, y + 8, X + 6, y + 30], radius=3, fill=colour)
+    for text in spec['facts']:
+        draw.rounded_rectangle([X, y + 8, X + 6, y + 30], radius=3, fill=tick)
         draw.text((X + 22, y), text, font=load_font(FACT_SIZE), fill=(214, 220, 228))
         y += FACT_STEP
 
