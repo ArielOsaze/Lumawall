@@ -273,44 +273,26 @@ def main():
         return 1
     ox, oy = origin
 
-    # Calibrate on the mark. The pad is 126x126 and the mark sits at the centre of its cell,
-    # so with the position at middle-centre the pad's top-left is the mark's centre minus 63.
+    # Calibrate on the mark. The pad is 126x126 and the mark sits at the centre of the cell
+    # the config names, so the pad's origin is derivable from the mark alone - once we know
+    # which cell the mark is in, which the config tells us.
     position = config_position()
     print('  recorded position: %s' % position)
-    if position != 'middle-center':
-        # Put it there first, using the calibration we do have: none. So click the middle of
-        # the pad, which we can find because the mark is inside it - the pad is the 126px
-        # square around the mark, and the middle cell is the mark's own neighbourhood.
-        mark = find_mark()
-        if mark is None:
-            print('  FAIL no clock mark to calibrate from')
-            return 1
-        mx, my = mark['cx'] + ox, mark['cy'] + oy
-        # The mark is somewhere in the pad; clicking the pad's own centre is the middle cell
-        # only if we know the pad. Try the mark's cell first: with any position the mark is at
-        # the centre of a 42px cell, and the pad centre is the middle of the three cells.
-        # Rather than guess, click the point 63px away in the direction that centres it.
-        # The pad is 3 cells; the mark's cell centre is the mark itself. Move from the mark
-        # to the middle cell by one cell (42px) at a time, in the direction of the middle.
-        # We do not know the direction, so try the three horizontal options on the row the
-        # mark is already in, then verify against the config.
-        settled = False
-        for dx in (0, -42, 42):
-            click(mx + dx, my)
-            time.sleep(1.2)
-            if config_position() == 'middle-center':
-                settled = True
-                break
-        if not settled:
-            print('  FAIL could not bring the pad to middle-centre to calibrate')
-            return 1
-        position = 'middle-center'
-        print('  moved to middle-centre for calibration')
+    if position is None or '-' not in position:
+        print('  FAIL the config does not name a position')
+        return 1
+
+    def pad_origin_from(mark, recorded):
+        """The pad's top-left, derived from where the mark is and what it means."""
+        rec_row, rec_col = recorded.split('-')
+        return (mark['cx'] + ox - PAD * FRACTION[rec_col],
+                mark['cy'] + oy - PAD * FRACTION[rec_row])
 
     mark = find_mark()
     if mark is None:
         print('  FAIL no clock mark found')
         return 1
+    pad_x, pad_y = pad_origin_from(mark, position)
     print('  calibrated from the mark at (%.0f, %.0f)' % (mark['cx'], mark['cy']))
     print()
 
