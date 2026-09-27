@@ -166,6 +166,20 @@ Write-Output ('  scroll {0:N0}% -> {1:N0}%' -f $before, $after)
 $label2 = Get-PositionLabel
 if ($label2) { Write-Output ('  placement is now "{0}"' -f $label2.Name) }
 
+# The click must have actually changed the placement. Without this the test passes on a
+# build where the restore is disabled, because nothing triggered a reload at all - it
+# reported "PASS" while measuring an unchanged page. The pad is a 3x3 grid of Borders and
+# the coordinates are computed from the label beside it, so a near miss is entirely
+# possible and must not be mistaken for a pass.
+if ($label2 -and $label2.Name -eq $label.Name) {
+    Write-Output ('  FAIL the placement did not change (still "{0}") - the click missed, so the test proved nothing' -f $label.Name)
+    exit 1
+}
+if (-not $label2) {
+    Write-Output '  FAIL the placement label disappeared after the click'
+    exit 1
+}
+
 if ($after -lt 20) {
     Write-Output '  FAIL the page jumped back to the top - the reported bug is still there'
     exit 1
@@ -176,5 +190,5 @@ if ($drift -gt 25) {
     exit 1
 }
 
-Write-Output '  PASS choosing a placement keeps the scroll position'
+Write-Output ('  PASS choosing a placement ({0} -> {1}) keeps the scroll position' -f $label.Name, $label2.Name)
 exit 0

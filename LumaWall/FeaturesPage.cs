@@ -102,23 +102,27 @@ namespace LumaWall
             left.Children.Add(StudioPreviewCard());
             left.Children.Add(StudioPresetCard());
             left.Children.Add(StudioSpanCard());
-            left.Children.Add(StudioTimerCard());
+            left.Children.Add(StudioHdrCard(config.OptionsFor(studioDevice)));
+            left.Children.Add(StudioTimerPlacementCard());
             left.Children.Add(StudioResetCard());
             Grid.SetColumn(left, 0);
             columns.Children.Add(left);
 
             DisplayOptions options = config.OptionsFor(studioDevice);
 
-            // The right column holds the four groups that act on one image. Everything in
-            // the left column is about the display itself rather than about the grade, and
-            // that is also what fixes the layout: with all six cards in the right column
-            // the left one was 746px shorter, leaving a band of empty background under the
-            // presets. Measured with tools/MeasureStudioLayout.cs.
+            // The right column holds the groups that act on one image, plus the desktop
+            // timer.
+            //
+            // Which card goes where is decided by measurement, not by taste:
+            // tools/MeasureStudioLayout.cs reports each card's height and the check fails
+            // when the two columns finish more than 220px apart. The timer card is 433px
+            // and the placement card 385px, so they sit in different columns; HDR is the
+            // 184px that closes the remaining gap.
             var right = new StackPanel();
             right.Children.Add(StudioColourCard(options));
-            right.Children.Add(StudioHdrCard(options));
             right.Children.Add(StudioFrameCard(options));
             right.Children.Add(StudioPlaybackCard(options));
+            right.Children.Add(StudioTimerCard());
             Grid.SetColumn(right, 1);
             columns.Children.Add(right);
 
@@ -732,6 +736,40 @@ namespace LumaWall
                     delegate(bool v) { config.Timer.TwelveHour = v; }));
             }
 
+            var actions = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            var restart = GhostButton(Tr("timer.restart"));
+            restart.Height = 31;
+            restart.FontSize = 11.5;
+            restart.Margin = new Thickness(0, 0, 8, 6);
+            restart.Click += delegate { timerReset(); ShowToast(Tr("timer.restarted")); };
+            actions.Children.Add(restart);
+
+            var hold = GhostButton(Tr("timer.pause"));
+            hold.Height = 31;
+            hold.FontSize = 11.5;
+            hold.Margin = new Thickness(0, 0, 8, 6);
+            hold.Click += delegate { timerPause(); };
+            actions.Children.Add(hold);
+            host.Children.Add(actions);
+
+            return card;
+        }
+
+        /// <summary>
+        /// Where the widget sits and how big it is.
+        ///
+        /// Split out of StudioTimerCard for a measured reason: with the style picker, the
+        /// placement pad, three sliders, the countdown length, the blink switch and the
+        /// action row all in one card it was 719px tall, and whichever column held it was
+        /// that much taller than the other. Two cards of roughly 360px let the columns
+        /// finish within the 220px the layout check allows.
+        /// </summary>
+        private UIElement StudioTimerPlacementCard()
+        {
+            Border card;
+            var host = StudioCard(Tr("timer.placementTitle"), Tr("timer.placementHint"),
+                                  Icons.Displays, CStudioHdr, out card);
+
             host.Children.Add(StudioLabel(Tr("timer.position")));
             host.Children.Add(StudioPositionPad());
 
@@ -751,22 +789,6 @@ namespace LumaWall
 
             host.Children.Add(StudioToggle(Tr("timer.blink"), Tr("timer.blinkHint"), config.Timer.BlinkAtEnd,
                 delegate(bool v) { config.Timer.BlinkAtEnd = v; }));
-
-            var actions = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-            var restart = GhostButton(Tr("timer.restart"));
-            restart.Height = 31;
-            restart.FontSize = 11.5;
-            restart.Margin = new Thickness(0, 0, 8, 6);
-            restart.Click += delegate { timerReset(); ShowToast(Tr("timer.restarted")); };
-            actions.Children.Add(restart);
-
-            var hold = GhostButton(Tr("timer.pause"));
-            hold.Height = 31;
-            hold.FontSize = 11.5;
-            hold.Margin = new Thickness(0, 0, 8, 6);
-            hold.Click += delegate { timerPause(); };
-            actions.Children.Add(hold);
-            host.Children.Add(actions);
 
             return card;
         }

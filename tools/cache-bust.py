@@ -75,9 +75,35 @@ WATCHED = [
     'assets/shots/ui-library.png',
     'assets/shots/ui-displays.png',
     'assets/shots/ui-performance.png',
+    # The logo, and this is the one that actually bit: the mark was changed, the file on
+    # disk and on the server were both correct, and the site still showed the old mark in
+    # every browser that had ever loaded it. The name never changes, so the browser had no
+    # reason to re-fetch it - and a favicon is cached harder still. The report was
+    # "logo di web masi pake yg km ganti sendiri", with a screenshot of the old mark, at a
+    # time when the server was already serving the new one.
+    'assets/logo/logo-150.png',
+    'assets/logo/logo-50.png',
+    'assets/logo/app-logo.png',
+    'assets/logo/app.ico',
 ]
 
 HASH_LEN = 10
+
+# Files whose UNVERSIONED name must stay on disk even after the versioned copy exists.
+#
+# cache-bust copies to the versioned name, points the pages at it, and deletes the
+# original so the deploy does not accumulate. That is right for a screenshot, which
+# nothing else reads - and wrong for the logo, which is read by tools that know it by its
+# canonical name: tools/make-og-card.py draws the share card from
+# site/assets/logo/logo-150.png, and the layout checks measure it. Deleting it made those
+# tools fail on a missing file, and the failure looked like a broken logo rather than a
+# missing one.
+KEEP_UNVERSIONED = {
+    'assets/logo/logo-150.png',
+    'assets/logo/logo-50.png',
+    'assets/logo/app-logo.png',
+    'assets/logo/app.ico',
+}
 
 
 def digest(path):
@@ -302,9 +328,15 @@ def main():
         # removing an original while one page still referenced it would 404 that page.
         for rel, _ in moved:
             src = os.path.join(SITE, rel)
-            if os.path.exists(src):
-                os.remove(src)
-                print('    removed the unversioned %s' % rel)
+            if not os.path.exists(src):
+                continue
+            # The unversioned copy is kept when something other than a page reads it by
+            # its canonical name - see KEEP_UNVERSIONED.
+            if rel in KEEP_UNVERSIONED:
+                print('    kept the unversioned %s (tools read it by name)' % rel)
+                continue
+            os.remove(src)
+            print('    removed the unversioned %s' % rel)
     else:
         print()
         print('  nothing to do - every reference is already versioned')

@@ -194,6 +194,8 @@ namespace LumaWall
             { "studio.spanWith", new[] { "Sambung dengan {0}", "Stretch with {0}", "与 {0} 拼接", "{0} とつなげる" } },
             { "studio.sub", new[] { "Atur warna, filter, dan bentuk wallpaper untuk tiap monitor.", "Tune colour, filters and framing for each display.", "为每台显示器调整色彩、滤镜与画面构图。", "モニターごとに色、フィルター、表示方法を調整します。" } },
             { "studio.timer", new[] { "Timer desktop", "Desktop timer", "桌面计时器", "デスクトップタイマー" } },
+            { "timer.placementTitle", new[] { "Penempatan timer", "Timer placement", "计时器位置", "タイマーの配置" } },
+            { "timer.placementHint", new[] { "Di mana widget duduk dan seberapa besar.", "Where the widget sits and how big it is.", "小部件的位置和大小。", "ウィジェットの位置と大きさ。" } },
             { "studio.title", new[] { "Luma Studio", "Luma Studio", "Luma Studio", "Luma Studio" } },
             { "studio.zoom", new[] { "Zoom", "Zoom", "缩放", "ズーム" } },
             { "timer.bare", new[] { "Tanpa latar", "No background", "无底色", "背景なし" } },
@@ -3361,10 +3363,15 @@ namespace LumaWall
             var covered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (!globalPause)
             {
+                // Both lists come from ONE pass over the window list. Asking for them
+                // separately walked every window twice, every two seconds, for as long as
+                // the app ran - which was the largest part of its idle CPU.
+                List<string> fullscreen, maximized;
+                NativeDesktop.FindCoveringMonitors(out fullscreen, out maximized);
                 if (config.PauseFullscreen)
-                    foreach (string device in NativeDesktop.FindCoveredMonitors()) covered.Add(device);
+                    foreach (string device in fullscreen) covered.Add(device);
                 if (config.PauseMaximized)
-                    foreach (string device in NativeDesktop.FindMaximizedMonitors()) covered.Add(device);
+                    foreach (string device in maximized) covered.Add(device);
             }
             manager.ApplyPauseState(covered, globalPause);
         }
