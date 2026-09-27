@@ -154,15 +154,28 @@ def main():
         for name, dx in [('minimize', 40), ('maximize', 84), ('close', 128)]:
             # Re-assert the foreground before each reading: another window can take
             # the top slot between samples, and then the app never sees MouseEnter.
+            #
+            # SetForegroundWindow alone is not reliable here. Windows refuses it when the
+            # calling process is not the foreground process - which is the case when this
+            # runs from a terminal, and also when it runs inside the checker suite with
+            # other tools having opened windows. The symptom is a checker that passes alone
+            # and fails in the suite, reporting "minimize does not react to hover" about a
+            # button that is perfectly fine.
+            #
+            # The topmost bounce is the standard way to force it: raise above everything,
+            # then drop topmost again so the window is not left floating.
             fg2 = user32.GetForegroundWindow()
             fgt2 = user32.GetWindowThreadProcessId(fg2, None)
             user32.AttachThreadInput(fgt2, myt, True)
+            user32.ShowWindow(hwnd, 9)                      # SW_RESTORE
+            user32.BringWindowToTop(hwnd)
             user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                                 SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+            user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                                SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
             user32.SetForegroundWindow(hwnd)
-            user32.BringWindowToTop(hwnd)
             user32.AttachThreadInput(fgt2, myt, False)
-            time.sleep(0.5)
+            time.sleep(0.6)
             user32.SetCursorPos(r.right - 150 + dx, r.top + 27)
             time.sleep(1.0)
 

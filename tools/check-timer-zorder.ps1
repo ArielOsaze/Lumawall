@@ -143,9 +143,19 @@ if ($isTopmost) {
 Write-Output '  the timer is not topmost, so applications can cover it'
 
 # 2. Open a real window and move it to cover the timer exactly.
+#
+# Which application matters, and this list is not arbitrary:
+#   notepad  is a packaged app on Windows 11 - "Start-Process notepad" fails outright with
+#            "the system cannot find all the information required", so it can never work here;
+#   calc     launches but as a packaged app it has no MainWindowHandle at the moment it is
+#            started, so the handle is zero and the window cannot be positioned;
+#   mspaint  is a desktop app, starts with a real handle, and is what this test uses.
+#
+# Trying only the first two would make this checker report "cannot test the z-order" on a
+# healthy machine - a failure that says nothing about the app. That is what happened.
 $app = $null
 $h = [IntPtr]::Zero
-foreach ($name in @('notepad', 'mspaint', 'calc')) {
+foreach ($name in @('mspaint', 'notepad', 'calc')) {
     try {
         $p = Start-Process $name -PassThru -ErrorAction Stop
         Start-Sleep -Seconds 3
