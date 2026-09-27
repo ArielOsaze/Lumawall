@@ -1,6 +1,90 @@
 # Deploy notes
 
+## Never trust a checker that has never failed
+
+Two of this project's own checks were wrong in ways that made them useless, and
+both passed for a long time before anyone noticed:
+
+- **`tools/MeasureStudioLayout.cs` reported a 0px difference between the Studio
+  columns** while the left column was visibly 746px shorter. It compared
+  `ActualHeight` of the two Grid columns, and a Grid stretches both to the same
+  height - the number could never be anything but zero. It sums the cards now.
+  *A metric that cannot vary is not a measurement.*
+- **`tools/test-studio-controls.ps1` counted exceptions across the whole log
+  file**, so it reported a crash from a session that had already exited and
+  blamed the current one. The app stamps every line with its pid; filter on it.
+
+The rule that catches both: after writing a check, make the thing it checks
+**fail on purpose** and confirm the check notices. Delete a translation key, push
+a column out of balance, raise an exception in a click handler. A check that has
+never gone red is a check that does not work.
+
+## Two ways a WPF page can be broken while the build is clean
+
+Both of these shipped in the same build and neither showed up in the log:
+
+1. **A missing translation key renders as the key.** `Tr()` returns the key when
+   it is not in the dictionary - 88 keys were missing, so the Studio page showed
+   `studio.brightness` on a slider and `nav.studio` in the nav rail.
+   `tools/check-translations.py` now fails on any key used but not defined, and on
+   any entry that does not have exactly four languages.
+2. **`button.Click += null` throws.** `SectionHeader(title, null, null)` from five
+   call sites meant opening the Studio page raised `ArgumentNullException("handler")`
+   every time. The window survived (the dispatcher catches it) and only the log
+   recorded it. The helper guards now; a header with no action builds no button.
+
+## WPF templating: `ControlTemplate` cannot target `Track`
+
+`Track` is a `FrameworkElement`, not a `Control`, so `new ControlTemplate(typeof(Track))`
+throws `ArgumentException` at construction. And `Track`'s parts - `Thumb`,
+`DecreaseRepeatButton`, `IncreaseRepeatButton` - are plain CLR properties with no
+`DependencyProperty` backing, so `FrameworkElementFactory.SetValue` cannot set
+them either.
+
+A custom `Slider` template therefore has to be **XAML**, parsed with
+`XamlReader.Parse` and cached: property-element syntax is the only way to assign
+`Track.Thumb` and friends. Everything else on the page is styled in code.
+
+## Derive version numbers, never write them twice
+
+The installer carried its own version string and the UI hard-coded two more. By
+the time the binary was 4.1.2.0 the title-bar badge said `4.0`, the rail footer
+said `v4.0.0`, and the installer said `4.1.3` - so Add/Remove Programs named a
+version that was not installed.
+
+- in code: read `Assembly.GetExecutingAssembly().GetName().Version` (`AppVersion.cs`)
+- in Inno Setup: `#define MyAppVersion GetVersionNumbersString(AddBackslash(SourcePath) + "..\LumaWall\bin\Release\LumaWall.exe")`
+
+## Rendering a WPF page to look at it
+
+`tools/RenderStudioPage.cs` renders the real Studio page to a PNG. Things it
+taught, each of which cost a run:
+
+- **Match the app's bitness.** The app is x64; a 32-bit renderer throws
+  `BadImageFormatException` loading it.
+- **A Window must be shown before it has a visual tree.** `Show()` it off-screen
+  at `Left = -32000`; without it the render is blank.
+- **Pump the dispatcher** (`DispatcherPriority.ContextIdle`, a dozen times) before
+  `RenderTargetBitmap.Render`, or the frame is captured mid-layout.
+- **This machine's MSBuild has no .NET SDK resolver**, so an SDK-style csproj fails
+  with "Could not resolve SDK Microsoft.NET.Sdk". Both helper projects are classic
+  (non-SDK) projects for that reason.
+- The app's window is capped at 950px tall, so the page scrolls in the real app -
+  a render taller than that still comes out 1100px, which is the content height.
+
+## A vision check is a hint, not a measurement
+
+Asked whether "1x - 1x" in the preview summary was a repeated value, the vision
+model explained it away as horizontal and vertical scale. It was the playback rate
+and the zoom, printed without labels, and it read as a bug because it *was* one.
+It also reported the Studio columns as balanced when one was 746px short.
+
+Use vision to find *candidates*, then confirm each with arithmetic - a layout sum,
+a key lookup, a log grep. The two together caught every fault in this list; either
+one alone would have shipped several.
+
 ## Deploying the site
+
 
 ```
 powershell -File tools/deploy-vercel.ps1

@@ -89,8 +89,9 @@ internal static class MeasureStudioLayout
             Console.WriteLine("  right content    : {0:0} px of cards", rightContent);
 
             double gap = Math.Abs(rightContent - leftContent);
+            bool balanced = gap <= 220;
             Console.WriteLine("  difference       : {0:0} px {1}", gap,
-                gap > 220 ? "(LARGE - the short column will read as unfinished)" : "(acceptable)");
+                balanced ? "(acceptable)" : "(LARGE - the short column will read as unfinished)");
 
             Console.WriteLine();
             Console.WriteLine("  left column cards:");
@@ -98,9 +99,32 @@ internal static class MeasureStudioLayout
             Console.WriteLine("  right column cards:");
             Describe(right);
 
+            // The verdict is written to a file as well as printed, because the process exit
+            // code cannot be relied on here: this is a WPF app, and a WPF Application that
+            // has shown a Window does not always hand its exit code back to the shell. The
+            // first version of this tool returned 1 for an out-of-balance page and the
+            // caller saw 127 - "command not found" - from a run that had succeeded.
+            //
+            // A file is unambiguous: the checker reads it or it is missing, and either way
+            // the answer is the tool's own, not the shell's.
+            string resultPath = args.Length > 0 ? args[0] : "build/studio-layout.json";
+            var report = new System.Text.StringBuilder();
+            report.Append("{\n");
+            report.AppendFormat("  \"leftContent\": {0:0},\n", leftContent);
+            report.AppendFormat("  \"rightContent\": {0:0},\n", rightContent);
+            report.AppendFormat("  \"difference\": {0:0},\n", gap);
+            report.AppendFormat("  \"limit\": 220,\n");
+            report.AppendFormat("  \"balanced\": {0}\n", balanced ? "true" : "false");
+            report.Append("}\n");
+
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(resultPath)) ?? ".");
+            File.WriteAllText(resultPath, report.ToString());
+            Console.WriteLine();
+            Console.WriteLine("  wrote " + resultPath);
+
             window.Close();
             app.Shutdown();
-            return gap > 220 ? 1 : 0;
+            return 0;
         }
         catch (Exception error)
         {

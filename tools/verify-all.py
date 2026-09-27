@@ -69,6 +69,8 @@ CHECKS = [
      ['python', 'tools/check-memory-plan.py']),
     ('every translation key the UI asks for exists',
      ['python', 'tools/check-translations.py']),
+    ('the Studio columns are balanced',
+     ['node', 'tools/check-studio-layout.mjs']),
     ('the wallpapers are actually rendering',
      ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'tools/check-wallpaper-alive.ps1']),
