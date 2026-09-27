@@ -55,9 +55,9 @@ WASHED = {'glass', 'card'}
 
 
 def render():
-    """Ask the app for fresh previews."""
+    """Ask the app for fresh previews, and read back the face each style resolved to."""
     if not EXE.exists():
-        return False, 'the app is not built at %s' % EXE
+        return False, 'the app is not built at %s' % EXE, {}
     if PREVIEW.exists():
         for old in PREVIEW.glob('*.png'):
             old.unlink()
@@ -65,8 +65,16 @@ def render():
     p = subprocess.run([str(EXE), '--render-timer', str(PREVIEW)],
                        capture_output=True, text=True, timeout=180)
     if p.returncode != 0:
-        return False, (p.stdout or '') + (p.stderr or '')
-    return True, ''
+        return False, (p.stdout or '') + (p.stderr or ''), {}
+
+    # The app prints "<style>  <w>x<h>  <face>". The face is what the style actually drew
+    # with - the one fact a filename cannot carry.
+    faces = {}
+    for line in (p.stdout or '').splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0] in STYLES and 'x' in parts[1]:
+            faces[parts[0]] = ' '.join(parts[2:])
+    return True, '', faces
 
 
 def measure(path):
@@ -115,12 +123,50 @@ def measure(path):
 
 
 def main():
-    ok, error = render()
+    ok, error, faces = render()
     if not ok:
         print('  FAIL could not render the previews')
         for line in error.strip().splitlines()[-8:]:
             print('       %s' % line)
         return 1
+
+    # Every style must draw in its own face.
+    #
+    # This is the check that was missing, and its absence hid a real bug: the iOS styles
+    # asked for a light face with a condition that could never match one, so they fell back
+    # to a heavier face - and iosdate was not in the list at all, so it drew in exactly the
+    # same font as minimal. Side by side they looked identical, which is precisely what the
+    # user reported ("font timernya gada bedanya"). Nothing here could see that, because
+    # every measurement was of pixels and the pixels were all present and correct.
+    #
+    # Now the app reports the resolved family name and this compares them.
+    EXPECTED = {
+        'ioslarge': 'Light',
+        'ioslight': 'Segoe UI Light',
+        'iosstack': 'Light',
+        'iosdate': 'Semil',
+        'bold': 'Bold',
+        'card': 'Bold',
+    }
+    distinct = {}
+    for style, face in faces.items():
+        distinct.setdefault(face, []).append(style)
+    print('  faces in use:')
+    for face, styles in sorted(distinct.items(), key=lambda kv: -len(kv[1])):
+        print('    %-38s %s' % (face, ', '.join(styles)))
+    print()
+
+    face_failures = []
+    for style, want in EXPECTED.items():
+        got = faces.get(style)
+        if got is None:
+            continue  # already reported as missing
+        if want.lower() not in got.lower():
+            print('  %-10s FAIL face "%s", expected %s' % (style, got, want))
+            face_failures.append('%s drew in "%s", expected a %s face' % (style, got, want))
+        else:
+            print('  %-10s ok    %s' % (style, got))
+    print()
 
     print('  %-10s %10s %8s %8s %9s  %s'
           % ('style', 'size', 'ink %', 'thru %', 'band', 'note'))
@@ -177,12 +223,13 @@ def main():
             print('  %-10s ok    large clock (band %.2f of the widget)' % (style, m['band']))
 
     print()
+    failures.extend(face_failures)
     if failures:
         for f in failures:
             print('  FAIL %s' % f)
         return 1
-    print('  PASS every style draws, the backgrounds are transparent, the lock-screen '
-          'styles are large, and nothing is clipped')
+    print('  PASS every style draws in its own face, the backgrounds are transparent, '
+          'the lock-screen styles are large, and nothing is clipped')
     return 0
 
 

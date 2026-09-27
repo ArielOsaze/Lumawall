@@ -981,7 +981,26 @@ namespace LumaWall
             content.Children.Add(accent);
             var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             stack.Children.Add(Icons.Build(iconName, 19, new SolidColorBrush(CMuted)));
-            var label = new TextBlock { Text = Tr(labelKey), Foreground = new SolidColorBrush(CMuted), FontSize = 9, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(2, 6, 2, 0), TextTrimming = TextTrimming.CharacterEllipsis };
+
+            // The label wraps instead of being cut off.
+            //
+            // "Luma Studio" is 73.5px at this size and the space inside the button is 64px,
+            // so with TextTrimming it rendered as "Luma Studi..." - a truncated name in the
+            // one place that names the page. The rail is 58px tall and the icon takes 19px,
+            // so there is room for two lines; wrapping costs nothing and reads correctly.
+            // TextTrimming is kept as a fallback for a language whose words are longer still.
+            var label = new TextBlock
+            {
+                Text = Tr(labelKey),
+                Foreground = new SolidColorBrush(CMuted),
+                FontSize = 9,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(2, 6, 2, 0),
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextAlignment = TextAlignment.Center,
+                MaxWidth = 64,
+            };
             stack.Children.Add(label);
             content.Children.Add(stack);
 

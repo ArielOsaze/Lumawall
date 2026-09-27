@@ -81,6 +81,24 @@ def ps(script, timeout=200):
     return (p.stdout or '') + (p.stderr or '')
 
 
+# Which process to drive.
+#
+# Get-Process LumaWall can return more than one: the app itself, and any short-lived
+# instance another checker started (--render-timer runs the same executable). Taking the
+# first one picked the wrong process when the suite ran them back to back, and every
+# coordinate derived from it was wrong - the click for bottom-right landed outside the pad
+# and the app recorded middle-center.
+#
+# The app is the one with a main window. That is the only one that can be photographed and
+# clicked, so it is the only one worth finding.
+PROCESS = r'''
+$proc = Get-Process LumaWall -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 } |
+        Sort-Object StartTime | Select-Object -First 1
+if (-not $proc) { Write-Output 'NO_PROCESS'; exit 1 }
+'''
+
+
 def config_position():
     """The position the app has recorded, or None if it cannot be read."""
     try:
@@ -90,14 +108,45 @@ def config_position():
 
 
 def click(x, y):
+    """Click at a screen coordinate, after making sure the app is the foreground window.
+
+    SetForegroundWindow alone is not enough: Windows refuses it when the calling process is
+    not the foreground process, which is exactly the case when a checker is driving the app
+    from a terminal. The click then lands on the terminal, the app records nothing, and the
+    checker blames the app. That happened: every position recorded as middle-center.
+
+    ShowWindow(SW_RESTORE) + SetWindowPos(HWND_TOPMOST) + SetWindowPos(HWND_NOTOPMOST)
+    is the standard way to force it: the topmost bounce brings the window forward and the
+    second call removes topmost so the app is not left floating above everything.
+    """
     ps(r'''
 Add-Type @"
 using System;using System.Runtime.InteropServices;
-public class N { [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
+public class N {
+ [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,uint d,int e);
- public static void Click(int x,int y){ SetCursorPos(x,y); System.Threading.Thread.Sleep(120);
-  mouse_event(2,0,0,0,0); System.Threading.Thread.Sleep(70); mouse_event(4,0,0,0,0); } }
+ [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+ [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+ [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+ [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+ [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
+ public static bool Focus(IntPtr h) {
+   ShowWindow(h, 9);
+   BringWindowToTop(h);
+   SetWindowPos(h, new IntPtr(-1), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);   // HWND_TOPMOST
+   SetWindowPos(h, new IntPtr(-2), 0,0,0,0, 0x0001 | 0x0002 | 0x0040);   // HWND_NOTOPMOST
+   SetForegroundWindow(h);
+   System.Threading.Thread.Sleep(250);
+   return GetForegroundWindow() == h;
+ }
+ public static void Click(int x,int y){ SetCursorPos(x,y); System.Threading.Thread.Sleep(130);
+  mouse_event(2,0,0,0,0); System.Threading.Thread.Sleep(80); mouse_event(4,0,0,0,0); } }
 "@
+$p = Get-Process LumaWall -ErrorAction SilentlyContinue |
+      Where-Object { $_.MainWindowHandle -ne 0 } | Sort-Object StartTime | Select-Object -First 1
+if (-not $p) { Write-Output 'NO_PROCESS'; exit 1 }
+$focused = [N]::Focus($p.MainWindowHandle)
+Write-Output ('FOCUSED ' + $focused)
 [N]::Click(%d, %d)
 ''' % (int(x), int(y)), timeout=60)
 
@@ -152,9 +201,9 @@ using System;using System.Runtime.InteropServices;
 public class W { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out R r);
  public struct R { public int L,T,Rr,B; } }
 "@
-$p = Get-Process LumaWall | Select-Object -First 1
+''' + PROCESS + r'''
 $r = New-Object W+R
-[void][W]::GetWindowRect($p.MainWindowHandle, [ref]$r)
+[void][W]::GetWindowRect($proc.MainWindowHandle, [ref]$r)
 Write-Output ('ORIGIN {0} {1}' -f $r.L, $r.T)
 ''')
     line = [l for l in out.splitlines() if l.startswith('ORIGIN')]
@@ -183,7 +232,7 @@ $win = $auto::RootElement.FindFirst($scope::Children,
 if (-not $win) { Write-Output 'NO_WINDOW'; exit 1 }
 
 # A minimised window cannot be photographed and its rectangle is the -32000 sentinel.
-$proc = Get-Process LumaWall | Select-Object -First 1
+''' + PROCESS + r'''
 [void][W]::ShowWindow($proc.MainWindowHandle, 9)
 Start-Sleep -Milliseconds 700
 [void][W]::SetForegroundWindow($proc.MainWindowHandle)
@@ -262,9 +311,7 @@ def main():
     if mark is None:
         print('  FAIL no clock mark found')
         return 1
-    pad_x = mark['cx'] + ox - PAD / 2.0
-    pad_y = mark['cy'] + oy - PAD / 2.0
-    print('  pad at screen (%.0f, %.0f), calibrated from the mark' % (pad_x, pad_y))
+    print('  calibrated from the mark at (%.0f, %.0f)' % (mark['cx'], mark['cy']))
     print()
 
     failures = []
@@ -272,6 +319,30 @@ def main():
     for position in POSITIONS:
         row, col = position.split('-')
         want_x, want_y = FRACTION[col], FRACTION[row]
+
+        # Re-calibrate before every click.
+        #
+        # Clicking rebuilds the page (the timer moves, the card redraws), and if the scroll
+        # position shifts by even a few pixels the pad moves with it - so a click computed
+        # from the pad's old position lands outside the cell it aimed at. That is exactly
+        # what happened to bottom-right: it recorded middle-center.
+        #
+        # The mark is always drawn at the centre of the cell that the config names, so the
+        # pad's origin can be derived from it exactly, every time, with no accumulated drift.
+        mark = find_mark()
+        recorded = config_position()
+        if mark is None or recorded is None:
+            failures.append('%s: could not calibrate (mark=%s, recorded=%s)'
+                            % (position, mark is not None, recorded))
+            print('  %-14s could not calibrate' % position)
+            continue
+        if '-' not in recorded:
+            failures.append('%s: the app recorded an unknown position %r' % (position, recorded))
+            print('  %-14s unknown recorded position %r' % (position, recorded))
+            continue
+        rec_row, rec_col = recorded.split('-')
+        pad_x = mark['cx'] + ox - PAD * FRACTION[rec_col]
+        pad_y = mark['cy'] + oy - PAD * FRACTION[rec_row]
 
         click(pad_x + PAD * want_x, pad_y + PAD * want_y)
         time.sleep(1.2)

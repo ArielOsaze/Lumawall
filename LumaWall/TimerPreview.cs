@@ -133,7 +133,23 @@ namespace LumaWall
 
                         string path = Path.Combine(outputDirectory, style + ".png");
                         captured.Save(path, ImageFormat.Png);
-                        Console.WriteLine("  {0,-10} {1}x{2}", style, captured.Width, captured.Height);
+
+                        // Report the face that was actually used. This is the check that was
+                        // missing: every style was supposed to have its own face, and two of
+                        // them silently shared one because a condition could not match. A
+                        // filename is not evidence; the resolved family name is.
+                        string face = "?";
+                        try
+                        {
+                            MethodInfo timeFont = windowType.GetMethod("TimeFont",
+                                BindingFlags.NonPublic | BindingFlags.Static);
+                            var config2 = new TimerConfig { Style = style };
+                            using (var f = (Font)timeFont.Invoke(null, new object[] { 62f, style }))
+                                face = f.FontFamily.Name + (f.Bold ? " Bold" : "");
+                        }
+                        catch (Exception e) { face = "(" + Describe(e) + ")"; }
+
+                        Console.WriteLine("  {0,-10} {1}x{2}  {3}", style, captured.Width, captured.Height, face);
                         captured.Dispose();
                     }
                     finally

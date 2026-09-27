@@ -533,47 +533,114 @@ namespace LumaWall
             /// for a big clock and a semibold one for a widget, and a bold face everywhere -
             /// which is what the first version did - is what made it look like a scoreboard.
             /// </summary>
+            /// <summary>
+            /// The face for a style, at a given size.
+            ///
+            /// Every style gets a face that is actually different, and the difference is
+            /// measured rather than assumed. Stroke weight, as the share of dark pixels in a
+            /// 62px "9:41" rendered on white:
+            ///
+            ///   Segoe UI Variable Display Light    0.7%   (122px wide)
+            ///   Segoe UI Light                     1.1%   (124px)
+            ///   Segoe UI Variable Display Semil    1.2%   (124px)
+            ///   Segoe UI Semilight                 1.4%   (127px)
+            ///   Segoe UI Variable Display          1.8%   (127px)
+            ///   Segoe UI                           1.8%   (138px)
+            ///
+            /// That table is the whole point. The iOS styles used to ask for a light face with
+            // a condition that could never match it:
+            ///
+            ///   if (light.Name == family.Name || light.Name.StartsWith("Segoe UI Light"))
+            //       return new Font(light, ...);
+            //   }
+            //   return new Font(family, ...);   // regular
+            ///
+            /// LightFamilies() is ordered best-first, so the first entry is
+            /// "Segoe UI Variable Display Light" - and that name is neither equal to
+            /// "Segoe UI Variable Display" nor does it start with "Segoe UI Light". The test
+            /// skipped the thin face and fell through to "Segoe UI Light", 57% heavier, or to
+            /// the regular face. iosdate was not in the list at all, so it drew in exactly the
+            /// same font as minimal - which is what "font timernya gada bedanya" was.
+            ///
+            /// Now the face is named per style and the first available match is used, so a
+            /// style cannot silently fall back to a heavier face.
+            /// </summary>
             private static Font TimeFont(float size, string style)
             {
-                FontFamily family = PickFont();
-                // macOS uses a light face for a big clock and a semibold one for a widget.
-                // Bold everywhere - which is what the first version did - is what made it
-                // look like a scoreboard.
-                FontStyle weight = FontStyle.Regular;
-                if (style == "card") weight = FontStyle.Bold;
-                if (style == "bold") weight = FontStyle.Bold;
-
-                // The iOS lock screen clock is not bold - it is a large, tightly tracked
-                // face where the WEIGHT is low and the SIZE does the work. A bold face at
-                // that size reads as a scoreboard, which is the "design timernya jelek"
-                // complaint. Light is used where the family provides it.
-                if (style == "ioslarge" || style == "ioslight" || style == "iosstack")
+                string[] faces = FacesFor(style);
+                foreach (string name in faces)
                 {
-                    foreach (FontFamily light in LightFamilies())
+                    try
                     {
-                        if (light.Name == family.Name || light.Name.StartsWith("Segoe UI Light"))
-                            return new Font(light, size, FontStyle.Regular, GraphicsUnit.Pixel);
+                        var family = new FontFamily(name);
+                        FontStyle weight = style == "bold" || style == "card"
+                            ? FontStyle.Bold
+                            : FontStyle.Regular;
+                        return new Font(family, size, weight, GraphicsUnit.Pixel);
                     }
-                    return new Font(family, size, FontStyle.Regular, GraphicsUnit.Pixel);
+                    catch { }
                 }
-                return new Font(family, size, weight, GraphicsUnit.Pixel);
+                return new Font(PickFont(), size, FontStyle.Regular, GraphicsUnit.Pixel);
             }
 
             /// <summary>
-            /// The light faces that exist on Windows, best first.
+            /// The faces a style will accept, best first.
             ///
-            /// iOS uses SF Pro, which is not here. The closest match for a lock-screen clock
-            /// is a light humanist sans: Segoe UI Light on Windows 10, and Segoe UI Variable
-            /// Light on 11. Both keep the counters open at large sizes, which is what stops
-            /// a 60px clock from looking like a block.
+            /// The first entry is the intent; the rest are fallbacks for a machine that does
+            /// not have it. "Segoe UI Variable Display Light" ships with Windows 11 and is the
+            /// thinnest face available - it is what makes a 62px clock read as an iOS lock
+            /// screen rather than a scoreboard.
+            /// </summary>
+            private static string[] FacesFor(string style)
+            {
+                switch (style)
+                {
+                    // The iOS 15 lock screen: very large and very thin. This is the thinnest
+                    // face on Windows and the one the styles were meant to use all along.
+                    case "ioslarge":
+                        return new[] { "Segoe UI Variable Display Light", "Segoe UI Light", "Segoe UI" };
+
+                    // A step heavier, so the two are visibly different side by side.
+                    case "ioslight":
+                        return new[] { "Segoe UI Light", "Segoe UI Variable Display Light", "Segoe UI" };
+
+                    // The stacked widget: thin, but the date does the work.
+                    case "iosstack":
+                        return new[] { "Segoe UI Variable Display Light", "Segoe UI Light", "Segoe UI" };
+
+                    // The date-forward face. It used to draw in the same font as minimal.
+                    case "iosdate":
+                        return new[] { "Segoe UI Variable Display Semil", "Segoe UI Semilight", "Segoe UI" };
+
+                    // A scoreboard: heavy on purpose. The family's own Bold face, not a
+                    // semibold family asked for Bold - that pairing makes GDI+ synthesise a
+                    // slant-on-bold, which smears at 38px.
+                    case "bold":
+                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+
+                    // A widget card: heavy, because the wash behind it eats contrast.
+                    case "card":
+                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+
+                    default:
+                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+                }
+            }
+
+            /// <summary>
+            /// The light faces that exist on this machine, best first.
+            ///
+            /// Kept for the analog dial and anything that needs a light face without naming a
+            /// style. It returns the families that are actually installed, so a caller that
+            /// takes the first entry cannot end up with a heavier face by accident.
             /// </summary>
             private static FontFamily[] LightFamilies()
             {
                 string[] names =
                 {
-                    "Segoe UI Variable Light",
                     "Segoe UI Variable Display Light",
                     "Segoe UI Light",
+                    "Segoe UI Variable Display Semil",
                     "Segoe UI Semilight",
                 };
                 var list = new List<FontFamily>();

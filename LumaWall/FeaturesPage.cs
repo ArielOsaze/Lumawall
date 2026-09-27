@@ -1043,17 +1043,29 @@ namespace LumaWall
             Grid.SetColumn(clock, 1);
 
             string current = string.IsNullOrEmpty(config.Timer.Position) ? "middle-center" : config.Timer.Position;
+
+            // The name of the current choice, beside the pad. It is updated in place when a
+            // position is chosen - see below.
+            var name = new TextBlock
+            {
+                Text = StudioPositionLabel(current),
+                FontSize = 11.5,
+                Foreground = new SolidColorBrush(CText),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+            };
+
             Action<string> moveMark = delegate(string key)
             {
                 Grid.SetRow(clock, key.StartsWith("top") ? 0 : key.StartsWith("bottom") ? 2 : 1);
                 Grid.SetColumn(clock, key.EndsWith("left") ? 0 : key.EndsWith("right") ? 2 : 1);
+                name.Text = StudioPositionLabel(key);
             };
             moveMark(current);
 
             foreach (string key in keys)
             {
                 string captured = key;
-                bool chosen = current == key;
 
                 // The drop target. It is invisible - a faint highlight on hover is the only
                 // sign it exists - because the mark on the pad is what the user reads.
@@ -1063,13 +1075,26 @@ namespace LumaWall
                     Cursor = Cursors.Hand,
                     ToolTip = StudioPositionLabel(key),
                 };
+
+                // Choosing a position moves the mark and renames the choice, and does NOT
+                // rebuild the page.
+                //
+                // It used to call ReloadCurrentPage(). That rebuilds the whole Studio page
+                // from scratch, which takes long enough that a second click - or even the
+                // same click replayed by a checker a second later - landed while the page was
+                // mid-build and hit whatever was there instead. Measured: clicking the pad at
+                // pad+0, pad+10, pad+20 and pad+30 recorded middle-left, top-left,
+                // middle-left, middle-center - four different answers for one cell.
+                //
+                // Nothing here needs a rebuild. The mark is a live element that moves, and the
+                // label is a live element that renames. Both are updated directly, so the
+                // click takes effect immediately and the page is never in a half-built state.
                 target.MouseLeftButtonUp += delegate
                 {
                     config.Timer.Position = captured;
                     moveMark(captured);
                     timerRefresh();
                     store.Save(config);
-                    ReloadCurrentPage();
                 };
                 target.MouseEnter += delegate
                 {
@@ -1136,16 +1161,8 @@ namespace LumaWall
             canvas.Children.Add(edgeTop);
             canvas.Children.Add(edgeBottom);
 
-            // The name of the current choice sits beside the pad, vertically centred on it.
-            var name = new TextBlock
-            {
-                Text = StudioPositionLabel(config.Timer.Position),
-                FontSize = 11.5,
-                Foreground = new SolidColorBrush(CText),
-                VerticalAlignment = VerticalAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-            };
-
+            // The name is placed beside the pad. It was created above, so that choosing a
+            // position can rename it without rebuilding the page.
             var host = new Grid { HorizontalAlignment = HorizontalAlignment.Left };
             host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
