@@ -57,6 +57,7 @@ namespace LumaWall
         private readonly TimerWindow window;
         private readonly System.Windows.Forms.Timer tick;
         private readonly Func<TimerConfig> config;
+        private readonly Func<IntPtr> wallpaperHandle;
         private DateTime anchor = DateTime.UtcNow;
         private bool disposed;
 
@@ -67,8 +68,22 @@ namespace LumaWall
         private bool running;
 
         public DesktopTimer(Func<TimerConfig> configSource)
+            : this(configSource, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates the timer.
+        ///
+        /// wallpaperHandleSource reports a live wallpaper window; the widget is placed just
+        /// above the desktop that owns it, so it sits at the wallpaper's level rather than
+        /// floating over the user's applications. It may be null, in which case the widget
+        /// still anchors to the desktop itself.
+        /// </summary>
+        public DesktopTimer(Func<TimerConfig> configSource, Func<IntPtr> wallpaperHandleSource)
         {
             config = configSource;
+            wallpaperHandle = wallpaperHandleSource;
             window = new TimerWindow();
             // 200 ms: fast enough that a seconds display never appears to skip, slow enough
             // that the redraw is invisible in the process list.
@@ -84,8 +99,30 @@ namespace LumaWall
             Reset();
             window.Apply(current);
             window.Show();
+            // Put it at the wallpaper's level BEFORE the first paint, so it never appears
+            // over an application even for one frame.
+            ReassertDesktopLevel();
             tick.Start();
             Render();
+        }
+
+        /// <summary>
+        /// Keeps the widget at the desktop's level.
+        ///
+        /// Called on every start and refresh because the z-order is not permanent: any
+        /// window that activates can be inserted above, and Explorer recreates the desktop
+        /// host when it restarts. Re-asserting costs one SetWindowPos and is what keeps the
+        /// widget from creeping up the z-order until it covers an application - which is
+        /// the bug this exists to prevent.
+        /// </summary>
+        private void ReassertDesktopLevel()
+        {
+            try
+            {
+                IntPtr anchor = wallpaperHandle == null ? IntPtr.Zero : wallpaperHandle();
+                NativeDesktop.PlaceAtDesktopLevel(window.Handle, anchor);
+            }
+            catch { }
         }
 
         public void Stop()
@@ -101,6 +138,9 @@ namespace LumaWall
             if (current == null || !current.Enabled) { Stop(); return; }
             window.Apply(current);
             if (!window.Visible) { window.Show(); tick.Start(); }
+            // A refresh follows a settings change, and the widget may have been pushed up
+            // the z-order since it was created. Re-assert before painting the new look.
+            ReassertDesktopLevel();
             Render();
         }
 
@@ -278,7 +318,11 @@ namespace LumaWall
                 FormBorderStyle = FormBorderStyle.None;
                 ShowInTaskbar = false;
                 StartPosition = FormStartPosition.Manual;
-                TopMost = true;
+                // NOT topmost. A topmost window floats above every application, so the
+                // clock sat on top of whatever the user was reading or playing. The window
+                // is placed at the desktop's level instead - above the wallpaper, below
+                // every app - by NativeDesktop.PlaceAtDesktopLevel().
+                TopMost = false;
                 // No BackColor and no Opacity: the window is painted entirely through
                 // UpdateLayeredWindow, and setting either would make Windows composite the
                 // form itself underneath the bitmap we hand it.

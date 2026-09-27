@@ -785,6 +785,47 @@ namespace LumaWall
         {
             return GetAncestor(hwnd, GA_PARENT);
         }
+
+        private const uint GA_ROOT = 2;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+
+        /// <summary>
+        /// Puts a window at the desktop's level: above the wallpaper, below every
+        /// application.
+        ///
+        /// This is what makes the desktop timer a widget rather than an overlay. The first
+        /// version was a topmost window, so it floated above whatever the user had open -
+        /// covering a paragraph of a document, or the corner of a game, for the sake of a
+        /// clock. The requirement is that the timer sits where the wallpaper sits:
+        /// "widget timer ya harus setara sama wallpaper placement nya gabole menimpa apps
+        /// yg dibuka".
+        ///
+        /// The anchor is the wallpaper's top-level ancestor - Progman on a raised desktop,
+        /// the wallpaper WorkerW on a classic one. Placing the window directly above that
+        /// puts it above the desktop surface and below every normal window, because the
+        /// desktop is the bottom of the z-order and applications are all above it. No
+        /// reparenting is involved: the window stays top-level, so its layered surface
+        /// keeps compositing exactly as before.
+        /// </summary>
+        public static void PlaceAtDesktopLevel(IntPtr hwnd, IntPtr wallpaperHwnd)
+        {
+            if (hwnd == IntPtr.Zero || !IsWindow(hwnd)) return;
+
+            IntPtr anchor = wallpaperHwnd != IntPtr.Zero ? GetAncestor(wallpaperHwnd, GA_ROOT) : IntPtr.Zero;
+            if (anchor == IntPtr.Zero || !IsWindow(anchor))
+            {
+                // No wallpaper to sit above yet. Progman is still the right anchor: it is
+                // the desktop window, and it is always at the bottom.
+                anchor = FindWindow("Progman", null);
+                if (anchor == IntPtr.Zero) return;
+            }
+
+            // hwndInsertAfter = anchor puts hwnd immediately ABOVE the anchor. The window
+            // must not be topmost for this to mean anything, which is why the timer is
+            // created without TopMost.
+            SetWindowPos(hwnd, anchor, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
         [DllImport("user32.dll")] private static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out IntPtr result);
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")] private static extern IntPtr GetWindowLongPtr64(IntPtr hwnd, int index);
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")] private static extern IntPtr SetWindowLongPtr64(IntPtr hwnd, int index, IntPtr value);
@@ -2995,6 +3036,9 @@ namespace LumaWall
         /// <summary>The display this wallpaper is attached to.</summary>
         public string DeviceName { get { return screen.DeviceName; } }
 
+        /// <summary>The display this wallpaper covers, for callers that need to know which.</summary>
+        public Forms.Screen Screen { get { return screen; } }
+
         public bool MatchesScreen(Forms.Screen target) { return string.Equals(screen.DeviceName, target.DeviceName, StringComparison.OrdinalIgnoreCase) && screen.Bounds == target.Bounds && !IsDisposed; }
         public void StopVideo()
         {
@@ -3086,6 +3130,37 @@ namespace LumaWall
         /// features existed.
         /// </summary>
         public AppConfig Config;
+
+        /// <summary>
+        /// The live wallpaper window on the primary display, or the first one found.
+        ///
+        /// The desktop timer needs a wallpaper handle to sit above, so it lands at the
+        /// desktop's level instead of floating over the user's applications. The primary
+        /// display is the right choice because that is the screen the timer is positioned
+        /// on - and any wallpaper's top-level ancestor is the same desktop window anyway.
+        /// </summary>
+        public IntPtr PrimaryWallpaperHandle()
+        {
+            foreach (var pair in windows)
+            {
+                WallpaperWindow window = pair.Value;
+                if (window == null || !window.IsHandleCreated) continue;
+                try
+                {
+                    if (window.Screen != null && window.Screen.Primary) return window.Handle;
+                }
+                catch { }
+            }
+            // No primary wallpaper (it may be off, or still starting): any live one will
+            // do, because the anchor is the desktop, not the wallpaper itself.
+            foreach (var pair in windows)
+            {
+                WallpaperWindow window = pair.Value;
+                if (window == null) continue;
+                try { if (window.IsHandleCreated) return window.Handle; } catch { }
+            }
+            return IntPtr.Zero;
+        }
 
         /// <summary>
         /// Hands a window the settings that apply to its display.

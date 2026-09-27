@@ -1096,9 +1096,17 @@ namespace LumaWall
 
             SwitchPage(activePage);
 
-            if (offset <= 0) return;
+            if (offset <= 0)
+            {
+                AppLog.Write("Page reloaded; no scroll to restore (was at the top)");
+                return;
+            }
             var rebuilt = pageHost.Content as ScrollViewer;
-            if (rebuilt == null) return;
+            if (rebuilt == null)
+            {
+                AppLog.Write("Page reloaded; the new page is not scrollable, so the offset " + offset.ToString("F0") + " is dropped");
+                return;
+            }
 
             // Loaded fires after the new content has been measured, which is the earliest
             // point ScrollToVerticalOffset has any effect.
@@ -1111,11 +1119,15 @@ namespace LumaWall
             rebuilt.Loaded += restore;
 
             // The Loaded event has already fired when the content is assigned inside a
-            // handler, so also try immediately - one of the two always lands.
+            // handler, so also try immediately - one of the two always lands. Both paths
+            // log the offset they ended on, because a restore that silently does nothing
+            // is indistinguishable from the bug it was meant to fix.
             rebuilt.Dispatcher.BeginInvoke(new Action(delegate
             {
                 if (rebuilt.VerticalOffset == 0 && offset > 0)
                     rebuilt.ScrollToVerticalOffset(offset);
+                AppLog.Write("Page reloaded; scroll restored to " + rebuilt.VerticalOffset.ToString("F0")
+                         + " of " + offset.ToString("F0"));
             }), DispatcherPriority.Loaded);
         }
 
@@ -3424,14 +3436,14 @@ namespace LumaWall
         /// </summary>
         private void timerRefresh()
         {
-            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; }, delegate { return manager.PrimaryWallpaperHandle(); });
             if (config.Timer != null && config.Timer.Enabled) desktopTimer.Refresh();
             else desktopTimer.Stop();
         }
 
         private void timerReset()
         {
-            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+            if (desktopTimer == null) desktopTimer = new DesktopTimer(delegate { return config.Timer; }, delegate { return manager.PrimaryWallpaperHandle(); });
             desktopTimer.Reset();
         }
 
@@ -3483,7 +3495,7 @@ namespace LumaWall
             manager.Config = config;
 
             if (desktopTimer == null)
-                desktopTimer = new DesktopTimer(delegate { return config.Timer; });
+                desktopTimer = new DesktopTimer(delegate { return config.Timer; }, delegate { return manager.PrimaryWallpaperHandle(); });
 
             if (config.Timer != null && config.Timer.Enabled) desktopTimer.Start();
             else desktopTimer.Stop();
