@@ -50,9 +50,9 @@ Terakhir diperbarui: rilis 4.4.7.0.
 | 3 | Timer tidak menimpa aplikasi | ✅ terbukti positif **dan** negatif |
 | 4 | Semua gaya timer menggambar | ✅ 10/10, diuji sabotase (kotak solid & kosong dua-duanya FAIL) |
 | 5 | Placement mencatat klik **dan** menggambar ulang | ✅ dua-duanya diperiksa terpisah |
-| 6 | Installer di web = biner yang dibuild | ✅ sha256 cocok (`96a185bd…`) |
+| 6 | Installer di web = biner yang dibuild | ✅ sha256 cocok (`497d9bd6…`) |
 | 7 | Deploy tidak mematikan situs | ✅ `rootDirectory=site` utuh, domain menyajikan situs asli |
-| 8 | Semua 41 checker | ✅ **all 41 checks passed** |
+| 8 | Semua 40 checker | ✅ **all 40 checks passed** | `tools/verify-all.py` |
 
 ---
 
