@@ -25,9 +25,9 @@ BASE = 'https://lumawall.xinet.id/assets/downloads/'
 LOCAL_DIR = os.path.join('site', 'assets', 'downloads')
 
 FILES = [
-    'LumaWall-Setup-4.1.3.exe',
+    'LumaWall-Setup-4.1.3.0.exe',
     'LumaWall_4.1.3.0_x64.msix',
-    'LumaWall-portable-4.1.3.zip',
+    'LumaWall-portable-4.1.3.0.zip',
 ]
 
 

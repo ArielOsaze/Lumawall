@@ -1,7 +1,18 @@
 #define MyAppName "LumaWall"
-#define MyAppVersion "4.1.3"
 #define MyAppPublisher "LumaWall"
 #define MyAppExeName "LumaWall.exe"
+
+; The version is read from the built exe, not written here.
+;
+; Why: this file used to carry its own version string, and the two drifted. The
+; installer said 4.1.3 while the exe inside it reported 4.1.2.0, so the Add/Remove
+; Programs entry named a version that was not the one installed. Reading it from
+; the binary makes that impossible - there is one number, and it belongs to the
+; thing being installed.
+;
+; GetVersionNumbersString returns the FileVersion resource, which the build sets
+; from AssemblyInfo.cs.
+#define MyAppVersion GetVersionNumbersString(AddBackslash(SourcePath) + "..\LumaWall\bin\Release\LumaWall.exe")
 
 [Setup]
 AppId={{6CC7BEB4-4F78-4BA8-A109-C23DB7598C51}
