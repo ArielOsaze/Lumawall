@@ -3,7 +3,7 @@
 Setiap baris punya angka yang diukur, bukan klaim. Perintah di kolom kanan bisa dijalankan
 ulang kapan saja; kalau checker-nya tidak bisa gagal, ia tidak dipakai.
 
-Terakhir diperbarui: rilis 4.4.7.0.
+Terakhir diperbarui: rilis 4.4.9.0. Semua 40 checker PASS.
 
 ---
 
