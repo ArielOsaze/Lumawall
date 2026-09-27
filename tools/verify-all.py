@@ -89,6 +89,8 @@ CHECKS = [
     ('the desktop timer never covers an application',
      ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'tools/check-timer-zorder.ps1']),
+    ('every timer style draws, is transparent, and the lock-screen styles are large',
+     ['python', 'tools/check-timer-styles.py']),
     ('the placement pad is square and aligned',
      ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'tools/measure-placement-pad.ps1']),

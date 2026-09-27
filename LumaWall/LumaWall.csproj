@@ -39,6 +39,7 @@
     <Compile Include="Icons.cs" />
     <Compile Include="MemoryTrim.cs" />
     <Compile Include="DesktopTimer.cs" />
+    <Compile Include="TimerPreview.cs" />
     <Compile Include="FeaturesPage.cs" />
     <Compile Include="AppVersion.cs" />
     <Content Include="catalog.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>

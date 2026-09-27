@@ -805,11 +805,14 @@ namespace LumaWall
         private UIElement StudioStyleRow()
         {
             var row = new WrapPanel();
-            string[] keys = { "minimal", "bold", "glass", "card", "ring", "analog" };
+            string[] keys = { "minimal", "bold", "glass", "card", "ring", "analog",
+                              "ioslarge", "ioslight", "iosstack", "iosdate" };
             string[] labels =
             {
                 Tr("timer.minimal"), Tr("timer.bold"), Tr("timer.glass"),
                 Tr("timer.card"), Tr("timer.ring"), Tr("timer.analog"),
+                Tr("timer.ioslarge"), Tr("timer.ioslight"), Tr("timer.iosstack"),
+                Tr("timer.iosdate"),
             };
 
             for (int i = 0; i < keys.Length; i++)
@@ -974,23 +977,26 @@ namespace LumaWall
         }
 
         /// <summary>
-        /// The position picker: a 3x3 grid of dots, which is the placement itself.
+        /// The position picker: a 3x3 grid of dots, with the screen's edges named.
         ///
-        /// Nine chips labelled "Kiri atas, Tengah atas, Kanan atas, ..." is a list of nine
-        /// near-identical phrases. The grid is the same choice made visible: the dot a
-        /// user clicks is where the timer will be.
+        /// Nine dots alone do not say which side is which. The complaint was "placement
+        /// bagian ini loh kirainya apa kananya apa kadang bikin bingung" - which one is
+        /// left, which one is right, it is confusing. A grid is only self-explanatory if
+        /// you already know it is a screen; the first row could as easily be "first three
+        /// options".
         ///
-        /// The pad is SQUARE, and that is not decoration. It was 126x92, which made every
-        /// cell 42x30.67 - a grid that represents the screen, drawn as a shape that is not
-        /// the shape of a screen. The rows read as squashed, the whole pad sat high
-        /// against the label beside it, and the complaint was "placement di luma studio aga
-        /// berantakan". 126x126 gives nine 42x42 cells and a pad whose proportions match
-        /// the choice it represents.
+        /// So the pad is drawn inside a frame that IS the screen, and the four edges are
+        /// labelled: KIRI / KANAN on the sides, ATAS / BAWAH top and bottom. The labels are
+        /// small, dim and outside the pad, so they orient the grid without competing with
+        /// it. The pad is square (it represents the screen) and the current choice is named
+        /// in words beside it.
         /// </summary>
         private UIElement StudioPositionPad()
         {
-            const double cell = 42;
+            const double cell = 40;
             const double gap = 2;
+            const double edge = 13;   // room for the edge labels
+
             var grid = new UniformGrid
             {
                 Columns = 3,
@@ -1011,14 +1017,13 @@ namespace LumaWall
 
                 var cellBorder = new Border
                 {
-                    // Gap in the middle, half of it at the edges: the pad then reads as one
-                    // grid rather than as a block of tiles.
-                    Margin = new Thickness(gap, gap, gap, gap),
+                    Margin = new Thickness(gap),
                     CornerRadius = new CornerRadius(6),
                     Background = new SolidColorBrush(chosen ? CPrimary : CSurface2),
                     BorderBrush = new SolidColorBrush(chosen ? CPrimaryHi : CBorder),
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
+                    ToolTip = StudioPositionLabel(key),
                 };
                 cellBorder.Child = new System.Windows.Shapes.Ellipse
                 {
@@ -1039,9 +1044,55 @@ namespace LumaWall
                 grid.Children.Add(cellBorder);
             }
 
-            // The name of the current choice sits BESIDE the pad, vertically centred on it,
-            // and the two are one row - so the pad's centre line and the text's centre line
-            // are the same line.
+            // The frame is the screen, and the four labels name its edges. Without them the
+            // pad is nine anonymous dots.
+            var frame = new Border
+            {
+                BorderBrush = new SolidColorBrush(CBorder),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(9),
+                Padding = new Thickness(5),
+                Child = grid,
+            };
+
+            var canvas = new Grid { Width = cell * 3 + 10 + edge * 2,
+                                    Height = cell * 3 + 10 + edge * 2,
+                                    HorizontalAlignment = HorizontalAlignment.Left };
+            canvas.Children.Add(frame);
+            frame.Margin = new Thickness(edge, edge, edge, edge);
+
+            Func<string, TextBlock> edgeLabel =
+                delegate(string text)
+                {
+                    return new TextBlock
+                    {
+                        Text = text,
+                        FontSize = 8.5,
+                        Foreground = new SolidColorBrush(CDim),
+                        Opacity = 0.75,
+                    };
+                };
+
+            // Left / right sit beside the pad; top / bottom above and below it.
+            var edgeLeft = edgeLabel(Tr("timer.edgeLeft"));
+            edgeLeft.HorizontalAlignment = HorizontalAlignment.Left;
+            edgeLeft.VerticalAlignment = VerticalAlignment.Center;
+            var edgeRight = edgeLabel(Tr("timer.edgeRight"));
+            edgeRight.HorizontalAlignment = HorizontalAlignment.Right;
+            edgeRight.VerticalAlignment = VerticalAlignment.Center;
+            var edgeTop = edgeLabel(Tr("timer.edgeTop"));
+            edgeTop.VerticalAlignment = VerticalAlignment.Top;
+            edgeTop.HorizontalAlignment = HorizontalAlignment.Center;
+            var edgeBottom = edgeLabel(Tr("timer.edgeBottom"));
+            edgeBottom.VerticalAlignment = VerticalAlignment.Bottom;
+            edgeBottom.HorizontalAlignment = HorizontalAlignment.Center;
+
+            canvas.Children.Add(edgeLeft);
+            canvas.Children.Add(edgeRight);
+            canvas.Children.Add(edgeTop);
+            canvas.Children.Add(edgeBottom);
+
+            // The name of the current choice sits beside the pad, vertically centred on it.
             var name = new TextBlock
             {
                 Text = StudioPositionLabel(config.Timer.Position),
@@ -1054,10 +1105,10 @@ namespace LumaWall
             var host = new Grid { HorizontalAlignment = HorizontalAlignment.Left };
             host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            Grid.SetColumn(grid, 0);
+            Grid.SetColumn(canvas, 0);
             Grid.SetColumn(name, 1);
-            name.Margin = new Thickness(16, 0, 0, 0);
-            host.Children.Add(grid);
+            name.Margin = new Thickness(14, 0, 0, 0);
+            host.Children.Add(canvas);
             host.Children.Add(name);
             return host;
         }

@@ -34,6 +34,7 @@
 // leaves a halo of the key colour around every antialiased edge.
 
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -98,11 +99,21 @@ namespace LumaWall
             if (current == null || !current.Enabled) { Stop(); return; }
             Reset();
             window.Apply(current);
+
+            // Show, and always start the tick.
+            //
+            // This used to be Show() only, with Refresh() doing "if (!window.Visible)
+            // Show()". That reads correctly and is wrong: Form.Visible reports true for a
+            // window that was created and never shown - it exists, so it is "visible" - and
+            // the window then sat at 0,0 with a 0x0 client area, painted once, and never
+            // ticked again because tick.Start() was inside the same skipped branch. The
+            // result was the reported "bug timer ada ga muncul": switched on, no widget.
             window.Show();
+            tick.Start();
+
             // Put it at the wallpaper's level BEFORE the first paint, so it never appears
             // over an application even for one frame.
             ReassertDesktopLevel();
-            tick.Start();
             Render();
         }
 
@@ -137,7 +148,13 @@ namespace LumaWall
             TimerConfig current = config();
             if (current == null || !current.Enabled) { Stop(); return; }
             window.Apply(current);
-            if (!window.Visible) { window.Show(); tick.Start(); }
+
+            // Show and start the tick unconditionally, for the reason given in Start():
+            // "if (!window.Visible)" is not a reliable test of whether the widget is on
+            // screen, and gating the tick on it left the widget frozen and invisible.
+            window.Show();
+            tick.Start();
+
             // A refresh follows a settings change, and the widget may have been pushed up
             // the z-order since it was created. Re-assert before painting the new look.
             ReassertDesktopLevel();
@@ -311,6 +328,8 @@ namespace LumaWall
             private string lastText = "", lastSubtitle = "";
             private bool lastFinished, lastDim;
             private double lastProgress = -1;
+            private string lastStyle = "";
+            private float lastScale = -1;
             private int lastWidth, lastHeight;
 
             public TimerWindow()
@@ -363,23 +382,37 @@ namespace LumaWall
             public void Draw(string text, string subtitle, double progress,
                              TimerConfig config, bool finished, bool dim)
             {
+                float scale = Math.Max(50, Math.Min(250, config.Scale)) / 100f;
+                string style = Style(config);
+
                 // Skip a repaint when nothing visible changed. At 5 Hz a clock would
                 // otherwise redraw 5 times a second for no reason, and each redraw rebuilds
                 // a bitmap and calls UpdateLayeredWindow.
+                //
+                // Style and scale are part of the comparison, not just the text. Without
+                // them, changing the style alone was skipped: the widget kept the old look
+                // until the clock happened to tick to a new second. It healed itself within
+                // a second, which is exactly why it went unnoticed.
                 bool same = text == lastText && subtitle == lastSubtitle
                             && finished == lastFinished && dim == lastDim
+                            && style == lastStyle && Math.Abs(scale - lastScale) < 0.001
                             && Math.Abs(progress - lastProgress) < 0.002;
                 if (same) return;
                 lastText = text; lastSubtitle = subtitle;
                 lastFinished = finished; lastDim = dim; lastProgress = progress;
+                lastStyle = style; lastScale = scale;
 
                 using (var probe = CreateGraphics())
                 {
-                    float scale = Math.Max(50, Math.Min(250, config.Scale)) / 100f;
-                    string style = Style(config);
-
-                    float timeSize = 30f * scale;
-                    float labelSize = 11f * scale;
+                    // The size for this style, before anything is measured.
+                    //
+                    // The per-style sizes used to be applied AFTER the text was measured, so
+                    // every style was measured at the shared 30px and every widget came out
+                    // 181px wide - bold, ioslarge and ioslight were all the same box with the
+                    // same window. The clock inside them was drawn at the right size and then
+                    // clipped, which is why the iOS styles looked wrong rather than empty.
+                    float timeSize, labelSize;
+                    StyleSizes(style, scale, out timeSize, out labelSize);
 
                     SizeF timeSize2, labelSize2;
                     using (var timeFont = TimeFont(timeSize, style))
@@ -401,9 +434,28 @@ namespace LumaWall
                     int ringPad = style == "ring" ? (int)(26 * scale) : 0;
                     int inset = style == "card" ? (int)(26 * scale) : 0;
 
+                    // The iOS lock screen clock is LARGE - that is the whole look. At the
+                    // shared 30px it read as a small digital clock rather than as the lock
+                    // screen. ioslarge is the size of the real thing; ioslight is the same
+                    // face, a step smaller; iosstack is the stacked time-and-date widget.
+                    // The size for the style is already applied in StyleSizes - the old
+                    // multipliers that lived here (x2.1 for ioslarge, x1.5 for iosstack) are
+                    // gone. They were written when the iOS styles shared the 30px base and
+                    // needed to be scaled up from it; once StyleSizes gave them their own
+                    // size, the multipliers scaled them a second time and ioslarge came out
+                    // 336x307 - a clock twice the size of a lock screen's.
+
                     int contentW = (int)Math.Ceiling(Math.Max(timeSize2.Width, labelSize2.Width));
                     int contentH = (int)Math.Ceiling(timeSize2.Height)
                                    + (labelSize2.Height > 0 ? (int)Math.Ceiling(labelSize2.Height) + (int)(3 * scale) : 0);
+
+                    // iosstack puts the date ABOVE the time, the way the iOS lock screen
+                    // stacks its widgets: a small line, then the big figure.
+                    if (style == "iosstack" && labelSize2.Height > 0)
+                    {
+                        contentH = (int)Math.Ceiling(labelSize2.Height) + (int)(6 * scale)
+                                   + (int)Math.Ceiling(timeSize2.Height);
+                    }
 
                     if (round)
                     {
@@ -433,12 +485,38 @@ namespace LumaWall
                 }
             }
 
+            /// <summary>
+            /// The clock and label size for a style, at a given scale.
+            ///
+            /// One place, used twice: by the measurement that sizes the window and by the
+            /// paint that draws into it. Keeping them apart is what produced every style at
+            /// 181px wide with the clock clipped - the window was measured at 30px and the
+            /// clock drawn at 62px.
+            /// </summary>
+            private static void StyleSizes(string style, float scale,
+                                           out float timeSize, out float labelSize)
+            {
+                timeSize = 30f * scale;
+                labelSize = 11f * scale;
+                if (style == "bold") { timeSize = 38f * scale; labelSize = 12.5f * scale; }
+                if (style == "ioslarge") { timeSize = 62f * scale; labelSize = 14f * scale; }
+                if (style == "ioslight") { timeSize = 44f * scale; labelSize = 12f * scale; }
+                if (style == "iosstack") { timeSize = 40f * scale; labelSize = 13f * scale; }
+                if (style == "iosdate") { timeSize = 34f * scale; labelSize = 15f * scale; }
+            }
+
             private static string Style(TimerConfig config)
             {
                 string style = (config.Style ?? "").Trim().ToLowerInvariant();
-                if (style == "minimal" || style == "glass" || style == "card"
-                    || style == "ring" || style == "analog" || style == "bold")
-                    return style;
+                string[] known =
+                {
+                    "minimal", "glass", "card", "ring", "analog", "bold",
+                    // iOS lock screen family. The request was "design timernya jelek cari
+                    // kek timer apa gitutuh aku kasi prefrensi lockscreen time ios jiplak
+                    // itu kasih beberapa pilihan dan background transparan ya".
+                    "ioslarge", "ioslight", "iosstack", "iosdate",
+                };
+                foreach (string s in known) if (style == s) return s;
                 return "minimal";
             }
 
@@ -464,7 +542,47 @@ namespace LumaWall
                 FontStyle weight = FontStyle.Regular;
                 if (style == "card") weight = FontStyle.Bold;
                 if (style == "bold") weight = FontStyle.Bold;
+
+                // The iOS lock screen clock is not bold - it is a large, tightly tracked
+                // face where the WEIGHT is low and the SIZE does the work. A bold face at
+                // that size reads as a scoreboard, which is the "design timernya jelek"
+                // complaint. Light is used where the family provides it.
+                if (style == "ioslarge" || style == "ioslight" || style == "iosstack")
+                {
+                    foreach (FontFamily light in LightFamilies())
+                    {
+                        if (light.Name == family.Name || light.Name.StartsWith("Segoe UI Light"))
+                            return new Font(light, size, FontStyle.Regular, GraphicsUnit.Pixel);
+                    }
+                    return new Font(family, size, FontStyle.Regular, GraphicsUnit.Pixel);
+                }
                 return new Font(family, size, weight, GraphicsUnit.Pixel);
+            }
+
+            /// <summary>
+            /// The light faces that exist on Windows, best first.
+            ///
+            /// iOS uses SF Pro, which is not here. The closest match for a lock-screen clock
+            /// is a light humanist sans: Segoe UI Light on Windows 10, and Segoe UI Variable
+            /// Light on 11. Both keep the counters open at large sizes, which is what stops
+            /// a 60px clock from looking like a block.
+            /// </summary>
+            private static FontFamily[] LightFamilies()
+            {
+                string[] names =
+                {
+                    "Segoe UI Variable Light",
+                    "Segoe UI Variable Display Light",
+                    "Segoe UI Light",
+                    "Segoe UI Semilight",
+                };
+                var list = new List<FontFamily>();
+                foreach (string name in names)
+                {
+                    try { list.Add(new FontFamily(name)); } catch { }
+                }
+                if (list.Count == 0) list.Add(PickFont());
+                return list.ToArray();
             }
 
             private static Font LabelFont(float size)
@@ -526,6 +644,41 @@ namespace LumaWall
                 int w = Math.Max(1, Width), h = Math.Max(1, Height);
 
                 using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb))
+                {
+                    DrawFrame(bitmap, config, style, scale);
+
+                    // A preview run takes the bitmap instead of putting it on screen, so the
+                    // checker measures the drawing rather than a screenshot of it.
+                    //
+                    // This exists because the first version of the preview was a SECOND
+                    // implementation of the same layout, and the two disagreed: the preview
+                    // drew ioslarge at 329x307 while the widget drew it at 353x167. A check
+                    // built on the preview would then have been checking a drawing the user
+                    // never sees. Sharing this method is what makes the measurement evidence.
+                    if (PreviewSink != null)
+                    {
+                        PreviewSink(bitmap);
+                        return;
+                    }
+
+                    PushToWindow(bitmap);
+                }
+            }
+
+            /// <summary>
+            /// Receives each painted frame instead of the screen, when set.
+            ///
+            /// Set only by the --render-timer mode. The drawing is not duplicated for the
+            /// preview: DrawFrame is the same method the widget paints with.
+            /// </summary>
+            internal static Action<Bitmap> PreviewSink;
+
+            /// <summary>
+            /// Paints one frame into the bitmap. Shared by the widget and the preview.
+            /// </summary>
+            internal void DrawFrame(Bitmap bitmap, TimerConfig config, string style, float scale)
+            {
+                int w = bitmap.Width, h = bitmap.Height;
                 {
                     using (var g = Graphics.FromImage(bitmap))
                     {
@@ -593,8 +746,17 @@ namespace LumaWall
                         //
                         // Skipped for the analog dial: the hands are the reading, and
                         // drawing "19:31" under them would be a clock with a caption.
-                        float timeSize = style == "bold" ? 38f * scale : 30f * scale;
-                        float labelSize = style == "bold" ? 12.5f * scale : 11f * scale;
+                        float timeSize = 30f * scale;
+                        float labelSize = 11f * scale;
+
+                        // The iOS lock screen clock is large by design - the size IS the
+                        // style. ioslarge matches the real lock screen; ioslight is the same
+                        // face a step down; iosstack is the widget form.
+                        //
+                        // Read from StyleSizes so the size used to DRAW and the size used to
+                        // MEASURE are the same numbers. They were separate, and the widget was
+                        // sized for one and drawn with the other.
+                        StyleSizes(style, scale, out timeSize, out labelSize);
 
                         using (var family = PickFont())
                         using (var timeFont = TimeFont(timeSize, style))
@@ -611,9 +773,36 @@ namespace LumaWall
                             float blockH = timeH + gap + labelH;
 
                             float cx = content.Left + content.Width / 2f;
-                            float timeCy = content.Top + (content.Height - blockH) / 2f + timeH / 2f;
-                            var timeRect = new RectangleF(content.Left, timeCy - timeH / 2f, content.Width, timeH);
-                            var labelRect = new RectangleF(content.Left, timeCy + timeH / 2f + gap, content.Width, labelH);
+                            float timeCy, labelY;
+                            if (style == "iosstack" && hasLabel)
+                            {
+                                // Date first, then the time under it - the iOS lock screen
+                                // widget stack. The block is centred as a whole.
+                                labelY = content.Top + (content.Height - blockH) / 2f;
+                                timeCy = labelY + labelH + gap + timeH / 2f;
+                            }
+                            else
+                            {
+                                timeCy = content.Top + (content.Height - blockH) / 2f + timeH / 2f;
+                                labelY = timeCy + timeH / 2f + gap;
+                            }
+                            // The text boxes get vertical slack on purpose.
+                            //
+                            // A rectangle whose height is EXACTLY the font's height makes GDI+
+                            // draw nothing at all: no exception, no warning, zero pixels. It is
+                            // why the timer "sometimes did not appear" - the big iOS faces
+                            // (ioslarge at 93px, ioslight at 66px) hit it while the small ones
+                            // did not. Measured with ProbeRect: exactly font-high drew 0 pixels,
+                            // 4px taller drew 1986.
+                            //
+                            // The slack is generous because the failure is silent and the cost
+                            // is a few transparent pixels.
+                            float timeSlack = timeH * 0.35f;
+                            float labelSlack = labelH * 0.35f;
+                            var timeRect = new RectangleF(content.Left, timeCy - timeH / 2f - timeSlack / 2f,
+                                                          content.Width, timeH + timeSlack);
+                            var labelRect = new RectangleF(content.Left, labelY - labelSlack / 2f,
+                                                           content.Width, labelH + labelSlack);
 
                             int inkAlpha = lastDim ? 150 : 255;
 
@@ -627,15 +816,14 @@ namespace LumaWall
                                 if (hasLabel)
                                 {
                                     // The label is muted, the way a widget's caption is: it is
-                                    // there to be read second.
+                                    // there to be read second. The iOS lock screen date is
+                                    // dimmer than the clock and set in a wider face.
                                     Color label = Color.FromArgb(inkAlpha * 72 / 100, ink);
                                     DrawShadowedText(g, lastSubtitle, labelFont, labelRect, format, label, inkAlpha, scale * 0.7f);
                                 }
                             }
                         }
                     }
-
-                    PushToWindow(bitmap);
                 }
             }
 

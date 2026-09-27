@@ -199,6 +199,29 @@ namespace LumaWall
         private static void Main()
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+            // A render-to-file mode, so the timer styles can be measured from the pixels the
+            // app itself draws.
+            //
+            // Screenshotting the widget cannot work: it is a layered window over the
+            // wallpaper, so a screen capture contains the wallpaper too, and a checker that
+            // thresholds "bright pixels" then measures the wallpaper rather than the clock.
+            // That happened - the check reported every style at 93% ink and a full-height
+            // clock band, which was the wallpaper behind them.
+            //
+            // This writes the widget's own 32bpp ARGB bitmap instead, with its real alpha,
+            // so "is the clock large" and "is the background transparent" become questions
+            // about the drawing rather than about what was behind it.
+            string[] commandLine = Environment.GetCommandLineArgs();
+            for (int i = 1; i < commandLine.Length; i++)
+            {
+                if (commandLine[i] == "--render-timer" && i + 1 < commandLine.Length)
+                {
+                    int code = TimerPreview.Render(commandLine[i + 1]);
+                    Environment.Exit(code);
+                }
+            }
+
             bool ownsMutex;
             using (var mutex = new Mutex(true, InstanceMutexName, out ownsMutex))
             {
