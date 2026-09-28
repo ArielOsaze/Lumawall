@@ -103,26 +103,36 @@ namespace LumaWall
             left.Children.Add(StudioPresetCard());
             left.Children.Add(StudioSpanCard());
             left.Children.Add(StudioHdrCard(config.OptionsFor(studioDevice)));
-            left.Children.Add(StudioTimerPlacementCard());
             left.Children.Add(StudioResetCard());
+            left.Children.Add(StudioTimerCard());
             Grid.SetColumn(left, 0);
             columns.Children.Add(left);
 
             DisplayOptions options = config.OptionsFor(studioDevice);
 
-            // The right column holds the groups that act on one image, plus the desktop
-            // timer.
+            // The right column holds the groups that act on one image, plus the placement
+            // pad.
             //
-            // Which card goes where is decided by measurement, not by taste:
-            // tools/MeasureStudioLayout.cs reports each card's height and the check fails
-            // when the two columns finish more than 220px apart. The timer card is 433px
-            // and the placement card 385px, so they sit in different columns; HDR is the
-            // 184px that closes the remaining gap.
+            // Which card goes where is decided by measurement, not by taste. Measured card
+            // heights:
+            //
+            //   Display being edited  254      Colour        336
+            //   Preview               275      Framing       357
+            //   Quick presets         158      Playback      313
+            //   Across monitors       177      Placement     455
+            //   HDR                   199
+            //   Reset                 136
+            //   Desktop timer         118
+            //
+            // The placement pad is the tallest card in the page and it used to sit in the
+            // left column, which finished 569px longer than the right - a page that reads as
+            // unfinished. Moving it right and the small timer card left brings the two
+            // columns to within a few pixels of each other.
             var right = new StackPanel();
             right.Children.Add(StudioColourCard(options));
             right.Children.Add(StudioFrameCard(options));
             right.Children.Add(StudioPlaybackCard(options));
-            right.Children.Add(StudioTimerCard());
+            right.Children.Add(StudioTimerPlacementCard());
             Grid.SetColumn(right, 1);
             columns.Children.Add(right);
 

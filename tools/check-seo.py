@@ -322,15 +322,32 @@ def main():
                     problems.append('the sitemap does not list /en/, so the English page '
                                     'is only discoverable by crawling the hreflang link')
 
-                # Every hreflang in the sitemap must agree with the page's own
-                # hreflang block. Google's documentation is explicit that a
-                # disagreement between the two is worse than having neither.
+                # Every hreflang in the sitemap must agree with the page it belongs to.
+                #
+                # This used to collect the alternates from the whole sitemap and compare
+                # them with the landing page's own block. That was fine while the sitemap
+                # held one page; once /privacy/ was listed, the privacy page's alternates
+                # were compared against the landing page and reported as disagreements -
+                # three false failures about a sitemap that was correct.
+                #
+                # The alternates belong to a <url> entry, so they are grouped by that entry
+                # and only the entry for the landing page is compared here. The other pages
+                # are checked against their own files below.
                 alt_pairs = set()
-                for node in doc.getElementsByTagName('xhtml:link'):
-                    hreflang = node.getAttribute('hreflang')
-                    href = node.getAttribute('href')
-                    if hreflang and href:
-                        alt_pairs.add((hreflang, href.rstrip('/')))
+                entries = doc.getElementsByTagName('url')
+                for entry in entries:
+                    loc = ''
+                    for child in entry.getElementsByTagName('loc'):
+                        loc = child.firstChild.data.strip() if child.firstChild else ''
+                    pairs = set()
+                    for node in entry.getElementsByTagName('xhtml:link'):
+                        hreflang = node.getAttribute('hreflang')
+                        href = node.getAttribute('href')
+                        if hreflang and href:
+                            pairs.add((hreflang, href.rstrip('/')))
+                    if loc.rstrip('/') == canonical.rstrip('/'):
+                        alt_pairs |= pairs
+
                 for hreflang, href in sorted(alt_pairs):
                     if hreflang not in page_alts:
                         problems.append('the sitemap declares hreflang="%s" but the page '
@@ -339,7 +356,7 @@ def main():
                         problems.append('hreflang="%s" points at %s in the sitemap and %s '
                                         'on the page'
                                         % (hreflang, href, page_alts[hreflang]))
-                print('    sitemap hreflang  %d alternate(s): %s'
+                print('    sitemap hreflang  %d alternate(s) for the landing page: %s'
                       % (len(alt_pairs), ', '.join(sorted(h for h, _ in alt_pairs))))
         except Exception as e:
             problems.append('sitemap.xml does not parse: %s' % e)
@@ -375,6 +392,52 @@ def main():
                                 'canonical names' % canonical)
         except ValueError as e:
             problems.append('vercel.json does not parse: %s' % e)
+
+    # ── every other page in the sitemap is checked too ────────────────────────
+    #
+    # The landing page has its own full set of checks above. Once a second page exists it
+    # needs the same guarantees, or it can ship with a missing canonical, a wrong hreflang
+    # or a title that no search engine will show. The privacy policy is the page the Store
+    # reviews, so it is the last one that should be unverified.
+    print()
+    print('  ── the other pages ──')
+    extra_pages = [
+        ('privacy/index.html', 'https://lumawall.xinet.id/privacy/',
+         'https://lumawall.xinet.id/en/privacy/'),
+        ('en/privacy/index.html', 'https://lumawall.xinet.id/en/privacy/',
+         'https://lumawall.xinet.id/privacy/'),
+    ]
+    for rel_path, want_canonical, want_alt in extra_pages:
+        full = os.path.join(SITE, rel_path)
+        if not os.path.exists(full):
+            problems.append('%s does not exist' % rel_path)
+            print('    %-22s MISSING' % rel_path)
+            continue
+        text = read(full)
+        ok = []
+        m = re.search(r'<link rel="canonical" href="([^"]+)"', text)
+        if not m:
+            problems.append('%s has no canonical' % rel_path)
+            ok.append('no canonical')
+        elif m.group(1).rstrip('/') != want_canonical.rstrip('/'):
+            problems.append('%s canonical is %s, expected %s'
+                            % (rel_path, m.group(1), want_canonical))
+            ok.append('canonical %s' % m.group(1))
+        alts = dict(re.findall(r'<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"', text))
+        for lang, want in (('id', want_canonical if 'en/' not in rel_path else want_alt),
+                           ('en', want_alt if 'en/' not in rel_path else want_canonical)):
+            got = alts.get(lang, '')
+            if got.rstrip('/') != want.rstrip('/'):
+                problems.append('%s hreflang="%s" is %s, expected %s'
+                                % (rel_path, lang, got or 'missing', want))
+                ok.append('hreflang %s' % lang)
+        if not re.search(r'<title>[^<]{10,}</title>', text):
+            problems.append('%s has no usable title' % rel_path)
+            ok.append('no title')
+        if not re.search(r'<meta name="description" content="[^"]{40,}"', text):
+            problems.append('%s has no usable meta description' % rel_path)
+            ok.append('no description')
+        print('    %-22s %s' % (rel_path, 'ok' if not ok else '<<< ' + ', '.join(ok)))
 
     print()
     if problems:
