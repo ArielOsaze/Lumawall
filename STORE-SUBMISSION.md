@@ -22,8 +22,8 @@ Versi: **4.5.6.0**. Diperbarui: 28 September 2026.
 Identitas paket (dari `msix/AppxManifest.xml`):
 
 ```
-Name        LumaWall.DesktopEngine
-Publisher   CN=LumaWall            <-- harus diganti, lihat §2
+Name        XinetGroup.LumaWall
+Publisher   CN=82AE483E-A9EB-487B-BDE6-4D690C249608
 Version     4.5.6.0
 Arch        x64
 ```
@@ -45,8 +45,8 @@ Lalu edit `msix/AppxManifest.xml`:
 
 ```xml
 <Identity
-  Name="LumaWall.DesktopEngine"   <!-- ganti dengan Package/Identity/Name -->
-  Publisher="CN=LumaWall"         <!-- ganti dengan Package/Identity/Publisher -->
+  Name="XinetGroup.LumaWall"
+  Publisher="CN=82AE483E-A9EB-487B-BDE6-4D690C249608"
   Version="4.5.6.0"
   ProcessorArchitecture="x64" />
 ```
@@ -68,8 +68,8 @@ Checker akan mengingatkan selama `Publisher` masih `CN=LumaWall`.
 
 | Pemeriksaan | Hasil |
 |---|---|
-| Identity Name legal | ✅ `LumaWall.DesktopEngine` |
-| Publisher berupa distinguished name | ⚠️ masih placeholder |
+| Identity Name legal | ✅ `XinetGroup.LumaWall` |
+| Publisher cocok Partner Center | ✅ `CN=82AE483E-...` |
 | Version empat angka, cocok dengan nama berkas | ✅ `4.5.6.0` |
 | Setiap aset yang dirujuk manifest ada di paket | ✅ 8/8 |
 | Setiap aset berukuran sesuai namanya | ✅ `Square310x310Logo` benar 310×310 |

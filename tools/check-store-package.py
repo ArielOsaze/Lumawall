@@ -35,6 +35,12 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# The identity Partner Center issued for LumaWall (product 9PN82QJL0V5B, publisher
+# "Xinet Group"). Submission is rejected when either value differs from the account, so
+# they are asserted here rather than left to be checked by eye.
+EXPECTED_NAME = 'XinetGroup.LumaWall'
+EXPECTED_PUBLISHER = 'CN=82AE483E-A9EB-487B-BDE6-4D690C249608'
 OUT = ROOT / 'outputs'
 
 NS = {
@@ -139,9 +145,16 @@ def main():
                             % (m.group(1), version))
     if arch != 'x64':
         notes.append('architecture is %s' % arch)
-    if publisher == 'CN=LumaWall':
-        notes.append('Publisher is the placeholder "CN=LumaWall" - it must match the '
-                     'publisher CN that Partner Center assigns to the account')
+    # The identity Partner Center issued for this product. Checked against the manifest so
+    # a rebuild cannot quietly ship the placeholder again: submission is rejected when
+    # Identity/@Name or @Publisher does not match the account exactly, and the failure
+    # message from the Store does not say which of the two is wrong.
+    if name != EXPECTED_NAME:
+        notes.append('Identity/@Name is "%s"; Partner Center issued "%s"'
+                     % (name, EXPECTED_NAME))
+    if publisher != EXPECTED_PUBLISHER:
+        notes.append('Identity/@Publisher is "%s"; Partner Center issued "%s"'
+                     % (publisher, EXPECTED_PUBLISHER))
     print()
 
     # ---- Every referenced image exists, at the size its name implies ---------------

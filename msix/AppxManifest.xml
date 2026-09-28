@@ -20,14 +20,14 @@
       * File-system access is declared so users can import their own videos.
   -->
   <Identity
-    Name="LumaWall.DesktopEngine"
-    Publisher="CN=LumaWall"
-    Version="4.5.6.0"
+    Name="XinetGroup.LumaWall"
+    Publisher="CN=82AE483E-A9EB-487B-BDE6-4D690C249608"
+    Version="4.5.7.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>LumaWall</DisplayName>
-    <PublisherDisplayName>LumaWall</PublisherDisplayName>
+    <PublisherDisplayName>Xinet Group</PublisherDisplayName>
     <Logo>TileAssets\StoreLogo.png</Logo>
     <Description>Live wallpaper engine for every monitor: video and image wallpapers, multi-display profiles and GPU-accelerated playback.</Description>
   </Properties>
