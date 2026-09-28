@@ -463,7 +463,19 @@ def _measure():
             # The first click after the window is brought forward is sometimes swallowed
             # while Windows finishes activating it. A person would click again; so does this,
             # once, and only once - a pad that needs three clicks is broken, not warming up.
+            #
+            # The pad is re-calibrated before the second attempt. The first click already
+            # changed the recorded position (to top-right, when top-left was aimed at), and
+            # that redraw moves the mark - so a click computed from the old origin aims at
+            # where the cell used to be. Measured: this is exactly how top-left ended up
+            # recorded as top-right while the pad itself was working.
             time.sleep(0.6)
+            mark = find_mark()
+            recorded_now = config_position()
+            if mark is not None and recorded_now and '-' in recorded_now:
+                rec_row, rec_col = recorded_now.split('-')
+                pad_x = mark['cx'] + ox - PAD * FRACTION[rec_col]
+                pad_y = mark['cy'] + oy - PAD * FRACTION[rec_row]
             click_out = click(pad_x + PAD * want_x, pad_y + PAD * want_y)
             time.sleep(1.2)
             recorded = config_position()
