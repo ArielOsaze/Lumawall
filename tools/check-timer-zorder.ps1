@@ -93,6 +93,81 @@ if (-not $luma) { Write-Output '  FAIL LumaWall is not running'; exit 1 }
 $lumaPids = @($luma | ForEach-Object { $_.Id })
 Write-Output ('  LumaWall pids: {0}' -f ($lumaPids -join ', '))
 
+# Switch the timer on if it is off, through the app's own UI.
+#
+# Without this the checker fails with "no small LumaWall window found - is the timer
+# switched on?" whenever the user has the timer off - which is a perfectly normal state and
+# says nothing about whether the timer can cover an application. The check is about
+# z-order, so it has to arrange the thing it measures.
+#
+# Writing config.json does NOT work: the app reads its settings at startup and rebuilds the
+# timer only from the UI (StartDesktopTimer on load, timerRefresh from the Studio page).
+# Editing the file leaves a running app that never notices. So the Studio page's timer
+# switch is toggled instead, which is also what a person would do.
+$configPath = Join-Path $env:LOCALAPPDATA 'LumaWall\config.json'
+$script:restoreTimer = $null
+
+function Get-TimerEnabled {
+    try {
+        $raw = [System.IO.File]::ReadAllText($configPath)
+        return [bool](($raw | ConvertFrom-Json).Timer.Enabled)
+    } catch { return $null }
+}
+
+if ((Get-TimerEnabled) -eq $false) {
+    Write-Output '  the timer is switched off; switching it on through the Studio page'
+    try {
+        Add-Type -AssemblyName UIAutomationClient
+        Add-Type -AssemblyName UIAutomationTypes
+        $auto = [System.Windows.Automation.AutomationElement]
+        $scope = [System.Windows.Automation.TreeScope]
+        $ctrl = [System.Windows.Automation.ControlType]
+        $win = $auto::RootElement.FindFirst($scope::Children,
+            (New-Object System.Windows.Automation.PropertyCondition($auto::NameProperty, 'LumaWall')))
+
+        if ($win) {
+            # Open Luma Studio, where the timer switch lives.
+            $bcond = New-Object System.Windows.Automation.PropertyCondition(
+                $auto::ControlTypeProperty, $ctrl::Button)
+            foreach ($b in $win.FindAll($scope::Descendants, $bcond)) {
+                if ($b.Current.Name -eq 'Luma Studio') {
+                    $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+                    Start-Sleep -Milliseconds 1600
+                    break
+                }
+            }
+
+            # The switch is a CheckBox whose name mentions the timer. Toggle the one that is
+            # off; a TogglePattern reports its own state, so this does not depend on the
+            # label's language.
+            $ccond = New-Object System.Windows.Automation.PropertyCondition(
+                $auto::ControlTypeProperty, $ctrl::CheckBox)
+            $toggled = $false
+            foreach ($c in $win.FindAll($scope::Descendants, $ccond)) {
+                try {
+                    $tp = $c.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+                    if ($tp.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::Off) {
+                        $tp.Toggle()
+                        $toggled = $true
+                        Start-Sleep -Milliseconds 1200
+                        if ((Get-TimerEnabled) -eq $true) { break }
+                    }
+                } catch { }
+            }
+            if ($toggled) {
+                Write-Output '  toggled a switch on the Studio page'
+            } else {
+                Write-Output '  no switch to toggle was found on the Studio page'
+            }
+        } else {
+            Write-Output '  the LumaWall window was not found'
+        }
+    } catch {
+        Write-Output ('  could not drive the UI: ' + $_.Exception.Message)
+    }
+    Start-Sleep -Seconds 2
+}
+
 $script:timer = [IntPtr]::Zero
 $script:found = @()
 $cb = [Z.W+EnumProc]{
@@ -196,20 +271,62 @@ Write-Output ('  Z-index now: covering window {0}, timer {1}' -f $appIdx, $timer
 
 Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
 
+# Put the timer back the way it was found. Running a check must not change the app's
+# configuration: a user who keeps the timer off would find it switched on after the suite.
+#
+# Restored through the UI for the same reason it was switched on that way, and because the
+# app must be the one to write its config - a file written by PowerShell 5.1's
+# "Set-Content -Encoding UTF8" carries a BOM, and the app's JSON reader rejects it.
+function Restore-Timer {
+    if ((Get-TimerEnabled) -ne $true) { return }
+    try {
+        Add-Type -AssemblyName UIAutomationClient
+        Add-Type -AssemblyName UIAutomationTypes
+        $auto = [System.Windows.Automation.AutomationElement]
+        $scope = [System.Windows.Automation.TreeScope]
+        $ctrl = [System.Windows.Automation.ControlType]
+        $win = $auto::RootElement.FindFirst($scope::Children,
+            (New-Object System.Windows.Automation.PropertyCondition($auto::NameProperty, 'LumaWall')))
+        if (-not $win) { return }
+        $ccond = New-Object System.Windows.Automation.PropertyCondition(
+            $auto::ControlTypeProperty, $ctrl::CheckBox)
+        foreach ($c in $win.FindAll($scope::Descendants, $ccond)) {
+            try {
+                $tp = $c.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+                if ($tp.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::On) {
+                    $tp.Toggle()
+                    Start-Sleep -Milliseconds 1200
+                    if ((Get-TimerEnabled) -eq $false) {
+                        Write-Output '  the timer was switched back off'
+                        return
+                    }
+                }
+            } catch { }
+        }
+        Write-Output '  the timer setting could not be restored'
+    } catch {
+        Write-Output ('  could not restore the timer setting: ' + $_.Exception.Message)
+    }
+}
+
 if ($appIdx -lt 0) {
     Write-Output '  FAIL the covering window is not in the Z-order list'
+    Restore-Timer
     exit 1
 }
 if ($timerIdx2 -lt 0) {
     Write-Output '  FAIL the timer vanished from the Z-order list'
+    Restore-Timer
     exit 1
 }
 
 # Lower index = higher on screen. The application must be above the timer.
 if ($appIdx -lt $timerIdx2) {
     Write-Output ('  PASS the application is above the timer ({0} < {1}); the timer cannot cover it' -f $appIdx, $timerIdx2)
+    Restore-Timer
     exit 0
 }
 
 Write-Output ('  FAIL the timer is above the application ({0} < {1}) - it would cover the window' -f $timerIdx2, $appIdx)
+Restore-Timer
 exit 1

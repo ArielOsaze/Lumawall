@@ -1501,6 +1501,33 @@ namespace LumaWall
 
             // A real switch rather than an On/Off button: the button had to be read, and
             // its state was carried only by its colour.
+            //
+            // It is a CheckBox, not a Border with a click handler.
+            //
+            // As a Border it was invisible to Windows UI Automation: the whole app exposed
+            // 128 Text, 78 Button and 14 Slider elements and not one checkbox, so a screen
+            // reader could not tell that these switches existed, could not read their state
+            // and could not operate them. Automation tools could not either - the z-order
+            // checker could not switch the timer on to test it, and reported "no small
+            // LumaWall window found" instead.
+            //
+            // A CheckBox carries its own toggle state and TogglePattern, so both a screen
+            // reader and a checker can read and operate it. The look is unchanged: the
+            // default template is replaced by the same track-and-knob drawing.
+            var box = new CheckBox
+            {
+                IsChecked = value,
+                Width = 42,
+                Height = 23,
+                Cursor = Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center,
+                Focusable = true,
+                ToolTip = label,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(box, label);
+            if (!string.IsNullOrEmpty(hint))
+                System.Windows.Automation.AutomationProperties.SetHelpText(box, hint);
+
             var track = new Border
             {
                 Width = 42,
@@ -1509,10 +1536,8 @@ namespace LumaWall
                 Background = new SolidColorBrush(value ? CPrimary : Color.FromRgb(38, 44, 58)),
                 BorderBrush = new SolidColorBrush(value ? CPrimaryHi : CBorder),
                 BorderThickness = new Thickness(1),
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
             };
-            track.Child = new Border
+            var knob = new Border
             {
                 Width = 15,
                 Height = 15,
@@ -1522,15 +1547,38 @@ namespace LumaWall
                 Margin = new Thickness(3, 0, 3, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             };
-            track.MouseLeftButtonUp += delegate
+            track.Child = knob;
+            box.Content = track;
+
+            // Paint the switch from its own state, so a change made by a screen reader or an
+            // automation tool looks exactly like a change made by a click.
+            Action paint = delegate
             {
-                set(!value);
+                bool on = box.IsChecked == true;
+                track.Background = new SolidColorBrush(on ? CPrimary : Color.FromRgb(38, 44, 58));
+                track.BorderBrush = new SolidColorBrush(on ? CPrimaryHi : CBorder);
+                knob.HorizontalAlignment = on ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            };
+
+            box.Checked += delegate
+            {
+                paint();
+                set(true);
                 manager.RefreshOptions();
                 store.Save(config);
                 ReloadCurrentPage();
             };
-            Grid.SetColumn(track, 1);
-            row.Children.Add(track);
+            box.Unchecked += delegate
+            {
+                paint();
+                set(false);
+                manager.RefreshOptions();
+                store.Save(config);
+                ReloadCurrentPage();
+            };
+
+            Grid.SetColumn(box, 1);
+            row.Children.Add(box);
 
             return row;
         }

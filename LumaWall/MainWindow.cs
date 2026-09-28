@@ -3416,8 +3416,115 @@ namespace LumaWall
             foreach (Forms.Screen screen in Forms.Screen.AllScreens)
             {
                 string path;
-                if (config.MonitorVideos.TryGetValue(screen.DeviceName, out path) && File.Exists(path)) manager.Apply(screen, path, config.Mute, config.TargetFps);
+                if (!config.MonitorVideos.TryGetValue(screen.DeviceName, out path) || string.IsNullOrWhiteSpace(path))
+                    continue;
+
+                // A wallpaper whose file cannot be found used to be skipped in silence.
+                //
+                // That silence is a real defect, and it is what "primary display ga jalan
+                // animasinya" was: the config held a path that no longer resolved, the
+                // monitor was dropped from the restore loop without a log line and without
+                // anything on screen, and the desktop simply stayed empty on that display.
+                //
+                // The path can stop resolving for reasons that have nothing to do with the
+                // file being deleted. A name with a non-ASCII character is the one that
+                // actually happened here: the config stored "Ð¡iaccona - Wuthering
+                // Waves.mp4" while the disk holds "Сiaccona - Wuthering Waves.mp4" - the
+                // Cyrillic С had been mangled into two characters. File.Exists said no, the
+                // monitor was skipped, and the wallpaper that was sitting right there was
+                // never shown.
+                //
+                // So: try the recorded path, then look for a file in the same folder whose
+                // name matches once the encoding is repaired. If one is found, use it and
+                // write the corrected path back.
+                string resolved = ResolveWallpaperPath(path);
+                if (resolved == null)
+                {
+                    AppLog.Write(string.Format(
+                        "Wallpaper for {0} could not be found and was skipped: {1}",
+                        screen.DeviceName, path));
+                    continue;
+                }
+                if (!string.Equals(resolved, path, StringComparison.Ordinal))
+                {
+                    AppLog.Write(string.Format(
+                        "Wallpaper for {0} was recorded as '{1}' but found as '{2}'; using the file on disk",
+                        screen.DeviceName, path, resolved));
+                    config.MonitorVideos[screen.DeviceName] = resolved;
+                    store.Save(config);
+                }
+                manager.Apply(screen, resolved, config.Mute, config.TargetFps);
             }
+        }
+
+        /// <summary>
+        /// Finds the file a recorded wallpaper path means, repairing a mangled name if needed.
+        ///
+        /// Returns the path to use, or null when nothing matches.
+        ///
+        /// The repair exists because a path recorded with the wrong encoding does not fail
+        /// loudly - File.Exists just returns false - and the monitor is then restored with no
+        /// wallpaper at all. The two encodings that produce this are UTF-8 bytes read as
+        /// Latin-1 ("Ð¡" from the Cyrillic "С", which is what happened here) and the
+        /// reverse. Both are tried, and the result is compared against the real directory
+        /// listing, so a repair is only accepted when a file actually matches.
+        /// </summary>
+        private static string ResolveWallpaperPath(string path)
+        {
+            if (File.Exists(path)) return path;
+
+            string folder = Path.GetDirectoryName(path);
+            string name = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(name) || !Directory.Exists(folder))
+                return null;
+
+            var candidates = new List<string> { name };
+            try
+            {
+                // UTF-8 bytes that were read as Latin-1: "Ð¡" -> "С".
+                byte[] asLatin1 = Encoding.GetEncoding(28591).GetBytes(name);
+                candidates.Add(Encoding.UTF8.GetString(asLatin1));
+            }
+            catch { }
+            try
+            {
+                // The other direction: characters written as UTF-8 that were meant to be
+                // read back as Latin-1.
+                byte[] asUtf8 = Encoding.UTF8.GetBytes(name);
+                candidates.Add(Encoding.GetEncoding(28591).GetString(asUtf8));
+            }
+            catch { }
+
+            string[] onDisk;
+            try { onDisk = Directory.GetFiles(folder); }
+            catch { return null; }
+
+            foreach (string candidate in candidates)
+            {
+                // Exact name first.
+                string direct = Path.Combine(folder, candidate);
+                if (File.Exists(direct)) return direct;
+
+                // Then a case- and form-insensitive match against what is really there. This
+                // also covers a file whose name differs only by a Unicode normalisation the
+                // filesystem treats as distinct.
+                foreach (string file in onDisk)
+                {
+                    if (string.Equals(Path.GetFileName(file), candidate, StringComparison.OrdinalIgnoreCase))
+                        return file;
+                }
+            }
+
+            // Last resort: the same extension and the same tail, which is enough to identify
+            // a wallpaper whose name was mangled in the middle.
+            string tail = name.Length > 12 ? name.Substring(name.Length - 12) : name;
+            foreach (string file in onDisk)
+            {
+                string other = Path.GetFileName(file);
+                if (other.Length == name.Length && other.EndsWith(tail, StringComparison.OrdinalIgnoreCase))
+                    return file;
+            }
+            return null;
         }
 
         /// <summary>
