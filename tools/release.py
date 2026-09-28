@@ -215,7 +215,19 @@ def main():
          % (portable, zip_path)], timeout=600)
     print('     %s  (%.1f MB)' % (zip_path.name, zip_path.stat().st_size / (1024 * 1024)))
 
-    print('  6. build the MSIX')
+    print('  6. regenerate the tile assets, then build the MSIX')
+    # Every tile the manifest names is generated from one source before packing.
+    #
+    # Without this step the package carries whatever tile files happen to be on disk, which
+    # is how a release shipped a 150px file in the 310px slot and no Square310x310Logo.png
+    # at all. The generator also verifies each asset's size and that it is not blank, so a
+    # bad tile stops the release here rather than at Store certification.
+    #
+    # run() raises SystemExit on a non-zero exit, so reaching the next line means the
+    # generator succeeded.
+    run([sys.executable, 'tools/make-tile-assets.py'], timeout=600,
+        label='the tile assets could not be generated')
+
     run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
          '-File', 'tools/build_msix.ps1'], timeout=900)
     # build_msix.ps1 writes into work/outputs/, while Inno Setup writes into

@@ -1,193 +1,205 @@
-# LumaWall — Microsoft Store submission pack
+# LumaWall — Microsoft Store submission
 
-Everything needed to publish **LumaWall 4.0.1** to the Microsoft Store.
+Status: **siap submit**, kecuali dua nilai yang hanya bisa diambil dari Partner Center
+(lihat §2). Paketnya sudah lolos validasi lokal.
 
----
-
-## 0. Status build saat ini
-
-```
-✅ Aplikasi       LumaWall 4.0.1 (C# WPF + WebView2, .NET FW 4.8, x64)
-✅ Paket MSIX     outputs/LumaWall_4.0.1.0_x64.msix        13.67 MB
-✅ Installer      outputs/LumaWall-Setup-4.0.1.exe          14.53 MB
-✅ Portable       outputs/LumaWall-portable-4.0.1.zip       13.03 MB
-✅ Logo           98 aset (semua ukuran + skala + altform)
-✅ Validasi       40+ check LULUS (validate_msix.ps1)
-✅ Performa       CPU ~19% (dari 169%), RAM ~800 MB, GPU decode aktif
-✅ Anti-flicker   672 frame tes, 0 frame hitam
-```
-
-Jalankan validasi kapan saja:
-
-```powershell
-cd "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work"
-powershell -File validate_msix.ps1
-```
+Versi: **4.4.9.0**. Diperbarui: 28 September 2026.
 
 ---
 
-## 1. Artefak yang siap diunggah
+## 1. Artefak
 
-Semua ada di **`bik/outputs/`** — subfolder `store/` berisi paket MS + aset
-marketing.
-
-| File | Ukuran | Dipakai untuk |
+| Berkas | Ukuran | Dipakai untuk |
 |---|---|---|
-| `outputs/store/LumaWall_4.0.1.0_x64.msix` | 13.67 MB | **Paket yang diunggah ke Partner Center** |
-| `outputs/store/StoreListing_300x300.png` | 300×300 | Store listing icon |
-| `outputs/store/BoxArt_1080x1080.png` | 1080×1080 | Box art (wajib) |
-| `outputs/store/PosterArt_720x1080.png` | 720×1080 | Poster art (opsional) |
-| `outputs/store/HeroArt_1920x1080.png` | 1920×1080 | Hero art (opsional) |
-| `outputs/LumaWall-Setup-4.0.1.exe` | 14.53 MB | Installer klasik (sideload / situs sendiri) |
-| `outputs/store/LumaWall-portable-4.0.1.zip` | 13.03 MB | Versi portable |
-| `outputs/store/STORE-SUBMISSION.md` | — | Salinan dokumen ini |
+| `outputs/LumaWall_4.4.9.0_x64.msix` | 15.76 MB | **Yang diunggah ke Partner Center** |
+| `site/assets/downloads/LumaWall-Setup-4.4.9.0.exe` | 15.6 MB | Installer klasik (situs sendiri) |
+| `site/assets/downloads/LumaWall-portable-4.4.9.0.zip` | 14.3 MB | Versi portable |
+| `store-art/BoxArt_1080x1080.png` | 1080×1080 | Box art (wajib) |
+| `store-art/PosterArt_720x1080.png` | 720×1080 | Poster art |
+| `store-art/HeroArt_1920x1080.png` | 1920×1080 | Hero art |
+| `store-art/StoreListing_300x300.png` | 300×300 | Store listing icon |
 
-### Identitas brand (satu sumber, tiga tempat)
+Identitas paket (dari `msix/AppxManifest.xml`):
 
-Logo dibuat sekali oleh `make_store_assets.py` lalu dipakai di tiga tempat
-sehingga tidak mungkin beda lagi:
-
-| Tempat | Sumber |
-|---|---|
-| Ikon EXE + shortcut + installer | `LumaWall/app.ico` (7 ukuran: 16–256px) |
-| Title bar di dalam aplikasi | `MainWindow.BuildLogoMark()` — grid 3×3 identik |
-| Tile & splash MS Store | `LumaWall/Assets/*.png` (98 file) |
-
-Mark: array 3×3 pane dengan gutter seragam, kolom **crimson → putih → cyan**,
-di atas squircle gelap bergradasi. Tetap terbaca di 16px karena bentuknya blok
-kontras, bukan garis tipis.
+```
+Name        LumaWall.DesktopEngine
+Publisher   CN=LumaWall            <-- harus diganti, lihat §2
+Version     4.4.9.0
+Arch        x64
+```
 
 ---
 
-## 2. Yang WAJIB diganti sebelum submit
+## 2. Dua nilai yang WAJIB diambil dari Partner Center
 
-Nilai di bawah ini harus **persis** sama dengan yang ada di Partner Center.
-Kalau tidak sama, submission akan ditolak saat validasi identitas.
-
-Buka `msix/AppxManifest.xml`:
-
-```xml
-<Identity
-  Name="LumaWall.DesktopEngine"      <!-- ganti dengan "Nama aplikasi" yang direservasi -->
-  Publisher="CN=LumaWall"            <!-- ganti dengan "Publisher CN" dari Partner Center -->
-  Version="4.0.1.0"
-  ProcessorArchitecture="x64" />
-```
-
-Cara mendapatkannya:
+Paket akan ditolak saat validasi identitas kalau dua nilai ini tidak persis sama dengan
+yang ada di akun Partner Center.
 
 1. Buka <https://partner.microsoft.com/dashboard>
 2. **Apps and offers → Apps → New product → MSIX or PWA app**
-3. Reservasi nama **LumaWall** → salin nilai **Package/Identity/Name**
-4. **Product management → Product identity** → salin nilai **Package/Identity/Publisher** (format `CN=...`)
+3. Reservasi nama **LumaWall** → salin **Package/Identity/Name**
+4. **Product management → Product identity** → salin **Package/Identity/Publisher**
+   (formatnya `CN=...`)
 
-Setelah diganti, jalankan ulang:
+Lalu edit `msix/AppxManifest.xml`:
+
+```xml
+<Identity
+  Name="LumaWall.DesktopEngine"   <!-- ganti dengan Package/Identity/Name -->
+  Publisher="CN=LumaWall"         <!-- ganti dengan Package/Identity/Publisher -->
+  Version="4.4.9.0"
+  ProcessorArchitecture="x64" />
+```
+
+Build ulang:
+
+```bash
+python tools/build_msix.ps1        # atau: python tools/release.py 4.4.10.0
+python tools/check-store-package.py
+```
+
+Checker akan mengingatkan selama `Publisher` masih `CN=LumaWall`.
+
+---
+
+## 3. Yang sudah diverifikasi
+
+`python tools/check-store-package.py` memeriksa aturan yang benar-benar menolak submission:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Identity Name legal | ✅ `LumaWall.DesktopEngine` |
+| Publisher berupa distinguished name | ⚠️ masih placeholder |
+| Version empat angka, cocok dengan nama berkas | ✅ `4.4.9.0` |
+| Setiap aset yang dirujuk manifest ada di paket | ✅ 8/8 |
+| Setiap aset berukuran sesuai namanya | ✅ `Square310x310Logo` benar 310×310 |
+| StoreLogo ada (wajib) | ✅ 50×50 |
+| `runFullTrust` dideklarasikan | ✅ |
+| `internetClient` dideklarasikan | ✅ |
+| WebView2 sebagai external dependency | ✅ |
+| Tidak ada berkas yang ditolak Store | ✅ 0 |
+| Ukuran paket wajar | ✅ 15.76 MB |
+
+**Dua bug nyata yang ditemukan dan diperbaiki di sini:**
+
+1. `Square310x310Logo.png` **tidak ada sama sekali**, dan manifest menunjuk berkas 150×150
+   untuk slot 310×310. `Square71x71Logo` menunjuk berkas 44×44. Store menolak ukuran yang
+   tidak sesuai nama. Diperbaiki: `tools/make-tile-assets.py` membuat kedelapan aset dari
+   satu sumber, semua ukuran + varian skala 125/150/200/400%.
+2. Validator di `tools/build_msix.ps1` memakai **daftar nama hardcoded** yang tidak memuat
+   `Square71x71Logo` dan `Square310x310Logo` — itulah sebabnya bug di atas bisa lolos.
+   Sekarang ukuran dibaca dari manifest itu sendiri, jadi aset baru otomatis ikut divalidasi.
+
+Validasi tambahan yang bisa dijalankan kapan saja:
+
+```bash
+python tools/check-store-package.py     # tidak butuh admin
+python tools/verify-all.py              # 40 checker untuk app + situs
+```
+
+### App Certification Kit (gate terakhir)
+
+`appcert.exe` adalah alat resmi Microsoft dan **butuh shell Administrator** — dijalankan
+tanpa elevasi ia gagal dengan "The requested operation requires elevation". Jalankan sendiri
+dari PowerShell sebagai Administrator:
 
 ```powershell
-cd "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work"
-python make_store_assets.py      # regenerate aset (opsional)
-powershell -File build_msix.ps1  # build ulang paket
+& "C:\Program Files (x86)\Windows Kits\10\App Certification Kit\appcert.exe" `
+  -appx "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work\outputs\LumaWall_4.4.9.0_x64.msix" `
+  -reportoutputpath "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work\build\appcert.xml"
 ```
 
+Partner Center menjalankan pemeriksaan yang sama saat submission, jadi kegagalan di sini
+akan muncul sebagai penolakan di sana.
+
 ---
 
-## 3. Checklist persyaratan Store (sudah dipenuhi)
+## 4. Aset halaman Store
 
-| Persyaratan | Status | Bukti |
+Sudah disiapkan, tinggal diunggah:
+
+| Slot Partner Center | Berkas | Ukuran |
 |---|---|---|
-| Identity Name & Publisher | ⚠️ perlu diisi dari Partner Center | `AppxManifest.xml` |
-| Version format 4 angka | ✅ | `4.0.1.0` |
-| ProcessorArchitecture x64 | ✅ | `x64` |
-| TargetDeviceFamily Windows.Desktop | ✅ | MinVersion `10.0.17763.0` |
-| StoreLogo 50×50 | ✅ | tervalidasi |
-| Square44x44Logo 44×44 | ✅ | tervalidasi |
-| Square150x150Logo 150×150 | ✅ | tervalidasi |
-| Wide310x150Logo 310×150 | ✅ | tervalidasi |
-| SplashScreen 620×300 | ✅ | tervalidasi |
-| BadgeLogo 24×24 (monokrom) | ✅ | tervalidasi |
-| Skala 125/150/200/400% | ✅ | 98 file aset |
-| `runFullTrust` (reparent WorkerW + FFmpeg) | ✅ | capability dideklarasikan |
-| Bahasa: id, en, zh, ja | ✅ | 4 `<Resource Language>` |
-| Deskripsi & DisplayName | ✅ | manifest Properties |
-| Startup task (ganti HKCU Run) | ✅ | `windows.startupTask` |
-| Umur rating / kategori | ⚠️ isi kuesioner di Partner Center | — |
-| Privacy policy URL | ⚠️ wajib kalau mengumpulkan data | lihat §5 |
+| Box art (wajib) | `store-art/BoxArt_1080x1080.png` | 1080×1080 |
+| Poster art | `store-art/PosterArt_720x1080.png` | 720×1080 |
+| Hero art | `store-art/HeroArt_1920x1080.png` | 1920×1080 |
+| Store listing icon | `store-art/StoreListing_300x300.png` | 300×300 |
+
+Semua memakai logo "L" yang sama dengan situs, ikon aplikasi, dan tile Start menu.
 
 ---
 
-## 4. Langkah submit
+## 5. Langkah submit
 
 1. **Partner Center → Apps → New product → MSIX or PWA app**
-2. Reservasi nama **LumaWall**, salin Identity (lihat §2)
-3. Update `AppxManifest.xml`, jalankan `build_msix.ps1`
-4. **Packages** → upload `LumaWall_4.0.0.0_x64.msix`
-5. **Store listing** → unggah `store-art/*` dan isi:
-   - Deskripsi singkat (≤ 100 karakter):
-     > Live wallpaper engine: video & image wallpapers on every monitor, GPU-accelerated.
-   - Deskripsi lengkap (≤ 10.000 karakter) — draf di §6
-   - Kata kunci: `wallpaper`, `live wallpaper`, `video wallpaper`, `multi monitor`, `desktop`
-6. **Age ratings** → isi kuesioner IARC
-   - Catatan: katalog punya kategori **Mature 18+**. Pilih jawaban jujur
-     "konten sugestif" supaya rating keluar benar (kemungkinan **PEGI 12 / ESRB T**),
-     atau sembunyikan kategori itu lewat konfigurasi katalog untuk rating lebih rendah.
-7. **Properties** → kategori `Personalization`, lalu **Submit**
+2. Reservasi nama **LumaWall**, salin Identity (§2), perbarui manifest, build ulang
+3. **Packages** → unggah `outputs/LumaWall_4.4.9.0_x64.msix`
+4. **Store listing** → isi:
+   - **Deskripsi singkat** (≤100 karakter):
+     > Wallpaper hidup untuk setiap monitor. Video didekode GPU, CPU tetap rendah.
+   - **Deskripsi lengkap** — draf di §7
+   - **Kata kunci**: `wallpaper`, `live wallpaper`, `video wallpaper`, `multi monitor`, `desktop`
+   - **Kategori**: Personalization
+5. **Age ratings** → kuesioner IARC. Katalog memuat kategori **Mature 18+**, jadi jawab
+   jujur "konten sugestif". Rating yang keluar kemungkinan PEGI 12 / ESRB T. Kalau kamu mau
+   rating lebih rendah, sembunyikan kategori itu dari katalog sebelum submit.
+6. **Properties** → kategori `Personalization`, lalu **Submit**
+
+### URL privacy policy (wajib karena app mengakses internet)
+
+```
+https://lumawall.xinet.id/privacy/       (Indonesia)
+https://lumawall.xinet.id/en/privacy/    (English)
+```
+
+Halaman ini sudah ada, sudah ditautkan di footer kedua versi situs, dan sudah masuk
+`sitemap.xml`.
 
 ---
 
-## 5. Privacy policy (template)
+## 6. Catatan penting untuk MSIX
 
-Store mewajibkan URL privacy policy kalau aplikasi mengakses internet
-(LumaWall mengunduh dari feed katalog dan memakai thumbnail online).
-
-```
-LumaWall Privacy Policy
-
-LumaWall berjalan sepenuhnya di perangkat Anda.
-
-Data yang dikumpulkan: tidak ada.
-  - Tidak ada akun, tidak ada telemetri, tidak ada analitik.
-  - Wallpaper yang Anda pilih disimpan lokal di
-    %LOCALAPPDATA%\LumaWall\config.json.
-
-Koneksi jaringan:
-  - Hanya terjadi saat Anda menekan "Unduh" pada katalog, atau saat feed
-    katalog dikonfigurasi. Permintaan langsung ke URL penyedia wallpaper
-    yang Anda pilih. Tidak ada data yang dikirim ke pengembang.
-
-Konten pihak ketiga:
-  - Wallpaper diunduh dari penyedia asal; hak dan lisensi mengikuti sumber
-    masing-masing, tercatat pada file .license.txt di samping setiap unduhan.
-
-Kontak: <email-anda>
-```
-
-Simpan sebagai halaman publik (GitHub Pages / situs sendiri) lalu tempel URL-nya
-di Partner Center.
+- **Autostart.** Di dalam MSIX, kunci `HKCU\...\Run` di-virtualisasi sehingga tidak
+  berpengaruh. Manifest sudah mendeklarasikan `windows.startupTask`; pengguna
+  mengaktifkannya lewat **Task Manager → Startup**.
+- **Unduhan wallpaper** disimpan di `%LOCALAPPDATA%\LumaWall` (di luar paket), jadi tidak
+  terkena virtualisasi dan tetap ada saat aplikasi diperbarui.
+- **WebView2 Runtime** sudah tersedia di Windows 10/11 modern. Deklarasi
+  `win32dependencies:ExternalDependency` membuat App Installer memasangnya otomatis kalau
+  belum ada; `Optional="true"` menjaga instalasi offline tetap jalan (aplikasi menampilkan
+  pesan yang jelas alih-alih gagal start).
+- **FFmpeg** tidak dibundel. Fitur "Optimalkan" memerlukan `ffmpeg.exe` yang dipasang
+  terpisah; tanpa itu fitur tersebut menampilkan pesan, dan sisa aplikasi tetap berfungsi.
 
 ---
 
-## 6. Draf deskripsi Store (Indonesia)
+## 7. Draf deskripsi Store
 
-**LumaWall — wallpaper hidup untuk semua monitor.**
+**LumaWall — wallpaper hidup untuk setiap monitor.**
 
-LumaWall menghidupkan desktop Anda dengan video dan gambar, di setiap monitor,
-tanpa membebani CPU.
+LumaWall menghidupkan desktop dengan video dan gambar, di setiap monitor, tanpa membebani
+CPU.
 
 **Dibuat untuk ringan**
-Video didekode di GPU (hardware decode), jadi CPU tetap rendah. Pilih batas
-15, 24, atau 30 FPS sesuai kebutuhan.
+Video didekode di chip grafis, bukan CPU. Pilih batas 15, 24, atau 30 FPS sesuai kebutuhan.
 
 **Semua monitor, satu klik**
-Tetapkan wallpaper berbeda untuk tiap layar, atau terapkan ke semua monitor
-sekaligus. Simpan susunan favorit sebagai profil dan pulihkan dengan satu klik.
+Tetapkan wallpaper berbeda untuk tiap layar, atau terapkan ke semua monitor sekaligus.
+Simpan susunan favorit sebagai profil dan pulihkan dengan satu klik.
 
-**Koleksi + katalog**
-Tambahkan video dan gambar pribadi Anda, atau jelajahi katalog bawaan dengan
-ribuan pilihan. Setiap unduhan menyimpan file lisensi berisi kreator dan sumber.
+**22.000+ wallpaper**
+Jelajahi katalog bawaan yang seluruhnya dinamis dan HD, dengan 16 kategori. Atau tambahkan
+video dan gambar pribadimu. Setiap unduhan menyimpan berkas lisensi berisi kreator dan
+sumbernya.
+
+**Widget jam di desktop**
+Jam digital bergaya lock screen iOS, dengan sepuluh gaya, tanggal, dan format 12/24 jam.
+Duduk di lapisan desktop yang sama dengan wallpaper, jadi tidak pernah menutupi aplikasi
+yang sedang kamu buka.
 
 **Otomatis hemat daya**
-Wallpaper berhenti sendiri saat aplikasi lain fullscreen, saat laptop memakai
-baterai, atau saat Anda memintanya. Tidak ada gangguan saat bermain game.
+Wallpaper berhenti sendiri saat aplikasi lain fullscreen, saat laptop memakai baterai, atau
+saat kamu memintanya. Tidak ada gangguan saat bermain game.
 
 **Fitur**
 - Video dan gambar sebagai wallpaper desktop
@@ -195,57 +207,22 @@ baterai, atau saat Anda memintanya. Tidak ada gangguan saat bermain game.
 - Profil multi-monitor yang bisa disimpan
 - Batas FPS 15 / 24 / 30
 - Pause otomatis (fullscreen, maximized, baterai)
+- Widget jam: 10 gaya, tanggal, format 12/24 jam, posisi bebas
 - Optimalkan video ke FPS pilihan (butuh FFmpeg)
 - Antarmuka 4 bahasa: Indonesia, English, 简体中文, 日本語
 - Wallpaper tetap berjalan saat jendela ditutup ke system tray
 - Jalankan otomatis saat masuk Windows
 
-**Catatan**: LumaWall menempatkan wallpaper di lapisan desktop Windows
-(WorkerW), jadi ikon desktop dan aplikasi Anda tetap berada di atasnya.
-Ini bukan overlay topmost.
+**Catatan**: LumaWall menempatkan wallpaper di lapisan desktop Windows (WorkerW), jadi ikon
+desktop dan aplikasi kamu tetap berada di atasnya. Ini bukan overlay topmost.
 
 ---
 
-## 7. Cara rebuild semuanya dari nol
+## 8. Rebuild semuanya
 
-```powershell
-cd "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work"
-
-# 1. aset logo MS Store + Store art + app.ico
-python make_store_assets.py
-
-# 2. compile aplikasi
-& "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe" `
-  LumaWall\LumaWall.csproj /p:Configuration=Release `
-  /p:FrameworkPathOverride="C:\Windows\Microsoft.NET\Framework64\v4.0.30319" /v:minimal /nologo
-
-# 3. installer klasik
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer\LumaWall.iss
-
-# 4. paket MS Store
-powershell -File build_msix.ps1
-
-# 5. validasi (opsional, sama seperti yang dipakai Store)
-& "C:\Program Files (x86)\Windows Kits\10\App Certification Kit\appcert.exe" `
-  test -appxpackagepath outputs\LumaWall_4.0.0.0_x64.msix `
-  -reportoutputpath appcert-report.xml
+```bash
+python tools/make-tile-assets.py    # 8 aset tile × 5 skala, dari satu sumber
+python tools/release.py 4.4.10.0    # app, installer, portable, msix, situs, deploy
+python tools/check-store-package.py # validasi paket Store
+python tools/verify-all.py          # 40 checker
 ```
-
----
-
-## 8. Catatan penting untuk MSIX
-
-- **Autostart**: di dalam MSIX, kunci `HKCU\...\Run` di-virtualisasi sehingga
-  tidak berpengaruh. Manifest sudah mendeklarasikan `windows.startupTask`.
-  Aplikasi tetap boleh menulis kunci Run (untuk build installer klasik),
-  tapi di MSIX pakai **Task Manager → Startup** untuk mengaktifkannya.
-- **FFmpeg**: fitur "Optimalkan" membutuhkan `ffmpeg.exe`. Untuk Store, taruh
-  `ffmpeg.exe` di folder paket kalau ingin fitur ini jalan tanpa instalasi
-  tambahan (perhatikan lisensi FFmpeg: build LGPL/GPL harus disertakan
-  lisensinya di paket).
-- **Unduhan wallpaper** disimpan di `%LOCALAPPDATA%\LumaWall` (di luar paket),
-  jadi tidak kena masalah virtualisasi dan tetap ada saat aplikasi di-update.
-- **WebView2 Runtime**: sudah tersedia di Windows 10/11 modern. Kalau ingin
-  aman untuk perangkat lama, tambahkan `Microsoft.WebView2` sebagai
-  framework dependency, atau biarkan aplikasi menampilkan pesan bila runtime
-  tidak ditemukan.

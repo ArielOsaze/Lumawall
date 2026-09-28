@@ -22,7 +22,7 @@
   <Identity
     Name="LumaWall.DesktopEngine"
     Publisher="CN=LumaWall"
-    Version="4.4.9.0"
+    Version="4.5.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -69,8 +69,8 @@
         AppListEntry="default">
         <uap:DefaultTile
           Wide310x150Logo="TileAssets\Wide310x150Logo.png"
-          Square71x71Logo="TileAssets\Square44x44Logo.png"
-          Square310x310Logo="TileAssets\Square150x150Logo.png"
+          Square71x71Logo="TileAssets\Square71x71Logo.png"
+          Square310x310Logo="TileAssets\Square310x310Logo.png"
           ShortName="LumaWall">
           <uap:ShowNameOnTiles>
             <uap:ShowOn Tile="square150x150Logo" />

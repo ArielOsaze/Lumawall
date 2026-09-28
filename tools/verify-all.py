@@ -80,6 +80,8 @@ CHECKS = [
      ['python', 'tools/verify-live-downloads.py']),
     ('the installer was built from the current binary',
      ['python', 'tools/verify-installer-payload.py']),
+    ('the Store package is well formed',
+     ['python', 'tools/check-store-package.py']),
     ('every promo string is translated and fits',
      ['python', 'tools/check-promo-copy.py']),
     ('page behaviour: autoplay, crop, reveals, copy',

@@ -28,4 +28,20 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/"/>
   </url>
+  <!-- The privacy policy is listed because the Store requires a public URL for it, and a
+       page that is only reachable from a footer link is slow for a reviewer to find. -->
+  <url>
+    <loc>https://lumawall.xinet.id/privacy/</loc>
+    <lastmod>2026-09-28</lastmod>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/privacy/"/>
+  </url>
+  <url>
+    <loc>https://lumawall.xinet.id/en/privacy/</loc>
+    <lastmod>2026-09-28</lastmod>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/privacy/"/>
+  </url>
 </urlset>

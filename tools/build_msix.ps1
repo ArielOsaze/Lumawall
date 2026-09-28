@@ -91,28 +91,44 @@ Write-Output ("   Identity : " + $identity.Name + " / " + $identity.Publisher + 
 $capabilities = $manifest.Package.Capabilities.ChildNodes | ForEach-Object { $_.Name }
 Write-Output ("   Caps     : " + ($capabilities -join ', '))
 
-Write-Output '=== 4. Validate logo dimensions ==='
-$expect = @{
-    'StoreLogo.png'         = @(50, 50)
-    'Square44x44Logo.png'   = @(44, 44)
-    'Square150x150Logo.png' = @(150, 150)
-    'Wide310x150Logo.png'   = @(310, 150)
-    'SplashScreen.png'      = @(620, 300)
-    'BadgeLogo.png'         = @(24, 24)
-    'LockScreenLogo.png'    = @(24, 24)
-}
+Write-Output '=== 4. Validate every tile asset the manifest names ==='
+# The sizes are derived from the manifest's own references, not from a hand-kept list.
+#
+# A hand-kept list is what let a real defect through: it validated seven names and omitted
+# Square71x71Logo and Square310x310Logo, so a package shipped with a 44px file in the 71px
+# slot, a 150px file in the 310px slot, and no Square310x310Logo.png at all. The Store
+# rejects that; locally it just looks blurry.
+#
+# The nominal size is in the file name (Square310x310Logo -> 310x310, Wide310x150Logo ->
+# 310x150), so the expected dimensions can be read off the reference itself.
 Add-Type -AssemblyName System.Drawing
+$tileRefs = [regex]::Matches($manifestText, '(Square\d+x\d+Logo|Wide\d+x\d+Logo|StoreLogo|SplashScreen|BadgeLogo|LockScreenLogo)\.png') |
+    ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+
 $bad = 0
-foreach ($name in $expect.Keys) {
-    $p = Join-Path $tileDst $name
-    if (-not (Test-Path $p)) { Write-Output ("   MISSING " + $name); $bad++; continue }
+foreach ($base in $tileRefs) {
+    # The nominal dimensions: two numbers in the name, or the fixed sizes for the
+    # assets whose names do not carry them.
+    $wantW = 0; $wantH = 0
+    if ($base -match '(\d+)x(\d+)') { $wantW = [int]$Matches[1]; $wantH = [int]$Matches[2] }
+    elseif ($base -eq 'StoreLogo')   { $wantW = 50;  $wantH = 50 }
+    elseif ($base -eq 'SplashScreen'){ $wantW = 620; $wantH = 300 }
+    elseif ($base -eq 'BadgeLogo' -or $base -eq 'LockScreenLogo') { $wantW = 24; $wantH = 24 }
+    else { Write-Output ("   SKIP    " + $base + " (unknown nominal size)"); continue }
+
+    $p = Join-Path $tileDst ($base + '.png')
+    if (-not (Test-Path $p)) {
+        Write-Output ("   MISSING " + $base + ".png")
+        $bad++
+        continue
+    }
     $img = [System.Drawing.Image]::FromFile($p)
-    $ok = ($img.Width -eq $expect[$name][0] -and $img.Height -eq $expect[$name][1])
+    $ok = ($img.Width -eq $wantW -and $img.Height -eq $wantH)
     if (-not $ok) { $bad++ }
-    Write-Output ("   {0,-24} {1}x{2} {3}" -f $name, $img.Width, $img.Height, $(if ($ok) { 'OK' } else { 'WRONG SIZE' }))
+    Write-Output ("   {0,-22} {1}x{2} want {3}x{4}  {5}" -f $base, $img.Width, $img.Height, $wantW, $wantH, $(if ($ok) { 'OK' } else { 'WRONG SIZE' }))
     $img.Dispose()
 }
-if ($bad -gt 0) { throw "$bad logo(s) failed validation" }
+if ($bad -gt 0) { throw "$bad tile asset(s) failed validation" }
 
 Write-Output '=== 5. Validate every manifest asset reference ==='
 # The manifest points at image files by relative path. A typo, a case-only
