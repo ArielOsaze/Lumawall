@@ -3291,8 +3291,11 @@ namespace LumaWall
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            var loadedClock = System.Diagnostics.Stopwatch.StartNew();
             config.Library = config.Library.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            AppLog.Write(string.Format("startup: library filtered ({0} files) at {1} ms", config.Library.Count, loadedClock.ElapsedMilliseconds));
             store.Save(config);
+            AppLog.Write(string.Format("startup: config saved at {0} ms", loadedClock.ElapsedMilliseconds));
 
             // The wallpapers come up first, and the catalogue loads after.
             //

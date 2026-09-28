@@ -279,13 +279,16 @@ namespace LumaWall
                     e.SetObserved();
                 };
 
+                var startupClock = System.Diagnostics.Stopwatch.StartNew();
                 var window = new MainWindow();
+                AppLog.Write(string.Format("startup: MainWindow built in {0} ms", startupClock.ElapsedMilliseconds));
                 using (var broker = new SingleInstanceBroker(InstancePipeName, delegate(string[] args)
                 {
                     window.Dispatcher.BeginInvoke(new Action(delegate { window.HandleSecondaryInvocation(args); }));
                 }))
                 {
                     broker.Start();
+                    AppLog.Write(string.Format("startup: broker up at {0} ms", startupClock.ElapsedMilliseconds));
                     app.Run(window);
                 }
                 AppLog.Write("Primary process stopped");

@@ -71,6 +71,24 @@ HWND_TOP = 0
 SWP_NOSIZE = 0x0001
 SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
+SW_RESTORE = 9
+SW_SHOWNORMAL = 1
+
+
+class POINT(ctypes.Structure):
+    _fields_ = [('x', ctypes.c_long), ('y', ctypes.c_long)]
+
+
+class WINDOWPLACEMENT(ctypes.Structure):
+    """The window's placement, including the size it should return to.
+
+    Needed because a minimised window keeps the sentinel size (160x28) in
+    rcNormalPosition, so SW_RESTORE alone brings it back as a sliver. Writing a real size
+    here is what makes the restore land at a usable size.
+    """
+    _fields_ = [('length', wintypes.UINT), ('flags', wintypes.UINT),
+                ('showCmd', wintypes.UINT), ('ptMinPosition', POINT),
+                ('ptMaxPosition', POINT), ('rcNormalPosition', RECT)]
 
 
 def monitors():
@@ -165,6 +183,60 @@ def park(hwnd, monitor=None, margin=8, resize_to_fit=False):
     if target is None or not hwnd:
         return None, None
     before = rect_of(hwnd)
+
+    # A maximised or minimised window ignores SetWindowPos: Windows keeps it filling its
+    # monitor (or collapsed to the taskbar sentinel), and the call reports success while
+    # the window does not move.
+    #
+    # Measured, three ways:
+    #   · maximised: the window stayed at -1750,65 on DISPLAY2 while the check reported
+    #     driving it on DISPLAY3, and two of the three buttons were read from the wrong
+    #     place;
+    #   · minimised: the window kept its 160x28 sentinel size while its position moved,
+    #     and the checker then measured a 160x28 strip of empty screen and PASSED - a false
+    #     pass, which is worse than a failure;
+    #   · minimised, second form: IsIconic() reported 0 while the rectangle was
+    #     -32000,-32000 - so IsIconic alone is not a reliable test on this machine. The
+    #     sentinel rectangle is, and it is checked as well.
+    #
+    # Restoring first is what makes the move take effect.
+    #
+    # ShowWindow(SW_RESTORE) is not enough here, and neither is SW_MAXIMIZE-then-restore.
+    # The app draws its own title bar through WPF's WindowChrome, and the window came back
+    # reporting the sentinel rectangle each time - measured repeatedly.
+    #
+    # SetWindowPlacement is what works, and it also repairs the stored normal size: a
+    # minimised window keeps its sentinel (160x28) in rcNormalPosition, so asking for
+    # SW_SHOWNORMAL alone would restore it to a sliver. The placement is given the size
+    # the window should have, and showCmd 1 (normal) puts it back on screen.
+    #
+    # Measured: 160x28 at -32000,-32000 -> 1280x680 at the requested position.
+    restored = False
+    if user32.IsIconic(hwnd) or user32.IsZoomed(hwnd) or before.left <= -30000 \
+            or (before.right - before.left) < 400:
+        place = WINDOWPLACEMENT()
+        place.length = ctypes.sizeof(WINDOWPLACEMENT)
+        user32.GetWindowPlacement(hwnd, ctypes.byref(place))
+        # A sane normal size: whatever was stored, unless it is the sentinel.
+        w = place.rcNormalPosition.right - place.rcNormalPosition.left
+        h = place.rcNormalPosition.bottom - place.rcNormalPosition.top
+        if w < 400 or h < 300:
+            w, h = 1280, 720
+        place.showCmd = SW_SHOWNORMAL
+        place.rcNormalPosition = RECT(target['x'] + margin, target['y'] + margin,
+                                      target['x'] + margin + w, target['y'] + margin + h)
+        user32.SetWindowPlacement(hwnd, ctypes.byref(place))
+        import time as _time
+        _time.sleep(0.7)
+        restored = True
+
+    # The size to use, measured AFTER any restore: a minimised window's 160x28 sentinel is
+    # not a size, and taking it as one shrank the window to a sliver that the checker then
+    # measured as empty desktop. Restoring also loses the original position, so `before` is
+    # re-read when that happened - there is nothing worth putting back to a minimised
+    # window's -32000,-32000.
+    if restored:
+        before = rect_of(hwnd)
 
     width, height = 0, 0
     if resize_to_fit:

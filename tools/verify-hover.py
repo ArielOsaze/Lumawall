@@ -53,6 +53,66 @@ class POINT(ctypes.Structure):
     _fields_ = [('x', ctypes.c_long), ('y', ctypes.c_long)]
 
 
+TITLE_BUTTONS = ('Minimize', 'Maximize', 'Close to tray')
+
+
+def title_buttons(window_rect):
+    """[(name, x)] for the title-bar buttons, read from the app itself.
+
+    The buttons are found by name through UI Automation rather than by fixed offsets from
+    the window's right edge. The offsets that were used before - right-110, right-66,
+    right-22 - were correct for a 1580x950 window on the primary screen, and two of the
+    three missed once the window was moved and resized to fit the 1366x768 test monitor.
+    The reading then said "minimize does not react to hover" about a button that was fine.
+
+    Falls back to the old offsets only if UI Automation cannot answer, so a machine where
+    the automation server is unavailable still gets a measurement rather than a crash.
+    """
+    script = r'''
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+$auto = [System.Windows.Automation.AutomationElement]
+$scope = [System.Windows.Automation.TreeScope]
+$ctrl = [System.Windows.Automation.ControlType]
+$win = $auto::RootElement.FindFirst($scope::Children,
+    (New-Object System.Windows.Automation.PropertyCondition($auto::NameProperty, 'LumaWall')))
+if (-not $win) { Write-Output 'NO_WINDOW'; exit }
+$bcond = New-Object System.Windows.Automation.PropertyCondition($auto::ControlTypeProperty, $ctrl::Button)
+foreach ($b in $win.FindAll($scope::Descendants, $bcond)) {
+    $n = $b.Current.Name
+    if ($n -eq 'Minimize' -or $n -eq 'Maximize' -or $n -eq 'Close to tray') {
+        $br = $b.Current.BoundingRectangle
+        if ($br.Width -gt 0) {
+            Write-Output ('BTN|{0}|{1}|{2}' -f $n, [int]($br.X + $br.Width / 2), [int]($br.Y + $br.Height / 2))
+        }
+    }
+}
+'''
+    try:
+        out = subprocess.run(['powershell', '-NoProfile', '-Command', script],
+                             capture_output=True, timeout=90)
+        text = out.stdout.decode('utf-8', 'replace')
+    except Exception:
+        text = ''
+
+    found = {}
+    for line in text.splitlines():
+        if line.startswith('BTN|'):
+            parts = line.split('|')
+            found[parts[1]] = (int(parts[2]), int(parts[3]))
+
+    if len(found) == len(TITLE_BUTTONS):
+        # Absolute screen coordinates, so the caller does not need to know the offsets.
+        return [(name.lower().split()[0], found[name]) for name in TITLE_BUTTONS]
+
+    # Fallback: the offsets that were correct before, as absolute positions. y is 27px
+    # below the window top, which is where the buttons sit in this title bar.
+    y = window_rect.top + 27
+    return [('minimize', (window_rect.right - 116, y)),
+            ('maximize', (window_rect.right - 72, y)),
+            ('close', (window_rect.right - 28, y))]
+
+
 def grab(rect, path):
     """Capture a screen rectangle, in the same coordinates GetWindowRect reports."""
     w, h = rect.right - rect.left, rect.bottom - rect.top
@@ -109,12 +169,16 @@ def main():
     monitor, was_at = test_screen.park(hwnd, margin=40, resize_to_fit=True)
     print('  driving it on %s' % test_screen.describe(monitor))
     try:
-        return _measure(hwnd, monitor)
+        return _measure(hwnd, monitor, pid)
     finally:
         test_screen.restore(hwnd, was_at)
 
 
-def _measure(hwnd, monitor):
+def _measure(hwnd, monitor, pid):
+    # The owning process id is passed in rather than looked up again: the hover is only
+    # believed when the window under the cursor belongs to this process, and a name that
+    # is not in scope here would raise instead - which is what happened when this became
+    # its own function and the parameter was forgotten.
     # Restore, then place the window wholly inside one monitor, so the right end of
     # the title bar is on a screen that exists.
     #
@@ -128,11 +192,16 @@ def _measure(hwnd, monitor):
     myt = ctypes.windll.kernel32.GetCurrentThreadId()
     user32.AttachThreadInput(fgt, myt, True)
     user32.ShowWindow(hwnd, 9)
-    # Sized to fit the test monitor, and placed at its top-left: the window has to be
-    # wholly inside one screen for the title-bar strip to be capturable.
-    user32.SetWindowPos(hwnd, HWND_TOPMOST, monitor['x'] + 40, monitor['y'] + 40,
-                        min(1200, monitor['width'] - 80), min(800, monitor['height'] - 80),
-                        SWP_SHOWWINDOW | SWP_NOACTIVATE)
+    # Raised, but NOT resized or moved: park() already put the window where it belongs,
+    # and changing it here desynchronised this check from the buttons it aims at.
+    #
+    # Measured: park() left the window at 1280 wide (right edge 3240), then this call
+    # shrank it to 1200 (right edge 3160) - and UI Automation went on reporting the
+    # buttons at 3124/3168/3212, positions from the OLD width. Two of the three were then
+    # outside the window, the pointer landed on the desktop, and the check reported that
+    # the buttons did not react.
+    user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                        SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
     user32.SetForegroundWindow(hwnd)
     user32.BringWindowToTop(hwnd)
     user32.AttachThreadInput(fgt, myt, False)
@@ -144,9 +213,24 @@ def _measure(hwnd, monitor):
         print('  the window is still minimised; restore it and re-run')
         return 1
     w = r.right - r.left
-    print('  window %d,%d  %dx%d' % (r.left, r.top, w, r.bottom - r.top))
+    h = r.bottom - r.top
+    # A minimised window reports a 160x28 sentinel at a normal-looking position on some
+    # builds, and a strip measured from it is empty screen - every button "reacts",
+    # because the pixels being compared are the desktop behind it. That produced a PASS
+    # over a window that was not on screen. A real window here is at least 900x600.
+    if w < 900 or h < 600:
+        print('  the window is %dx%d, which is not a restored window; re-run with it open'
+              % (w, h))
+        return 1
+    print('  window %d,%d  %dx%d' % (r.left, r.top, w, h))
 
-    strip = RECT(r.right - 150, r.top, r.right, r.top + 54)
+    # The strip is wide enough for all three buttons and their spacing, taken from where
+    # the buttons really are rather than from a fixed 150px: the buttons are 44px wide and
+    # the leftmost sits 138px from the right edge at this size, so 150 was only just enough.
+    buttons = title_buttons(r)
+    leftmost = min(x for _, (x, _) in buttons) - 40
+    strip = RECT(leftmost, r.top, r.right, r.top + 54)
+    print('  buttons at %s' % ', '.join('%s x=%d' % (n, x) for n, (x, _) in buttons))
     failures = []
 
     try:
@@ -168,7 +252,7 @@ def _measure(hwnd, monitor):
         print('  strip with nothing hovered reads %s' % (base[20, 8],))
         print()
 
-        for name, dx in [('minimize', 40), ('maximize', 84), ('close', 128)]:
+        for name, (button_x, _) in buttons:
             # Re-assert the foreground before each reading: another window can take
             # the top slot between samples, and then the app never sees MouseEnter.
             #
@@ -202,11 +286,11 @@ def _measure(hwnd, monitor):
                 user32.SetForegroundWindow(hwnd)
                 user32.AttachThreadInput(fgt2, myt, False)
                 time.sleep(0.6)
-                user32.SetCursorPos(r.right - 150 + dx, r.top + 27)
+                user32.SetCursorPos(button_x, r.top + 27)
                 time.sleep(1.0)
 
                 # Confirm the app is under the pointer before believing the reading.
-                pt = POINT(r.right - 150 + dx, r.top + 27)
+                pt = POINT(button_x, r.top + 27)
                 hit = user32.WindowFromPoint(pt)
                 hp = ctypes.c_ulong()
                 user32.GetWindowThreadProcessId(hit, ctypes.byref(hp))
@@ -217,11 +301,15 @@ def _measure(hwnd, monitor):
             im = grab(strip, os.path.join('build', 'hover-%s.png' % name))
             px = im.load()
 
+            # The comparison is over the whole captured strip, sized from the buttons
+            # themselves, rather than a fixed 150x54 that could cut a button off.
+            sw = strip.right - strip.left
+            sh = strip.bottom - strip.top
             changed = 0
             aero = 0
             cols = {}
-            for y in range(54):
-                for x in range(150):
+            for y in range(sh):
+                for x in range(sw):
                     c = px[x, y]
                     if (abs(c[0] - AERO[0]) < TOL and abs(c[1] - AERO[1]) < TOL
                             and abs(c[2] - AERO[2]) < TOL):
