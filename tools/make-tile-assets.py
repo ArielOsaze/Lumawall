@@ -80,13 +80,36 @@ def resize_contained(mark, width, height):
 
 
 def make_badge(mark, width, height):
-    """A white-on-transparent badge, from the mark's shape."""
-    a = np.asarray(mark.resize((width, height), Image.LANCZOS).convert('RGBA')).copy()
-    # Keep the silhouette, drop the colour: Windows tints the badge itself.
-    a[:, :, 0] = 255
-    a[:, :, 1] = 255
-    a[:, :, 2] = 255
-    return Image.fromarray(a, 'RGBA')
+    """A white-on-transparent badge carrying the mark's own shape.
+
+    Windows tints the badge, so it must be white pixels on transparency - no plate, no
+    gradient, no background. The source asset is a dark squircle with the mark inside it, so
+    simply whitening it produces a solid white square, which is what the first version of
+    this did: a badge that says nothing.
+
+    The mark is what is LIGHT inside the plate, because the plate is dark and the "L" is a
+    bright pink-to-cyan gradient. So the badge is built from the source's luminance: bright
+    pixels become white, dark plate becomes transparent.
+    """
+    src = mark.resize((width, height), Image.LANCZOS).convert('RGBA')
+    a = np.asarray(src).astype(float)
+
+    # Luminance of the visible pixels. The plate is dark (about 82/255), the "L" is bright
+    # (pink to cyan, well above 150), so a threshold in between separates them cleanly.
+    lum = a[:, :, :3].mean(axis=2)
+    alpha = a[:, :, 3] / 255.0
+
+    # Where the mark is: bright AND visible. A soft ramp rather than a hard cut, so the
+    # edges of the glyph stay smooth at 24px.
+    lo, hi = 110.0, 190.0
+    mask = np.clip((lum - lo) / (hi - lo), 0.0, 1.0) * alpha
+
+    out = np.zeros((height, width, 4), dtype=np.uint8)
+    out[:, :, 0] = 255
+    out[:, :, 1] = 255
+    out[:, :, 2] = 255
+    out[:, :, 3] = (mask * 255).round().astype(np.uint8)
+    return Image.fromarray(out, 'RGBA')
 
 
 def make_splash(mark, width, height):
@@ -161,6 +184,35 @@ def main():
             bad.append(base)
         else:
             print('    %-22s %.1f%% visible' % (base, visible * 100))
+
+    # The badge is special: it must be a SHAPE, not a filled rectangle.
+    #
+    # Windows tints the badge and draws it over the lock screen, so a solid square reads as
+    # a blank blob. The first version of this script whitened the whole source asset - which
+    # is a dark squircle with the mark inside it - and produced exactly that: 87.5% opaque,
+    # a white square with no glyph in it. A size check cannot see the difference, so this
+    # checks the shape.
+    print()
+    print('  checking the badge is a glyph, not a filled square:')
+    p = ASSETS / 'BadgeLogo.png'
+    if p.exists():
+        a = np.asarray(Image.open(p).convert('RGBA'))
+        al = a[:, :, 3]
+        filled = (al > 200).mean()
+        # A glyph covers well under half its box; a filled square covers nearly all of it.
+        if filled > 0.60:
+            print('    %-22s %.0f%% opaque  <<< FILLED SQUARE, not a glyph' % ('BadgeLogo', filled * 100))
+            bad.append('BadgeLogo')
+        elif filled < 0.03:
+            print('    %-22s %.0f%% opaque  <<< EMPTY' % ('BadgeLogo', filled * 100))
+            bad.append('BadgeLogo')
+        else:
+            print('    %-22s %.0f%% opaque - a glyph, not a square' % ('BadgeLogo', filled * 100))
+        # And it must be white, because Windows tints it.
+        vis = a[al > 200]
+        if len(vis) and not (vis[:, :3] > 240).all():
+            print('    %-22s is not white  <<< Windows tints it, so it must be white' % 'BadgeLogo')
+            bad.append('BadgeLogo')
 
     print()
     if bad:
