@@ -3,7 +3,7 @@
 Status: **siap submit**, kecuali dua nilai yang hanya bisa diambil dari Partner Center
 (lihat §2). Paketnya sudah lolos validasi lokal.
 
-Versi: **4.4.9.0**. Diperbarui: 28 September 2026.
+Versi: **4.5.6.0**. Diperbarui: 28 September 2026.
 
 ---
 
@@ -11,9 +11,9 @@ Versi: **4.4.9.0**. Diperbarui: 28 September 2026.
 
 | Berkas | Ukuran | Dipakai untuk |
 |---|---|---|
-| `outputs/LumaWall_4.4.9.0_x64.msix` | 15.76 MB | **Yang diunggah ke Partner Center** |
-| `site/assets/downloads/LumaWall-Setup-4.4.9.0.exe` | 15.6 MB | Installer klasik (situs sendiri) |
-| `site/assets/downloads/LumaWall-portable-4.4.9.0.zip` | 14.3 MB | Versi portable |
+| `outputs/LumaWall_4.5.6.0_x64.msix` | 15.76 MB | **Yang diunggah ke Partner Center** |
+| `site/assets/downloads/LumaWall-Setup-4.5.6.0.exe` | 15.6 MB | Installer klasik (situs sendiri) |
+| `site/assets/downloads/LumaWall-portable-4.5.6.0.zip` | 14.3 MB | Versi portable |
 | `store-art/BoxArt_1080x1080.png` | 1080×1080 | Box art (wajib) |
 | `store-art/PosterArt_720x1080.png` | 720×1080 | Poster art |
 | `store-art/HeroArt_1920x1080.png` | 1920×1080 | Hero art |
@@ -24,7 +24,7 @@ Identitas paket (dari `msix/AppxManifest.xml`):
 ```
 Name        LumaWall.DesktopEngine
 Publisher   CN=LumaWall            <-- harus diganti, lihat §2
-Version     4.4.9.0
+Version     4.5.6.0
 Arch        x64
 ```
 
@@ -47,7 +47,7 @@ Lalu edit `msix/AppxManifest.xml`:
 <Identity
   Name="LumaWall.DesktopEngine"   <!-- ganti dengan Package/Identity/Name -->
   Publisher="CN=LumaWall"         <!-- ganti dengan Package/Identity/Publisher -->
-  Version="4.4.9.0"
+  Version="4.5.6.0"
   ProcessorArchitecture="x64" />
 ```
 
@@ -70,7 +70,7 @@ Checker akan mengingatkan selama `Publisher` masih `CN=LumaWall`.
 |---|---|
 | Identity Name legal | ✅ `LumaWall.DesktopEngine` |
 | Publisher berupa distinguished name | ⚠️ masih placeholder |
-| Version empat angka, cocok dengan nama berkas | ✅ `4.4.9.0` |
+| Version empat angka, cocok dengan nama berkas | ✅ `4.5.6.0` |
 | Setiap aset yang dirujuk manifest ada di paket | ✅ 8/8 |
 | Setiap aset berukuran sesuai namanya | ✅ `Square310x310Logo` benar 310×310 |
 | StoreLogo ada (wajib) | ✅ 50×50 |
@@ -94,7 +94,7 @@ Validasi tambahan yang bisa dijalankan kapan saja:
 
 ```bash
 python tools/check-store-package.py     # tidak butuh admin
-python tools/verify-all.py              # 40 checker untuk app + situs
+python tools/verify-all.py              # 42 checker untuk app + situs
 ```
 
 ### App Certification Kit (gate terakhir)
@@ -105,7 +105,7 @@ dari PowerShell sebagai Administrator:
 
 ```powershell
 & "C:\Program Files (x86)\Windows Kits\10\App Certification Kit\appcert.exe" `
-  -appx "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work\outputs\LumaWall_4.4.9.0_x64.msix" `
+  -appx "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work\outputs\LumaWall_4.5.6.0_x64.msix" `
   -reportoutputpath "C:\Users\ariel\Documents\Codex\2026-09-20\bik\work\build\appcert.xml"
 ```
 
@@ -133,7 +133,7 @@ Semua memakai logo "L" yang sama dengan situs, ikon aplikasi, dan tile Start men
 
 1. **Partner Center → Apps → New product → MSIX or PWA app**
 2. Reservasi nama **LumaWall**, salin Identity (§2), perbarui manifest, build ulang
-3. **Packages** → unggah `outputs/LumaWall_4.4.9.0_x64.msix`
+3. **Packages** → unggah `outputs/LumaWall_4.5.6.0_x64.msix`
 4. **Store listing** → isi:
    - **Deskripsi singkat** (≤100 karakter):
      > Wallpaper hidup untuk setiap monitor. Video didekode GPU, CPU tetap rendah.
@@ -154,6 +154,32 @@ https://lumawall.xinet.id/en/privacy/    (English)
 
 Halaman ini sudah ada, sudah ditautkan di footer kedua versi situs, dan sudah masuk
 `sitemap.xml`.
+
+### Notes for certification (kolom ini wajib diisi, jangan dikosongkan)
+
+Peninjau Microsoft menjalankan app-nya selama beberapa menit dan menilai dari apa yang
+mereka lihat. LumaWall sengaja tidak menampilkan jendela saat start — desktop itu sendiri
+produknya — dan tanpa penjelasan itu terlihat seperti app yang gagal jalan. Salin ini apa
+adanya:
+
+> LumaWall is a live wallpaper engine. On first launch it starts minimised to the system
+> tray and begins rendering the selected wallpaper behind the desktop icons — the desktop
+> itself is the product, so an empty-looking window is not a fault. Open it from the tray
+> icon to see the interface.
+>
+> Two capabilities are used and both are necessary:
+>
+> * `runFullTrust` — the app reparents a window into Explorer's desktop layer (WorkerW) so
+>   the wallpaper sits behind the icons and behind every application, exactly like the
+>   built-in slideshow. It also starts a local FFmpeg process to decode video wallpapers.
+> * `internetClient` — the wallpaper catalogue is browsed online, and the app checks for
+>   updates.
+>
+> The catalogue contains no user-generated content. The mature category is a curated
+> subset that is off by default and requires the user to switch it on in Luma Studio.
+>
+> To see it working: launch it, open LumaWall from the tray, and pick any wallpaper. The
+> desktop changes immediately. Uninstalling restores the previous desktop wallpaper.
 
 ---
 
@@ -195,7 +221,8 @@ sumbernya.
 **Widget jam di desktop**
 Jam digital bergaya lock screen iOS, dengan sepuluh gaya, tanggal, dan format 12/24 jam.
 Duduk di lapisan desktop yang sama dengan wallpaper, jadi tidak pernah menutupi aplikasi
-yang sedang kamu buka.
+yang sedang kamu buka. Di meja dengan beberapa monitor, jamnya bisa ditaruh di layar mana
+saja — sama seperti wallpaper-nya.
 
 **Otomatis hemat daya**
 Wallpaper berhenti sendiri saat aplikasi lain fullscreen, saat laptop memakai baterai, atau
@@ -207,11 +234,12 @@ saat kamu memintanya. Tidak ada gangguan saat bermain game.
 - Profil multi-monitor yang bisa disimpan
 - Batas FPS 15 / 24 / 30
 - Pause otomatis (fullscreen, maximized, baterai)
-- Widget jam: 10 gaya, tanggal, format 12/24 jam, posisi bebas
+- Widget jam: 10 gaya, tanggal, format 12/24 jam, posisi bebas, pilih layar
 - Optimalkan video ke FPS pilihan (butuh FFmpeg)
 - Antarmuka 4 bahasa: Indonesia, English, 简体中文, 日本語
 - Wallpaper tetap berjalan saat jendela ditutup ke system tray
 - Jalankan otomatis saat masuk Windows
+- Semua kontrol bisa dioperasikan pembaca layar (UI Automation)
 
 **Catatan**: LumaWall menempatkan wallpaper di lapisan desktop Windows (WorkerW), jadi ikon
 desktop dan aplikasi kamu tetap berada di atasnya. Ini bukan overlay topmost.
@@ -224,5 +252,5 @@ desktop dan aplikasi kamu tetap berada di atasnya. Ini bukan overlay topmost.
 python tools/make-tile-assets.py    # 8 aset tile × 5 skala, dari satu sumber
 python tools/release.py 4.4.10.0    # app, installer, portable, msix, situs, deploy
 python tools/check-store-package.py # validasi paket Store
-python tools/verify-all.py          # 40 checker
+python tools/verify-all.py          # 42 checker
 ```
