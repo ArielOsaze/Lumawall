@@ -11,7 +11,7 @@
 //
 // Run:  node tools/check-page.mjs
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { existsSync, mkdtempSync } from 'node:fs';
@@ -82,6 +82,28 @@ const chrome = spawn(CHROME, [
   '--hide-scrollbars', '--window-size=1440,900',
   `http://127.0.0.1:${PORT}/`,
 ], { stdio: 'ignore' });
+
+// Kill the whole browser, not just the process that was spawned.
+//
+// chrome.kill() signals the launcher only. Chrome then leaves a dozen renderer, GPU and
+// utility processes behind, and they accumulate: after a few suite runs the machine had 61
+// orphaned Chrome processes, and the next browser check failed with "the page did not
+// load" because the port it wanted was still held.
+//
+// On Windows a child process cannot be signalled directly, so taskkill /T walks the tree.
+// On other platforms the process group is used.
+async function stopChrome() {
+  if (!chrome || chrome.exitCode !== null) return;
+  try {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/pid', String(chrome.pid), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      process.kill(-chrome.pid, 'SIGKILL');
+    }
+  } catch { /* already gone */ }
+  // Give the OS a moment to release the port before the next checker binds it.
+  await new Promise((r) => setTimeout(r, 400));
+}
 
 async function wsUrl() {
   for (let i = 0; i < 90; i++) {
@@ -344,12 +366,12 @@ check('no "yang memang"', copy.yang_memang === 0);
 console.log('');
 if (failures) {
   console.log('  ' + failures + ' check(s) failed');
-  sock.close(); chrome.kill(); srv.close();
+  sock.close(); await stopChrome(); srv.close();
   process.exit(1);
 }
 console.log('  all checks passed');
 
 sock.close();
-chrome.kill();
+await stopChrome();
 srv.close();
 process.exit(0);
