@@ -622,6 +622,17 @@ namespace LumaWall
         [DataMember] public bool ShowDate = true;        // the small line under a clock
         [DataMember] public bool TwelveHour = false;     // 9:41 rather than 09:41
         [DataMember] public bool BlinkAtEnd = true;
+
+        // Which display the widget sits on.
+        //
+        // Empty means the primary display, which is what every build before this one did:
+        // Place() read Screen.PrimaryScreen unconditionally. On a multi-monitor desk that
+        // is a real limitation - the wallpaper can be chosen per display, and the clock
+        // could not be moved off the primary one at all. It is also what stopped the
+        // z-order check from running out of the way: the covering window has to be placed
+        // over the widget, so the widget's monitor decided where the test happened, and it
+        // was always the screen the user was working on.
+        [DataMember] public string Monitor = "";         // device name, e.g. \\.\DISPLAY2
     }
 
     [DataContract]

@@ -87,6 +87,77 @@ function Get-Index([System.Collections.ArrayList]$list, [IntPtr]$h) {
     return -1
 }
 
+# The monitor the tests should use: the smallest one that is not the primary.
+#
+# The covering window has to be placed over the widget, so the widget's monitor decides
+# where this test happens. Left alone that is the primary screen, and the check opens
+# Paint over whatever the user is doing. Moving the widget first puts the whole test on a
+# screen nobody is looking at.
+function Get-TestMonitor {
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    $screens = [System.Windows.Forms.Screen]::AllScreens
+    if ($screens.Count -lt 2) { return $null }
+    $others = @($screens | Where-Object { -not $_.Primary })
+    if ($others.Count -eq 0) { return $null }
+    return ($others | Sort-Object { $_.Bounds.Width * $_.Bounds.Height } | Select-Object -First 1)
+}
+
+# Click a display chip in Luma Studio, which is how the widget is moved.
+#
+# Returns $true when the click was made. The chip is matched by its label, which starts
+# with the device name ("DISPLAY3"), so the same code works whatever the display is
+# called and whatever language the app is in.
+function Move-TimerTo([string]$deviceShort) {
+    try {
+        Add-Type -AssemblyName UIAutomationClient
+        Add-Type -AssemblyName UIAutomationTypes
+        $auto = [System.Windows.Automation.AutomationElement]
+        $scope = [System.Windows.Automation.TreeScope]
+        $ctrl = [System.Windows.Automation.ControlType]
+        $win = $auto::RootElement.FindFirst($scope::Children,
+            (New-Object System.Windows.Automation.PropertyCondition($auto::NameProperty, 'LumaWall')))
+        if (-not $win) { return $false }
+
+        $bcond = New-Object System.Windows.Automation.PropertyCondition(
+            $auto::ControlTypeProperty, $ctrl::Button)
+        foreach ($b in $win.FindAll($scope::Descendants, $bcond)) {
+            if ($b.Current.Name -eq 'Luma Studio') {
+                $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+                Start-Sleep -Milliseconds 1600
+                break
+            }
+        }
+
+        # The chips sit low on a long page, so scroll them into view first.
+        $scond = New-Object System.Windows.Automation.PropertyCondition(
+            $auto::IsScrollPatternAvailableProperty, $true)
+        $best = $null
+        foreach ($pane in $win.FindAll($scope::Descendants, $scond)) {
+            $sp = $pane.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+            if (-not $sp.Current.VerticallyScrollable) { continue }
+            $r = $pane.Current.BoundingRectangle
+            if (-not $best -or $r.Height -gt $best.Height) {
+                $best = [pscustomobject]@{ Pat = $sp; Height = $r.Height }
+            }
+        }
+        if ($best) { $best.Pat.SetScrollPercent(
+            [System.Windows.Automation.ScrollPattern]::NoScroll, 85); Start-Sleep -Milliseconds 900 }
+
+        foreach ($b in $win.FindAll($scope::Descendants, $bcond)) {
+            $name = $b.Current.Name
+            if ($name -eq $deviceShort -or $name.StartsWith($deviceShort + ' ')) {
+                $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+                Start-Sleep -Milliseconds 1500
+                return $true
+            }
+        }
+        return $false
+    } catch {
+        Write-Output ('  could not move the timer: ' + $_.Exception.Message)
+        return $false
+    }
+}
+
 # 1. Find the timer: a small visible window owned by LumaWall.
 $luma = Get-Process LumaWall -ErrorAction SilentlyContinue
 if (-not $luma) { Write-Output '  FAIL LumaWall is not running'; exit 1 }
@@ -114,6 +185,22 @@ function Get-TimerEnabled {
     } catch { return $null }
 }
 
+# Every label the timer's switch can have, one per language the app speaks.
+#
+# The CJK entries are assembled from code points instead of being written into the file.
+# PowerShell 5.1 reads a BOM-less .ps1 as ANSI, so a literal Chinese or Japanese string
+# arrives as mojibake and the whole script fails to parse - measured, with the error
+# "Unexpected token" pointing at the label. Building them here keeps the file pure ASCII
+# and the labels exact.
+#
+# These are the timer.enable values in MainWindow's copy table; a language added there
+# has to be added here too.
+function Get-TimerSwitchLabels {
+    $zh = -join (0x663E, 0x793A, 0x8BA1, 0x65F6, 0x5668 | ForEach-Object { [char]$_ })
+    $ja = -join (0x30BF, 0x30A4, 0x30DE, 0x30FC, 0x3092, 0x8868, 0x793A | ForEach-Object { [char]$_ })
+    return @('Tampilkan timer', 'Show a timer', $zh, $ja)
+}
+
 if ((Get-TimerEnabled) -eq $false) {
     Write-Output '  the timer is switched off; switching it on through the Studio page'
     try {
@@ -137,22 +224,33 @@ if ((Get-TimerEnabled) -eq $false) {
                 }
             }
 
-            # The switch is a CheckBox whose name mentions the timer. Toggle the one that is
-            # off; a TogglePattern reports its own state, so this does not depend on the
-            # label's language.
+            # The switch is a CheckBox, matched by its own label.
+            #
+            # Toggling "the first switch that is off" is what this did, and it turned on
+            # Tone mapping instead: the switches come back in tree order and the timer's
+            # is not the first one.
+            #
+            # The Chinese and Japanese labels are built from code points rather than
+            # written literally, and that is not decoration: PowerShell 5.1 reads a
+            # BOM-less script as ANSI, so a CJK literal in the file arrives as mojibake
+            # and the script fails to parse at all ("Unexpected token"). The four names
+            # are the timer.enable copy entry, so a language added there has to be added
+            # here too.
             $ccond = New-Object System.Windows.Automation.PropertyCondition(
                 $auto::ControlTypeProperty, $ctrl::CheckBox)
+            $labels = Get-TimerSwitchLabels
             $toggled = $false
             foreach ($c in $win.FindAll($scope::Descendants, $ccond)) {
+                if ($labels -notcontains $c.Current.Name) { continue }
                 try {
                     $tp = $c.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
                     if ($tp.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::Off) {
                         $tp.Toggle()
                         $toggled = $true
                         Start-Sleep -Milliseconds 1200
-                        if ((Get-TimerEnabled) -eq $true) { break }
                     }
                 } catch { }
+                break
             }
             if ($toggled) {
                 Write-Output '  toggled a switch on the Studio page'
@@ -166,6 +264,32 @@ if ((Get-TimerEnabled) -eq $false) {
         Write-Output ('  could not drive the UI: ' + $_.Exception.Message)
     }
     Start-Sleep -Seconds 2
+}
+
+# Move the widget onto a monitor the user is not working on, so the covering window is
+# opened there too. Put back at the end, through the UI.
+$testScreen = Get-TestMonitor
+$movedForTest = $false
+if ($testScreen) {
+    # "\\\\.\\DISPLAY3" -> "DISPLAY3", which is what the chip label starts with.
+    $short = $testScreen.DeviceName.Split('\')[-1]
+    Write-Output ('  moving the timer to {0} so the test stays off the primary screen' -f $testScreen.DeviceName)
+    if (Move-TimerTo $short) {
+        $movedForTest = $true
+        Start-Sleep -Seconds 2
+    } else {
+        Write-Output '  could not move the timer; the test will run on the primary screen'
+    }
+}
+
+function Restore-TimerScreen {
+    if (-not $movedForTest) { return }
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    $primary = [System.Windows.Forms.Screen]::PrimaryScreen
+    $short = $primary.DeviceName.Split('\')[-1]
+    if (Move-TimerTo $short) {
+        Write-Output '  the timer was moved back to the primary screen'
+    }
 }
 
 $script:timer = [IntPtr]::Zero
@@ -228,6 +352,10 @@ Write-Output '  the timer is not topmost, so applications can cover it'
 #
 # Trying only the first two would make this checker report "cannot test the z-order" on a
 # healthy machine - a failure that says nothing about the app. That is what happened.
+#
+# The covering window is opened on the monitor the widget is on, which is the monitor the
+# user is not working on when the timer has been moved there. Without that this test opens
+# Paint in the middle of the primary screen and takes it over for as long as it runs.
 $app = $null
 $h = [IntPtr]::Zero
 foreach ($name in @('mspaint', 'notepad', 'calc')) {
@@ -290,7 +418,11 @@ function Restore-Timer {
         if (-not $win) { return }
         $ccond = New-Object System.Windows.Automation.PropertyCondition(
             $auto::ControlTypeProperty, $ctrl::CheckBox)
+        # Matched by label, for the same reason the switch-on above is: toggling "the
+        # first switch that is on" would switch off Tone mapping instead.
+        $labels = Get-TimerSwitchLabels
         foreach ($c in $win.FindAll($scope::Descendants, $ccond)) {
+            if ($labels -notcontains $c.Current.Name) { continue }
             try {
                 $tp = $c.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
                 if ($tp.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::On) {
@@ -298,12 +430,13 @@ function Restore-Timer {
                     Start-Sleep -Milliseconds 1200
                     if ((Get-TimerEnabled) -eq $false) {
                         Write-Output '  the timer was switched back off'
-                        return
+                    } else {
+                        Write-Output '  the timer setting could not be restored'
                     }
                 }
             } catch { }
+            return
         }
-        Write-Output '  the timer setting could not be restored'
     } catch {
         Write-Output ('  could not restore the timer setting: ' + $_.Exception.Message)
     }
@@ -311,11 +444,13 @@ function Restore-Timer {
 
 if ($appIdx -lt 0) {
     Write-Output '  FAIL the covering window is not in the Z-order list'
+    Restore-TimerScreen
     Restore-Timer
     exit 1
 }
 if ($timerIdx2 -lt 0) {
     Write-Output '  FAIL the timer vanished from the Z-order list'
+    Restore-TimerScreen
     Restore-Timer
     exit 1
 }
@@ -323,10 +458,12 @@ if ($timerIdx2 -lt 0) {
 # Lower index = higher on screen. The application must be above the timer.
 if ($appIdx -lt $timerIdx2) {
     Write-Output ('  PASS the application is above the timer ({0} < {1}); the timer cannot cover it' -f $appIdx, $timerIdx2)
+    Restore-TimerScreen
     Restore-Timer
     exit 0
 }
 
 Write-Output ('  FAIL the timer is above the application ({0} < {1}) - it would cover the window' -f $timerIdx2, $appIdx)
+Restore-TimerScreen
 Restore-Timer
 exit 1

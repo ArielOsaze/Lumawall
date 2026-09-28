@@ -226,6 +226,8 @@ namespace LumaWall
             { "timer.offsetY", new[] { "Geser tegak", "Vertical offset", "垂直偏移", "縦オフセット" } },
             { "timer.opacity", new[] { "Transparansi", "Opacity", "不透明度", "不透明度" } },
             { "timer.pause", new[] { "Jeda", "Pause", "暂停", "一時停止" } },
+            { "timer.display", new[] { "Layar", "Display", "显示器", "ディスプレイ" } },
+            { "timer.displayHint", new[] { "Layar mana yang menampilkan jam. Wallpaper bisa berbeda tiap layar, dan jamnya juga.", "Which display the clock sits on. The wallpaper can differ per display, and so can the clock.", "时钟显示在哪块屏幕上。壁纸可以按屏幕区分，时钟也一样。", "時計を表示する画面。壁紙は画面ごとに変えられ、時計も同じです。" } },
             { "preset.cinema", new[] { "Cinema", "Cinema", "影院", "シネマ" } },
             { "preset.natural", new[] { "Natural", "Natural", "自然", "ナチュラル" } },
             { "preset.night", new[] { "Malam", "Night", "夜晚", "ナイト" } },

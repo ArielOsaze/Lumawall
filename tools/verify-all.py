@@ -98,6 +98,8 @@ CHECKS = [
       'tools/measure-placement-pad.ps1']),
     ('the placement pad records the click and draws the clock in that third',
      ['python', 'tools/check-placement-mark.py']),
+    ('the desktop timer follows the display picked in Luma Studio',
+     ['python', 'tools/check-timer-display.py']),
     ('startup is quick', ['python', 'tools/check-startup.py']),
     ('page at every viewport size',
      ['node', 'tools/check-responsive.mjs']),

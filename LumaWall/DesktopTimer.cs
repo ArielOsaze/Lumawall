@@ -683,7 +683,7 @@ namespace LumaWall
             /// </summary>
             private static Rectangle Place(int width, int height, TimerConfig config)
             {
-                Rectangle area = Screen.PrimaryScreen.WorkingArea;
+                Rectangle area = ScreenFor(config).WorkingArea;
                 int left = area.Left + (area.Width - width) / 2;
                 int top = area.Top + (area.Height - height) / 2;
 
@@ -697,6 +697,28 @@ namespace LumaWall
                 else left = area.Left + (area.Width - width) / 2 + config.OffsetX;
 
                 return new Rectangle(left, top, width, height);
+            }
+
+            /// <summary>
+            /// The screen the widget belongs on: the one the config names, or the primary one.
+            ///
+            /// The named screen can go away - a monitor unplugged, or a config copied from
+            /// another machine - and the widget must still appear somewhere rather than
+            /// disappearing. Falling back to the primary screen is what the app did before
+            /// the setting existed, so that is the fallback.
+            /// </summary>
+            private static Screen ScreenFor(TimerConfig config)
+            {
+                string wanted = config == null ? null : config.Monitor;
+                if (!string.IsNullOrEmpty(wanted))
+                {
+                    foreach (Screen screen in Screen.AllScreens)
+                    {
+                        if (string.Equals(screen.DeviceName, wanted, StringComparison.OrdinalIgnoreCase))
+                            return screen;
+                    }
+                }
+                return Screen.PrimaryScreen;
             }
 
             /// <summary>

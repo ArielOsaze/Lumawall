@@ -268,12 +268,119 @@ Write-Output 'READY'
     return 'READY' in out
 
 
+def scroll_to(percent):
+    """Scroll the Studio page to a percentage, for the scroll search below."""
+    out = ps(r'''
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+$auto = [System.Windows.Automation.AutomationElement]
+$scope = [System.Windows.Automation.TreeScope]
+$win = $auto::RootElement.FindFirst($scope::Children,
+    (New-Object System.Windows.Automation.PropertyCondition($auto::NameProperty, 'LumaWall')))
+if (-not $win) { Write-Output 'NO_WINDOW'; exit 1 }
+$scond = New-Object System.Windows.Automation.PropertyCondition($auto::IsScrollPatternAvailableProperty, $true)
+$best = $null
+foreach ($pane in $win.FindAll($scope::Descendants, $scond)) {
+    $sp = $pane.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+    if (-not $sp.Current.VerticallyScrollable) { continue }
+    $r = $pane.Current.BoundingRectangle
+    if (-not $best -or $r.Height -gt $best.Height) { $best = [pscustomobject]@{ Pat = $sp; Height = $r.Height } }
+}
+if ($best) { $best.Pat.SetScrollPercent([System.Windows.Automation.ScrollPattern]::NoScroll, %d) }
+Write-Output 'SCROLLED'
+''' % int(percent), timeout=120)
+    return 'SCROLLED' in out
+
+
+def find_scroll_with_mark():
+    """Scroll until the clock mark is visible and near the middle of the window.
+
+    Returns True when a usable offset was found.
+    """
+    best = None
+    for percent in (30, 40, 50, 60, 68, 75, 82, 90):
+        scroll_to(percent)
+        time.sleep(0.8)
+        mark = find_mark()
+        if mark is None:
+            continue
+        # Distance from the middle of the window; smaller is better.
+        r = window_rect()
+        if r is None:
+            return True
+        mid_x = (r[2] - r[0]) / 2.0
+        mid_y = (r[3] - r[1]) / 2.0
+        score = abs(mark['cx'] - mid_x) + abs(mark['cy'] - mid_y)
+        if best is None or score < best[0]:
+            best = (score, percent)
+            if score < 220:
+                break
+    if best is None:
+        return False
+    scroll_to(best[1])
+    time.sleep(0.9)
+    print('  pad visible at scroll %d%%' % best[1])
+    return find_mark() is not None
+
+
+def window_rect():
+    """The window rectangle as (left, top, right, bottom)."""
+    out = ps(r'''
+Add-Type @"
+using System;using System.Runtime.InteropServices;
+public class W { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out R r);
+ public struct R { public int L,T,Rr,B; } }
+"@
+''' + PROCESS + r'''
+$r = New-Object W+R
+[void][W]::GetWindowRect($proc.MainWindowHandle, [ref]$r)
+Write-Output ('RECT {0} {1} {2} {3}' -f $r.L, $r.T, $r.Rr, $r.B)
+''')
+    for line in out.splitlines():
+        if line.startswith('RECT'):
+            parts = line.split()
+            return (int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]))
+    return None
+
+
 def main():
     print('  opening Luma Studio')
     if not open_studio():
         print('  FAIL could not open the Studio page')
         return 1
 
+    # Park the window on a monitor the user is not working on, and put it back at the
+    # end. This checker clicks the placement pad with the real pointer, so on the primary
+    # monitor it takes over the screen and the user cannot type while it runs.
+    #
+    # resize_to_fit is required here, not optional: the window is 1580x950 and the
+    # smallest test monitor is 1366x768, so an unresized window hangs off the bottom -
+    # the pad sat at y=801 on a 768-tall screen and every click missed.
+    sys.path.insert(0, str(ROOT / 'tools'))
+    import test_screen
+    hwnd = find_hwnd()
+    monitor, was_at = test_screen.park(hwnd, margin=40, resize_to_fit=True)
+    if monitor:
+        print('  driving it on %s' % test_screen.describe(monitor))
+    try:
+        return _measure()
+    finally:
+        test_screen.restore(hwnd, was_at)
+
+
+def find_hwnd():
+    """The app's main window handle, or None."""
+    out = ps(PROCESS + r'''
+Write-Output ('HWND ' + $proc.MainWindowHandle)
+''')
+    for line in out.splitlines():
+        if line.startswith('HWND'):
+            value = int(line.split()[1])
+            return value or None
+    return None
+
+
+def _measure():
     origin = window_origin()
     if origin is None:
         print('  FAIL could not read the window rectangle')
@@ -288,6 +395,20 @@ def main():
     if position is None or '-' not in position:
         print('  FAIL the config does not name a position')
         return 1
+
+    # Find a scroll offset where the pad is fully inside the window.
+    #
+    # The page is taller than the window, so the placement card has to be scrolled to.
+    # A fixed percentage does not work: the window is resized to fit the test monitor,
+    # and 68% put the pad below the bottom edge - the check then reported "no clock mark
+    # found" about a pad that was simply off-screen. So search for the offset where the
+    # mark is actually visible, and use the one that puts it nearest the middle.
+    if not find_scroll_with_mark():
+        print('  FAIL the placement pad is not visible at any scroll offset')
+        return 1
+    origin = window_origin()
+    ox, oy = origin
+    position = config_position()
 
     def pad_origin_from(mark, recorded):
         """The pad's top-left, derived from where the mark is and what it means."""

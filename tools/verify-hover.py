@@ -101,6 +101,20 @@ def main():
     hwnd = found[0]
     print('  LumaWall pid %d' % pid)
 
+    # Park the window on a monitor the user is not working on, and put it back at the
+    # end. Driving this window means moving the pointer to its title bar and raising it
+    # above everything; doing that on the primary monitor takes over the screen the
+    # user is using. The restore is a finally, so an early return still puts it back.
+    import test_screen
+    monitor, was_at = test_screen.park(hwnd, margin=40, resize_to_fit=True)
+    print('  driving it on %s' % test_screen.describe(monitor))
+    try:
+        return _measure(hwnd, monitor)
+    finally:
+        test_screen.restore(hwnd, was_at)
+
+
+def _measure(hwnd, monitor):
     # Restore, then place the window wholly inside one monitor, so the right end of
     # the title bar is on a screen that exists.
     #
@@ -114,7 +128,10 @@ def main():
     myt = ctypes.windll.kernel32.GetCurrentThreadId()
     user32.AttachThreadInput(fgt, myt, True)
     user32.ShowWindow(hwnd, 9)
-    user32.SetWindowPos(hwnd, HWND_TOPMOST, 80, 60, 1200, 800,
+    # Sized to fit the test monitor, and placed at its top-left: the window has to be
+    # wholly inside one screen for the title-bar strip to be capturable.
+    user32.SetWindowPos(hwnd, HWND_TOPMOST, monitor['x'] + 40, monitor['y'] + 40,
+                        min(1200, monitor['width'] - 80), min(800, monitor['height'] - 80),
                         SWP_SHOWWINDOW | SWP_NOACTIVATE)
     user32.SetForegroundWindow(hwnd)
     user32.BringWindowToTop(hwnd)
@@ -164,27 +181,38 @@ def main():
             #
             # The topmost bounce is the standard way to force it: raise above everything,
             # then drop topmost again so the window is not left floating.
-            fg2 = user32.GetForegroundWindow()
-            fgt2 = user32.GetWindowThreadProcessId(fg2, None)
-            user32.AttachThreadInput(fgt2, myt, True)
-            user32.ShowWindow(hwnd, 9)                      # SW_RESTORE
-            user32.BringWindowToTop(hwnd)
-            user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                                SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-            user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-                                SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-            user32.SetForegroundWindow(hwnd)
-            user32.AttachThreadInput(fgt2, myt, False)
-            time.sleep(0.6)
-            user32.SetCursorPos(r.right - 150 + dx, r.top + 27)
-            time.sleep(1.0)
+            #
+            # The raise is not instant, and one attempt is not enough in the suite: a
+            # checker that ran just before can still own the top slot for a moment, and the
+            # reading is then taken against whatever window is there instead. That was the
+            # in-suite failure - "close: the app was not under the cursor" on the last
+            # sample only. So retry until the app really is under the pointer, and give up
+            # after a few tries rather than reading a stale window.
+            on_app = False
+            for attempt in range(4):
+                fg2 = user32.GetForegroundWindow()
+                fgt2 = user32.GetWindowThreadProcessId(fg2, None)
+                user32.AttachThreadInput(fgt2, myt, True)
+                user32.ShowWindow(hwnd, 9)                      # SW_RESTORE
+                user32.BringWindowToTop(hwnd)
+                user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+                user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+                user32.SetForegroundWindow(hwnd)
+                user32.AttachThreadInput(fgt2, myt, False)
+                time.sleep(0.6)
+                user32.SetCursorPos(r.right - 150 + dx, r.top + 27)
+                time.sleep(1.0)
 
-            # Confirm the app is under the pointer before believing the reading.
-            pt = POINT(r.right - 150 + dx, r.top + 27)
-            hit = user32.WindowFromPoint(pt)
-            hp = ctypes.c_ulong()
-            user32.GetWindowThreadProcessId(hit, ctypes.byref(hp))
-            on_app = (hp.value == pid)
+                # Confirm the app is under the pointer before believing the reading.
+                pt = POINT(r.right - 150 + dx, r.top + 27)
+                hit = user32.WindowFromPoint(pt)
+                hp = ctypes.c_ulong()
+                user32.GetWindowThreadProcessId(hit, ctypes.byref(hp))
+                on_app = (hp.value == pid)
+                if on_app:
+                    break
 
             im = grab(strip, os.path.join('build', 'hover-%s.png' % name))
             px = im.load()

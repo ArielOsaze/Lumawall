@@ -713,6 +713,72 @@ namespace LumaWall
 
         // ── the timer ────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Which display the timer sits on.
+        ///
+        /// A chip row rather than a dropdown, because the number of displays is small and
+        /// the chosen one has to be visible at a glance - the same reasoning as the mode
+        /// and style rows above it.
+        ///
+        /// The primary display is offered as "Display 1" style names, matching the labels
+        /// in the display picker at the top of the page, so the same screen has the same
+        /// name in both places.
+        /// </summary>
+        private UIElement StudioDisplayChips()
+        {
+            var row = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
+
+            Forms.Screen[] screens = Forms.Screen.AllScreens;
+            foreach (Forms.Screen screen in screens)
+            {
+                Forms.Screen captured = screen;
+                // An empty setting means the primary display, which is what the app did
+                // before this control existed.
+                bool chosen = string.IsNullOrEmpty(config.Timer.Monitor)
+                    ? captured.Primary
+                    : string.Equals(captured.DeviceName, config.Timer.Monitor, StringComparison.OrdinalIgnoreCase);
+
+                string label = captured.DeviceName.DeviceName();
+                if (captured.Primary) label += " · " + Tr("studio.primary");
+
+                var button = GhostButton(label);
+                button.Height = 31;
+                button.Padding = new Thickness(13, 0, 13, 0);
+                button.FontSize = 11.5;
+                button.Margin = new Thickness(0, 0, 6, 6);
+                if (chosen)
+                {
+                    button.Background = new SolidColorBrush(CPrimary);
+                    button.Foreground = Brushes.White;
+                    button.BorderBrush = new SolidColorBrush(CPrimary);
+                }
+                button.Click += delegate
+                {
+                    config.Timer.Monitor = captured.Primary ? "" : captured.DeviceName;
+                    store.Save(config);
+                    timerRefresh();
+                    ReloadCurrentPage();
+                };
+                row.Children.Add(button);
+            }
+
+            // A single-monitor machine has nothing to choose, and a row of one chip that
+            // cannot change anything is clutter. Say so instead of offering a choice that
+            // does not exist.
+            if (screens.Length < 2)
+            {
+                row.Children.Add(new TextBlock
+                {
+                    Text = Tr("timer.displayHint"),
+                    FontSize = 10.5,
+                    Foreground = new SolidColorBrush(CDim),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 2, 0, 0),
+                });
+            }
+            return row;
+        }
+
         private UIElement StudioTimerCard()
         {
             Border card;
@@ -782,6 +848,9 @@ namespace LumaWall
 
             host.Children.Add(StudioLabel(Tr("timer.position")));
             host.Children.Add(StudioPositionPad());
+
+            host.Children.Add(StudioLabel(Tr("timer.display")));
+            host.Children.Add(StudioDisplayChips());
 
             host.Children.Add(StudioDivider());
             host.Children.Add(StudioSlider(Tr("timer.size"), 50, 250, 5, config.Timer.Scale, "F0",
