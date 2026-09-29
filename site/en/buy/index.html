@@ -26,7 +26,7 @@
 <link rel="preload" href="/assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.ad37d8582b.css">
 <link rel="stylesheet" href="/assets/css/style.00dd54fec4.css">
-<link rel="stylesheet" href="/assets/css/buy.6615221305.css">
+<link rel="stylesheet" href="/assets/css/buy.8a4f1b79c3.css">
 </head>
 <body class="buy-page">
 
@@ -127,6 +127,47 @@
           <span class="field-err" id="e-wa" hidden></span>
         </label>
 
+        <!-- ── pilih cara bayar ──────────────────────────────────────────────
+             QRIS lebih dulu karena itu yang paling cepat: pembeli tidak perlu
+             memilih bank, cukup memindai. Transfer bank ada untuk pembeli yang
+             tidak memakai aplikasi bank berbasis QR, atau yang membayar dari
+             rekening perusahaan.
+
+             Yang terdaftar di sini hanya kanal yang benar-benar tersedia untuk
+             akun ini. Daftarnya hasil pengujian satu per satu - iPaymu hanya
+             menjawab "Invalid payment channel" tanpa menyebutkan mana yang
+             benar. -->
+        <div class="field field-kanal">
+          <span class="field-label">Payment method</span>
+          <div class="kanal-grid" id="kanal-grid" role="radiogroup" aria-label="Payment method">
+            <button type="button" class="kanal aktif" data-kanal="qris" role="radio" aria-checked="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg>
+              <b>QRIS</b>
+              <em>Any bank &amp; e-wallet</em>
+            </button>
+            <button type="button" class="kanal" data-kanal="bca" role="radio" aria-checked="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18"/></svg>
+              <b>Bank transfer</b>
+              <em>BCA, BNI, BRI, Mandiri, etc</em>
+            </button>
+          </div>
+        </div>
+
+        <!-- Daftar bank hanya muncul setelah "Transfer Bank" dipilih. -->
+        <div class="field" id="bank-field" hidden>
+          <span class="field-label">Choose a bank</span>
+          <div class="bank-grid" id="bank-grid" role="radiogroup" aria-label="Choose a bank">
+            <button type="button" class="bank aktif" data-bank="bca" role="radio" aria-checked="true">BCA</button>
+            <button type="button" class="bank" data-bank="bni" role="radio" aria-checked="false">BNI</button>
+            <button type="button" class="bank" data-bank="bri" role="radio" aria-checked="false">BRI</button>
+            <button type="button" class="bank" data-bank="mandiri" role="radio" aria-checked="false">Mandiri</button>
+            <button type="button" class="bank" data-bank="permata" role="radio" aria-checked="false">Permata</button>
+            <button type="button" class="bank" data-bank="cimb" role="radio" aria-checked="false">CIMB</button>
+            <button type="button" class="bank" data-bank="bsi" role="radio" aria-checked="false">BSI</button>
+            <button type="button" class="bank" data-bank="danamon" role="radio" aria-checked="false">Danamon</button>
+          </div>
+        </div>
+
         <div class="buy-total">
           <span>Total</span>
           <b data-price>Rp10,000</b>
@@ -137,7 +178,7 @@
         </button>
 
         <p class="buy-note" id="buy-note">
-          Pay by QRIS, right on this page. No redirect and no account needed.
+          Payment happens right on this page. No redirect and no account needed.
         </p>
         <div class="buy-alert" id="buy-alert" hidden></div>
       </form>
@@ -151,21 +192,52 @@
          dan ia harus memuat ulang halaman sukses berulang kali sambil menebak. -->
     <div class="buy-card" id="qr-card" hidden>
       <div class="buy-card-head">
-        <h2 class="h3">Pay by QRIS</h2>
+        <h2 class="h3" id="qr-judul">Pay by QRIS</h2>
         <div class="buy-price">
           <span class="buy-amount" id="qr-total">Rp10.000</span>
           <span class="buy-per">total</span>
         </div>
       </div>
 
-      <div class="qr-wrap">
-        <img id="qr-img" alt="Payment QR code" width="280" height="280">
-        <div class="qr-loading" id="qr-loading">Preparing the QR code&hellip;</div>
+      <!-- ── tampilan QR (QRIS) ────────────────────────────────────────────── -->
+      <div id="qr-panel">
+        <div class="qr-wrap">
+          <img id="qr-img" alt="Payment QR code" width="280" height="280">
+          <div class="qr-loading" id="qr-loading">Preparing the QR code&hellip;</div>
+        </div>
+
+        <p class="qr-help">
+          Open any bank or e-wallet app, choose <b>Pay</b> then <b>Scan QR</b>, and point it at the code above.
+        </p>
       </div>
 
-      <p class="qr-help">
-        Open any bank or e-wallet app, choose <b>Pay</b> then <b>Scan QR</b>, and point it at the code above.
-      </p>
+      <!-- ── tampilan Virtual Account (transfer bank) ────────────────────────
+           Nomor rekening tujuan adalah satu-satunya hal yang pembeli butuhkan di
+           sini, jadi ia dibuat besar dan bisa disalin dengan satu klik. Tanpa
+           tombol salin, pembeli harus mengetik 16 digit sambil berpindah aplikasi
+           - dan satu digit salah berarti uangnya masuk ke rekening lain. -->
+      <div id="va-panel" hidden>
+        <div class="va-box">
+          <span class="va-label" id="va-bank">Transfer to</span>
+          <div class="va-nomor-baris">
+            <b class="va-nomor" id="va-nomor">&mdash;</b>
+            <button type="button" class="va-salin" id="va-salin" title="Copy the number">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+          <span class="va-atas-nama" id="va-atas-nama">&mdash;</span>
+        </div>
+
+        <p class="qr-help">
+          Open your banking app, choose <b>Transfer</b> to the number above, then enter the <b>exact</b> amount shown.
+        </p>
+
+        <div class="va-jumlah">
+          <span>Amount to transfer</span>
+          <b id="va-jumlah">&mdash;</b>
+        </div>
+      </div>
 
       <div class="qr-status" id="qr-status">
         <span class="qr-dot"></span>
@@ -328,6 +400,6 @@
 </footer>
 
 <script src="/assets/js/harga.js"></script>
-<script src="/assets/js/buy-en.9c4a93855c.js"></script>
+<script src="/assets/js/buy-en.ff526685c6.js"></script>
 </body>
 </html>

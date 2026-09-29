@@ -1,0 +1,23 @@
+{
+  "name": "lumawall-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Situs LumaWall dan endpoint pembayarannya.",
+  "//": [
+    "Kenapa berkas ini ada: satu-satunya ketergantungan di sini adalah pustaka",
+    "pembuat kode QR, dan itu pun hanya sebagai cadangan.",
+    "",
+    "iPaymu mengembalikan gambar QR sebagai halaman HTML berisi data URL, dan",
+    "halaman itu biasanya berhasil diambil. Kalau pengambilannya gagal - jaringan",
+    "sedang buruk, atau iPaymu mengubah bentuk balasannya - kode QR dibuat ulang",
+    "dari QrString, yang isinya sama persis dengan yang akan digambar iPaymu.",
+    "Tanpa cadangan ini, pembeli melihat 'kode QR gagal dimuat' dan tidak punya",
+    "cara membayar sama sekali.",
+    "",
+    "Versinya dipatok tepat, bukan memakai rentang: pembaruan pustaka ini tidak",
+    "boleh mengubah bentuk kode QR yang dihasilkan tanpa ada yang memutuskan."
+  ],
+  "dependencies": {
+    "qrcode": "1.5.4"
+  }
+}

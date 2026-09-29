@@ -634,6 +634,209 @@
   .qr-wrap { min-height: 0; }
 }
 
+/* ── pemilih cara bayar ───────────────────────────────────────────────────── */
+
+.field-kanal { margin-bottom: 1rem; }
+
+.kanal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem;
+  margin-top: .4rem;
+}
+
+/* Tombol kanal: ikon di atas, nama di tengah, keterangan di bawah.
+   `text-align: center` dan `flex-direction: column` dipakai supaya keduanya
+   sama tingginya meskipun keterangannya panjangnya berbeda - dua kotak yang
+   tingginya tidak sama terlihat seperti kesalahan tata letak. */
+.kanal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding: .85rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--elevated);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: .85rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+
+.kanal svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.kanal b { color: var(--ink); font-size: .92rem; font-weight: 600; }
+.kanal em { font-style: normal; font-size: .74rem; line-height: 1.35; }
+
+.kanal:hover { border-color: rgba(255, 255, 255, .2); color: var(--ink); }
+
+/* Yang terpilih dibedakan lewat warna aksen DAN ketebalan garis, bukan warna
+   saja - pembeli yang tidak bisa membedakan merah dari abu-abu tetap harus
+   bisa melihat mana yang sedang dipilih. */
+.kanal.aktif {
+  border-color: var(--accent);
+  background: rgba(255, 59, 87, .08);
+  color: var(--ink);
+}
+
+.kanal.aktif b { color: var(--accent); }
+
+.kanal:focus-visible,
+.bank:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .45rem;
+  margin-top: .4rem;
+}
+
+.bank {
+  padding: .55rem .3rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--elevated);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+
+.bank:hover { border-color: rgba(255, 255, 255, .2); color: var(--ink); }
+
+.bank.aktif {
+  border-color: var(--accent);
+  background: rgba(255, 59, 87, .08);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 420px) {
+  .bank-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Virtual Account ──────────────────────────────────────────────────────── */
+
+.va-box {
+  margin: 1.25rem 0;
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--elevated);
+  text-align: center;
+}
+
+.va-label {
+  display: block;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Nomor rekening adalah satu-satunya hal yang pembeli butuhkan di panel ini,
+   jadi ia yang paling besar. Hurufnya bertabular supaya digitnya sejajar dan
+   tidak ada angka yang tertukar saat dibaca. */
+.va-nomor-baris {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .7rem;
+  flex-wrap: wrap;
+  margin: .5rem 0 .35rem;
+}
+
+.va-nomor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.va-salin {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .45rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .16s, color .16s, background .16s;
+}
+
+.va-salin svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.va-salin:hover { border-color: rgba(255, 255, 255, .22); color: var(--ink); }
+
+/* Umpan balik setelah nomor tersalin. Tanpa ini pembeli tidak tahu apakah
+   tombolnya bekerja, dan ia akan menekannya berulang kali. */
+.va-salin.berhasil {
+  border-color: #2ecc71;
+  color: #2ecc71;
+  background: rgba(46, 204, 113, .08);
+}
+
+.va-atas-nama {
+  display: block;
+  font-size: .84rem;
+  color: var(--ink-muted);
+}
+
+.va-jumlah {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: .9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--elevated);
+  font-size: .9rem;
+  color: var(--ink-muted);
+}
+
+.va-jumlah b {
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 420px) {
+  .va-nomor { font-size: 1.25rem; }
+}
+
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .buy-hero-in { grid-template-columns: minmax(0, 1fr); }

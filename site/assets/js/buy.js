@@ -36,6 +36,24 @@
   var qrStatus = document.getElementById('qr-status');
   var doneDownload = document.getElementById('done-download');
 
+  // Panel pembayaran: QR untuk QRIS, nomor Virtual Account untuk transfer bank.
+  var qrPanel = document.getElementById('qr-panel');
+  var vaPanel = document.getElementById('va-panel');
+  var qrJudul = document.getElementById('qr-judul');
+  var vaBank = document.getElementById('va-bank');
+  var vaNomor = document.getElementById('va-nomor');
+  var vaAtasNama = document.getElementById('va-atas-nama');
+  var vaJumlah = document.getElementById('va-jumlah');
+  var vaSalin = document.getElementById('va-salin');
+
+  // Pemilih cara bayar. Kanal disimpan di sini supaya nilainya ikut terkirim
+  // bersama formulir.
+  var kanalGrid = document.getElementById('kanal-grid');
+  var bankField = document.getElementById('bank-field');
+  var bankGrid = document.getElementById('bank-grid');
+  var kanalDipilih = 'qris';
+  var bankDipilih = 'bca';
+
   var fields = {
     nama: { input: document.getElementById('f-nama'), err: document.getElementById('e-nama') },
     email: { input: document.getElementById('f-email'), err: document.getElementById('e-email') },
@@ -84,6 +102,70 @@
     alertBox.textContent = message;
     alertBox.className = ok ? 'buy-alert ok' : 'buy-alert';
     alertBox.hidden = false;
+  }
+
+  // ── pemilih cara bayar ─────────────────────────────────────────────────────
+  //
+  // Tombol dipakai, bukan <input type="radio">, karena tampilannya perlu
+  // menampilkan ikon dan dua baris teks. Atribut role dan aria-checked dipasang
+  // supaya pembaca layar tetap membacanya sebagai pilihan, bukan sebagai tombol
+  // biasa yang tidak menjelaskan apa yang sedang dipilih.
+
+  function tandaiRadio(kumpulan, terpilih) {
+    for (var i = 0; i < kumpulan.length; i++) {
+      var aktif = kumpulan[i] === terpilih;
+      kumpulan[i].classList.toggle('aktif', aktif);
+      kumpulan[i].setAttribute('aria-checked', aktif ? 'true' : 'false');
+    }
+  }
+
+  function pilihKanal(nilai) {
+    kanalDipilih = nilai;
+    tandaiRadio(kanalGrid.querySelectorAll('.kanal'),
+                kanalGrid.querySelector('[data-kanal="' + nilai + '"]'));
+
+    // Daftar bank hanya muncul untuk transfer bank. Menampilkannya sejak awal
+    // membuat pembeli mengira bank harus dipilih meskipun ia memakai QRIS.
+    var transfer = nilai !== 'qris';
+    bankField.hidden = !transfer;
+    if (transfer) {
+      // Bank yang dipilih mengikuti tombol "Transfer Bank" yang ditekan: yang
+      // pertama kali terpilih adalah BCA, kecuali pembeli sudah memilih bank
+      // lain sebelumnya.
+      pilihBank(bankDipilih);
+    }
+  }
+
+  function pilihBank(nilai) {
+    bankDipilih = nilai;
+    tandaiRadio(bankGrid.querySelectorAll('.bank'),
+                bankGrid.querySelector('[data-bank="' + nilai + '"]'));
+  }
+
+  if (kanalGrid) {
+    kanalGrid.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('.kanal') : null;
+      if (t) pilihKanal(t.getAttribute('data-kanal'));
+    });
+    // Tombol harus bisa dipilih dengan papan ketik, karena tidak semua orang
+    // memakai tetikus - dan pembaca layar menggerakkan fokus dengan panah.
+    kanalGrid.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var semua = Array.prototype.slice.call(kanalGrid.querySelectorAll('.kanal'));
+      var i = semua.indexOf(document.activeElement);
+      if (i === -1) return;
+      e.preventDefault();
+      var berikut = semua[(i + (e.key === 'ArrowRight' ? 1 : semua.length - 1)) % semua.length];
+      berikut.focus();
+      pilihKanal(berikut.getAttribute('data-kanal'));
+    });
+  }
+
+  if (bankGrid) {
+    bankGrid.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('.bank') : null;
+      if (t) pilihBank(t.getAttribute('data-bank'));
+    });
   }
 
   // Pemeriksaan di peramban hanya untuk memberi balasan cepat. Pemeriksaan yang
@@ -138,7 +220,7 @@
     return parseInt(m[3], 10) + ' ' + bulan[parseInt(m[2], 10) - 1] + ' ' + m[4] + ':' + m[5] + ' WIB';
   }
 
-  function bukaQr(data) {
+  function bukaPembayaran(data) {
     orderCode = data.order;
     qrOrder.textContent = data.order;
 
@@ -171,31 +253,107 @@
 
     qrExpired.textContent = formatWaktu(data.expiredAt);
 
-    if (data.qrImage) {
-      qrImg.onload = function () {
-        qrLoading.hidden = true;
-        qrImg.hidden = false;
-      };
-      // Kalau gambarnya gagal dimuat, jangan biarkan kotak kosong: pembeli
-      // tidak punya cara membayar dan tidak tahu kenapa.
-      qrImg.onerror = function () {
-        qrLoading.textContent = 'Kode QR gagal dimuat. Muat ulang halaman ini.';
-      };
-      qrImg.src = data.qrImage;
-      qrImg.hidden = true;
-    } else if (data.qrString) {
-      // Sebagian kanal hanya mengembalikan string QR, bukan gambar. Stringnya
-      // tetap ditampilkan supaya pembeli bisa menunjukkannya ke kasir.
-      qrLoading.hidden = true;
-      qrImg.hidden = true;
-      qrStatusText.textContent = 'Tunjukkan kode ini ke kasir: ' + data.qrString;
+    // ── dua jenis pembayaran, satu kartu ─────────────────────────────────────
+    //
+    // QRIS dan transfer bank meminta hal yang berbeda dari pembeli, jadi
+    // panelnya berbeda. Yang ditentukan bukan tebakan dari ada-tidaknya nilai,
+    // melainkan `jenis` dari server: kalau server bilang ini transfer bank,
+    // yang ditampilkan adalah nomor rekening meskipun kebetulan ada juga nilai
+    // QR di balasannya.
+    var jenisVa = data.jenis === 'va';
+
+    qrJudul.textContent = jenisVa
+      ? 'Transfer ke ' + (data.kanalLabel || 'bank')
+      : 'Bayar dengan QRIS';
+
+    if (jenisVa) {
+      qrPanel.hidden = true;
+      vaPanel.hidden = false;
+
+      vaBank.textContent = 'Virtual Account ' + (data.kanalLabel || '');
+      vaNomor.textContent = data.nomorVa || '\u2014';
+      vaAtasNama.textContent = data.namaVa || '\u2014';
+      vaJumlah.textContent = rupiah(data.total || data.amount);
+
+      // Nomor yang tidak ada berarti pembeli tidak punya cara membayar. Lebih
+      // baik mengatakannya daripada menampilkan kotak kosong yang membuatnya
+      // menunggu.
+      if (!data.nomorVa) {
+        vaNomor.textContent = 'Nomor tidak tersedia';
+        qrStatusText.textContent = 'Nomor tujuan tidak diterima. Muat ulang halaman ini.';
+      }
     } else {
-      qrLoading.textContent = 'Kode QR tidak tersedia. Hubungi dukungan dengan kode pesananmu.';
+      vaPanel.hidden = true;
+      qrPanel.hidden = false;
+
+      if (data.qrImage) {
+        qrImg.onload = function () {
+          qrLoading.hidden = true;
+          qrImg.hidden = false;
+        };
+        // Kalau gambarnya gagal dimuat, jangan biarkan kotak kosong: pembeli
+        // tidak punya cara membayar dan tidak tahu kenapa.
+        qrImg.onerror = function () {
+          qrLoading.textContent = 'Kode QR gagal dimuat. Muat ulang halaman ini.';
+        };
+        qrImg.src = data.qrImage;
+        qrImg.hidden = true;
+      } else if (data.qrString) {
+        // Sebagian kanal hanya mengembalikan string QR, bukan gambar.
+        qrLoading.hidden = true;
+        qrImg.hidden = true;
+        qrStatusText.textContent = 'Tunjukkan kode ini ke kasir: ' + data.qrString;
+      } else {
+        qrLoading.textContent = 'Kode QR tidak tersedia. Hubungi dukungan dengan kode pesananmu.';
+      }
     }
 
     tampilkan(qrCard);
     mulaiPeriksa = Date.now();
     jadwalkan();
+  }
+
+  // Tombol salin nomor Virtual Account.
+  //
+  // Nomornya 16 digit dan harus diketik di aplikasi lain, jadi menyalinnya
+  // adalah hal pertama yang dilakukan pembeli. Tanpa tombol ini ia mengetik
+  // manual sambil berpindah aplikasi - dan satu digit salah berarti uangnya
+  // masuk ke rekening orang lain.
+  if (vaSalin) {
+    vaSalin.addEventListener('click', function () {
+      var teks = (vaNomor.textContent || '').trim();
+      if (!teks || teks === '\u2014' || teks === 'Nomor tidak tersedia') return;
+
+      // API papan klip hanya tersedia di konteks aman (HTTPS atau localhost),
+      // dan bisa ditolak izinnya. Keduanya ditangani: kalau gagal, nomornya
+      // dipilih otomatis supaya pembeli bisa menekan Ctrl+C sendiri.
+      var beres = function () {
+        var label = vaSalin.querySelector('span');
+        var asli = label.textContent;
+        label.textContent = 'Tersalin';
+        vaSalin.classList.add('berhasil');
+        setTimeout(function () {
+          label.textContent = asli;
+          vaSalin.classList.remove('berhasil');
+        }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(teks).then(beres).catch(pilihManual);
+      } else {
+        pilihManual();
+      }
+
+      function pilihManual() {
+        try {
+          var r = document.createRange();
+          r.selectNodeContents(vaNomor);
+          var s = window.getSelection();
+          s.removeAllRanges();
+          s.addRange(r);
+        } catch (e) { /* tidak bisa memilih: nomornya tetap terlihat */ }
+      }
+    });
   }
 
   function jadwalkan() {
@@ -263,7 +421,11 @@
     var payload = {
       nama: fields.nama.input.value.trim(),
       email: fields.email.input.value.trim(),
-      wa: fields.wa.input.value.trim()
+      wa: fields.wa.input.value.trim(),
+      // Untuk transfer bank, yang dikirim adalah kode banknya. Untuk QRIS,
+      // 'qris'. Server memvalidasi ulang nilai ini - kanal yang tidak dikenal
+      // jatuh ke QRIS, bukan membuat transaksi gagal.
+      kanal: kanalDipilih === 'qris' ? 'qris' : bankDipilih
     };
 
     submit.disabled = true;
@@ -304,11 +466,13 @@
           throw new Error(data.error || 'Pembayaran tidak bisa dibuka. Coba lagi.');
         }
 
-        // Panel QR dipakai kalau ada QR. Kalau iPaymu mengembalikan tautan
-        // (kanal lama), tautan itu tetap dihormati - lebih baik pembeli sampai
-        // ke halaman pembayaran daripada tidak bisa membayar sama sekali.
-        if (data.qrImage || data.qrString) {
-          bukaQr(data);
+        // Panel pembayaran dipakai kalau ada yang bisa ditampilkan: kode QR
+        // untuk QRIS, nomor Virtual Account untuk transfer bank. Kalau iPaymu
+        // mengembalikan tautan (kanal lama), tautan itu tetap dihormati - lebih
+        // baik pembeli sampai ke halaman pembayaran daripada tidak bisa
+        // membayar sama sekali.
+        if (data.jenis === 'va' || data.qrImage || data.qrString) {
+          bukaPembayaran(data);
           return;
         }
         if (data.paymentUrl) {
@@ -317,12 +481,12 @@
           return;
         }
 
-        throw new Error('Pembayaran tidak mengembalikan kode QR. Coba lagi.');
+        throw new Error('Pembayaran tidak mengembalikan cara bayar. Coba lagi.');
       })
       .catch(function (err) {
         submit.disabled = false;
         submit.textContent = 'Bayar sekarang';
-        note.textContent = 'Pembayaran lewat QRIS, langsung di halaman ini.';
+        note.textContent = 'Pembayaran langsung di halaman ini.';
         showAlert(err.message || 'Terjadi kesalahan. Coba lagi.', false);
       });
   });

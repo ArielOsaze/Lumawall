@@ -372,6 +372,15 @@ router.post("/:tindakan", express.json({ limit: "64kb" }), async (req, res) => {
         kirim.amount = String(p.amount);
         kirim.notifyUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/notifikasi`;
         kirim.referenceId = kode;
+        // Metode dan kanal diteruskan apa adanya. Keduanya menentukan jenis
+        // pembayarannya: `qris` mengembalikan kode QR, `va` mengembalikan nomor
+        // Virtual Account untuk bank yang disebut di `paymentChannel`.
+        //
+        // Daftar kanal yang benar TIDAK diperiksa di sini. Jembatan ini
+        // meneruskan, dan yang memutuskan kanal mana yang dipakai adalah situs
+        // LumaWall - menyalin daftar itu ke sini berarti dua tempat yang harus
+        // diperbarui setiap kali iPaymu menambah atau menghapus bank, dan yang
+        // tertinggal akan menolak kanal yang sebenarnya bekerja.
         kirim.paymentMethod = String(p.paymentMethod || "qris");
         if (p.paymentChannel) kirim.paymentChannel = String(p.paymentChannel);
     } else {

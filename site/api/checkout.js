@@ -16,6 +16,31 @@
 const crypto = require('crypto');
 const { config, clientIp, supabase, json, readBody, fail, panggilJembatan } = require('./_lib');
 
+// Kanal pembayaran yang tersedia untuk akun iPaymu ini.
+//
+// Daftarnya hasil pengujian, bukan dari dokumentasi: iPaymu hanya menjawab
+// "Invalid payment channel" tanpa menyebutkan mana yang benar. Yang dicoba dan
+// berhasil: QRIS, dan Virtual Account untuk delapan bank. Yang ditolak:
+// Muamalat, Panin, Maybank, OCBC, Artha, Sampoerna.
+//
+// `metode` menentukan jenis pembayarannya di iPaymu, `channel` menentukan
+// banknya. Keduanya dikirim terpisah karena iPaymu menolak permintaan yang
+// menyebut metode tanpa kanal yang cocok.
+//
+// Nama bank ditulis seperti yang dikenali iPaymu (huruf kecil), sedangkan label
+// adalah yang dilihat pembeli.
+const KANAL = {
+  qris: { metode: 'qris', channel: 'qris', label: 'QRIS', jenis: 'qr' },
+  bni: { metode: 'va', channel: 'bni', label: 'BNI', jenis: 'va' },
+  bca: { metode: 'va', channel: 'bca', label: 'BCA', jenis: 'va' },
+  bri: { metode: 'va', channel: 'bri', label: 'BRI', jenis: 'va' },
+  mandiri: { metode: 'va', channel: 'mandiri', label: 'Mandiri', jenis: 'va' },
+  permata: { metode: 'va', channel: 'permata', label: 'Permata', jenis: 'va' },
+  cimb: { metode: 'va', channel: 'cimb', label: 'CIMB Niaga', jenis: 'va' },
+  bsi: { metode: 'va', channel: 'bsi', label: 'BSI', jenis: 'va' },
+  danamon: { metode: 'va', channel: 'danamon', label: 'Danamon', jenis: 'va' },
+};
+
 function newOrderCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa I,O,0,1 yang mudah tertukar
   let tail = '';
@@ -109,19 +134,25 @@ module.exports = async function handler(req, res) {
     //
     // Yang dipakai adalah `payment-direct`, BUKAN `payment`. Bedanya penting:
     // `payment` mengembalikan tautan ke halaman iPaymu dan pembeli meninggalkan
-    // situs ini; `payment-direct` mengembalikan kode QR yang bisa ditampilkan di
-    // halaman ini sendiri. Pembeli tidak pernah berpindah situs, jadi tidak ada
-    // halaman pihak ketiga yang bisa membingungkan atau kehilangan jejak
-    // pesanannya.
+    // situs ini; `payment-direct` mengembalikan kode QR atau nomor Virtual
+    // Account yang bisa ditampilkan di halaman ini sendiri. Pembeli tidak pernah
+    // berpindah situs, jadi tidak ada halaman pihak ketiga yang bisa
+    // membingungkan atau kehilangan jejak pesanannya.
+    //
+    // Kanal yang tersedia untuk akun ini dicari dengan menguji satu per satu,
+    // karena iPaymu hanya menjawab "Invalid payment channel" tanpa menyebutkan
+    // mana yang benar. Yang berhasil: QRIS, dan Virtual Account untuk BNI, BCA,
+    // BRI, Mandiri, Permata, CIMB, BSI, dan Danamon. Muamalat, Panin, Maybank,
+    // OCBC, Artha, dan Sampoerna ditolak.
+    const kanal = KANAL[body.kanal] || KANAL.qris;
+
     const muatan = {
       amount: amount,
       referenceId: orderCode,
       buyerName: nama,
       buyerEmail: email,
-      // QRIS dipilih karena satu-satunya kanal yang tidak butuh pembeli memilih
-      // bank dulu, dan sudah diuji bekerja untuk akun ini.
-      paymentMethod: 'qris',
-      paymentChannel: 'qris',
+      paymentMethod: kanal.metode,
+      paymentChannel: kanal.channel,
     };
     // iPaymu menolak body yang memuat kunci bernilai undefined, jadi nomor
     // WhatsApp hanya ditambahkan kalau memang diisi.
@@ -159,6 +190,17 @@ module.exports = async function handler(req, res) {
     let qrImage = sesi.QrImage || sesi.qrImage || null;
     const qrString = sesi.QrString || sesi.qrString || null;
 
+    // Nomor Virtual Account, untuk pembayaran lewat transfer bank.
+    //
+    // iPaymu memakai beberapa nama berbeda untuk nilai yang sama, dan mana yang
+    // muncul bergantung pada banknya - jadi semuanya diperiksa. Tanpa ini,
+    // pembeli yang memilih transfer bank sampai di halaman tanpa nomor tujuan,
+    // dan satu-satunya cara ia bisa membayar adalah menebak.
+    const nomorVa = sesi.PaymentNo || sesi.paymentNo || sesi.Va || sesi.va
+      || sesi.VaNumber || sesi.vaNumber || sesi.VirtualAccount || sesi.virtualAccount
+      || sesi.AccountNumber || sesi.accountNumber || sesi.PaymentCode || sesi.paymentCode
+      || null;
+
     // ── QrImage bukan berkas gambar ──────────────────────────────────────────
     //
     // iPaymu mengembalikan ALAMAT yang, kalau dibuka, berisi halaman HTML dengan
@@ -170,6 +212,11 @@ module.exports = async function handler(req, res) {
     // Jadi isinya diambil di sini dan data URL-nya dikembalikan. Dikerjakan di
     // server, bukan di peramban, karena permintaan dari peramban ke domain
     // iPaymu akan ditolak oleh aturan lintas-asal.
+    //
+    // Kalau pengambilan gagal, QR dibuat ulang dari QrString di sini. QrString
+    // adalah isi QR-nya sendiri, jadi kode yang dihasilkan identik dengan yang
+    // akan ditampilkan iPaymu - dan itu jauh lebih baik daripada halaman yang
+    // memberitahu pembeli "kode QR gagal dimuat".
     if (qrImage) {
       try {
         const r = await fetch(qrImage, { signal: AbortSignal.timeout(8000) });
@@ -180,11 +227,21 @@ module.exports = async function handler(req, res) {
         } else if (teks.trim().startsWith('data:image/')) {
           qrImage = teks.trim();
         }
-        // Kalau polanya tidak dikenali, alamat aslinya dibiarkan apa adanya -
-        // halaman masih punya qrString sebagai cadangan, dan itu lebih baik
-        // daripada tidak ada apa-apa.
       } catch (e) {
         console.error('[lumawall] gagal mengambil gambar QR', e && e.message);
+      }
+    }
+
+    if (!qrImage && qrString) {
+      try {
+        const QRCode = require('qrcode');
+        qrImage = await QRCode.toDataURL(String(qrString), {
+          errorCorrectionLevel: 'M',
+          margin: 2,
+          width: 450,
+        });
+      } catch (e) {
+        console.error('[lumawall] gagal membuat QR dari QrString', e && e.message);
       }
     }
 
@@ -219,9 +276,18 @@ module.exports = async function handler(req, res) {
       // ada. Ditampilkan terpisah supaya tidak ada kejutan di halaman QR.
       total: sesi.Total || amount,
       fee: sesi.Fee || 0,
+      // `jenis` memberi tahu halaman apa yang harus ditampilkan: kode QR atau
+      // nomor Virtual Account. Halaman tidak perlu menebak dari ada-tidaknya
+      // salah satu nilainya.
+      jenis: kanal.jenis,
+      kanal: kanal.channel,
+      kanalLabel: kanal.label,
       qrImage,
       qrString,
-      channel: sesi.Channel || 'QRIS',
+      // Nomor tujuan transfer. Hanya ada untuk pembayaran lewat bank.
+      nomorVa,
+      namaVa: sesi.PaymentName || sesi.paymentName || sesi.BankName || sesi.bankName || kanal.label,
+      channel: sesi.Channel || kanal.label,
       expiredAt: sesi.Expired || null,
     });
   } catch (err) {
