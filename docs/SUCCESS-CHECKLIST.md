@@ -40,6 +40,10 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 26 | **Harga di web = harga yang ditagih** | ✅ | Halaman mengambil harga dari `/api/price`, jadi angka yang ditampilkan selalu sama dengan yang ditagih server. `Rp20.000` sudah **0 kemunculan** di seluruh situs | `curl https://lumawall.xinet.id/api/price/` |
 | 27 | **Ganti bahasa tidak error** | ✅ diperbaiki | `/en/beli/` tidak pernah ada — tombol ID di `/en/buy/` dan `/en/success/` naik **satu** tingkat, seharusnya **dua** → 404. Tombol EN di `/sukses/` malah menuju halaman beli. Sekarang 6/6 tombol menuju halaman yang benar, **158 tautan diperiksa, 0 rusak** | `python tools/check-links.py` |
 | 28 | **Tombol bahasa punya gaya** | ✅ diperbaiki | Tidak ada aturan `.lang` di berkas CSS mana pun: tautan EN/ID muncul sebagai teks biru bergaris bawah, terlihat seperti halaman yang belum selesai | `python tools/check-links.py` |
+| 29 | **Pilihan cara bayar, bukan cuma QRIS** | ✅ baru | **9 kanal**: QRIS + Virtual Account BNI, BCA, BRI, Mandiri, Permata, CIMB, BSI, Danamon. Ditolak akun ini: Muamalat, Panin, Maybank, OCBC, Artha, Sampoerna | `python tools/uji-kanal.js` (di server) |
+| 30 | **Biaya layanan terlihat sebelum memilih** | ✅ diperbaiki | QRIS Rp249 (2,5%), BCA Rp4.500 (45%), Mandiri Rp4.000, bank lain Rp3.500 — semuanya ditanggung pembeli. Dulu pembeli melihat Rp10.000 lalu diminta transfer Rp14.500. Sekarang biaya ada di tombol pemilih, dan total dipecah tiga baris | `python tools/check-kanal.py` |
+| 31 | **Panel menampilkan nilai yang sama dengan server** | ✅ | QRIS: QR 450×450 sebagai data URL, total Rp10.249. BCA: nomor 16 digit, total Rp14.500. Dibandingkan nilai per nilai | `python tools/check-kanal.py` |
+| 32 | **BRI dan Permata tidak lagi selalu gagal** | ✅ diperbaiki | Nomor placeholder `081200000000` ditolak BRI dan Permata ("Failed to generate VA") tetapi diterima bank lain — dan nomor WhatsApp opsional di formulir. Diuji 11 kandidat; `081211111111` diterima ketiganya. Sekarang **9/9 kanal berhasil** tanpa nomor WhatsApp | `python tools/uji-nomor.js` (di server) |
 
 ---
 
@@ -209,3 +213,39 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
     tetapi tidak ada di daftar `PAGES`, jadi tautannya rusak setiap kali cache-bust
     dijalankan — dan baru terlihat kalau diperiksa terpisah. Checker tautan menangkapnya
     seketika; sebelumnya tidak ada yang memeriksanya.
+
+26. **Biaya pembayaran berbeda jauh antar kanal, dan itu harus terlihat sebelum
+    memilih.** QRIS Rp249 (2,5% dari harga) versus transfer BCA Rp4.500 (45%). Semuanya
+    ditanggung pembeli. Membiarkan biaya baru muncul setelah memilih berarti pembeli
+    melihat Rp10.000 di formulir lalu diminta mentransfer Rp14.500 — dan ia tidak salah
+    mengira ada biaya tersembunyi, karena memang disembunyikan oleh halamannya sendiri.
+    Ukur biaya setiap kanal untuk dua harga berbeda: QRIS mengikuti harga, semua bank
+    tetap.
+
+27. **Nomor telepon placeholder yang bentuknya tidak masuk akal ditolak sebagian bank.**
+    `081200000000` ditolak BRI dan Permata dengan "Failed to generate VA" tetapi diterima
+    BCA, BNI, dan yang lain. Karena nomor WhatsApp opsional di formulir, kasus ini nyata:
+    pembeli yang tidak mengisinya menemukan dua bank yang selalu gagal. Diuji sebelas
+    kandidat; yang diterima semua bank adalah nomor dengan digit berulang setelah prefix
+    (`081211111111`). Pesan galatnya tidak menyebut nomor telepon sama sekali, jadi satu-
+    satunya cara menemukannya adalah mengubah satu variabel pada satu waktu.
+
+28. **Mengganti nilai tanpa mengujinya adalah kesalahan yang sama, satu langkah lebih
+    jauh.** Nomor `081200000000` dipasang sebagai placeholder tanpa diuji ke BRI lebih
+    dulu — dan ternyata juga ditolak, persis seperti nilai sebelumnya. Menguji satu
+    kanal saja tidak cukup ketika masalahnya hanya muncul di kanal tertentu; uji harus
+    mencakup kanal yang paling ketat.
+
+29. **Pembacaan tangkapan layar tidak bisa dipercaya untuk angka.** Pada halaman yang
+    sama, pembacaan itu melaporkan "Harga barang Rp12.000" dan kode pesanan
+    "INV-BCCK2FM" — dua nilai yang tidak ada di proyek ini. Ia juga melaporkan teks
+    pemilih cara bayar "terlalu gelap" padahal perhitungan kontras menunjukkan semua
+    pasangan lulus WCAG AA (terendah 4,70:1). Angka yang salah lebih berbahaya daripada
+    tidak ada angka, karena angkanya terlihat meyakinkan. Untuk nilai, baca DOM dan
+    bandingkan dengan yang dikembalikan server; untuk kontras, hitung rasionya.
+
+30. **Alamat `QrImage` dari iPaymu mengembalikan HTML, bukan gambar.** Isinya adalah
+    halaman dengan PNG tertanam sebagai data URL. Memasangnya ke `src` sebuah `<img>`
+    menghasilkan gambar yang tidak pernah muncul, tanpa pesan kesalahan apa pun. Isinya
+    harus diambil dan data URL-nya yang dipakai — di server, karena permintaan dari
+    peramban ke domain iPaymu ditolak aturan lintas-asal.
