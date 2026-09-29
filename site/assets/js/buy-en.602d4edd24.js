@@ -106,6 +106,25 @@
       .then(function (result) {
         var data = result.data || {};
 
+        // Server belum dikonfigurasi (503). Ini terjadi selama pemasangan awal
+        // dan bukan kesalahan pembeli - jadi jangan tampilkan pesan kesalahan
+        // yang membuat mereka mengira situsnya rusak. Arahkan ke Microsoft
+        // Store, yang menjual produk yang sama dan tidak bergantung pada
+        // konfigurasi server ini.
+        if (result.status === 503) {
+          submit.disabled = false;
+          submit.textContent = 'Pay now';
+          note.textContent = 'Payment on this site is being set up.';
+          showAlert(
+            'Payment on this site is not active yet. In the meantime you can ' +
+            'buy from the Microsoft Store for Rp18,000 - Rp2,000 cheaper ' +
+            'and no waiting. Opening the Microsoft Store in a new tab.',
+            false
+          );
+          window.open('https://apps.microsoft.com/detail/9PN82QJLV05B', '_blank', 'noopener');
+          return;
+        }
+
         if (!data.ok || !data.paymentUrl) {
           throw new Error(data.error || 'Could not open the payment page. Please try again.');
         }
