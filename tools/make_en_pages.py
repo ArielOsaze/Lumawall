@@ -204,9 +204,9 @@ SISA = ['Rp20.000', 'sekali bayar', 'Bayar sekarang', 'Kode pesanan', 'Hubungi d
 # (sumber, tujuan, pasangan, jalankan-pemeriksa-sisa, skrip-pengganti)
 JOBS = [
     (ROOT / 'beli' / 'index.html', ROOT / 'en' / 'buy' / 'index.html', BUY, True,
-     ('../assets/js/buy.js', '../assets/js/buy-en.js')),
+     ('buy', 'buy-en')),
     (ROOT / 'sukses' / 'index.html', ROOT / 'en' / 'success' / 'index.html', SUCCESS, True,
-     ('../assets/js/success.js', '../assets/js/success-en.js')),
+     ('success', 'success-en')),
     (ROOT / 'assets' / 'js' / 'buy.js', ROOT / 'assets' / 'js' / 'buy-en.js', BUY_JS, False, None),
     (ROOT / 'assets' / 'js' / 'success.js', ROOT / 'assets' / 'js' / 'success-en.js', SUCCESS_JS, False, None),
 ]
@@ -256,12 +256,48 @@ def main():
 
         # Halaman Inggris harus memuat skrip Inggris: kalau tidak, pesan
         # kesalahan dan tombolnya kembali berbahasa Indonesia.
+        #
+        # Nama berkasnya ber-hash (buy.bee1420957.js), jadi pencocokan harus
+        # memakai pola, bukan nama tetap. Versi pertama mencari
+        # "../assets/js/buy.js" - nama yang tidak ada lagi setelah cache-bust,
+        # sehingga penggantiannya dilewati diam-diam dan halaman Inggris
+        # memakai skrip Indonesia.
         if script_swap:
-            old_script, new_script = script_swap
-            if old_script in text:
-                text = text.replace(old_script, new_script)
-            elif new_script not in text:
-                missed.append('tag skrip tidak ditemukan: %s' % old_script)
+            base_old, base_new = script_swap  # mis. ('buy', 'buy-en')
+            pola = re.compile(
+                r'(/assets/js/)' + re.escape(base_old) + r'(\.[0-9a-f]{10})?\.js')
+            if pola.search(text):
+                # Ambil hash dari berkas versi Inggris yang ada di disk supaya
+                # halaman menunjuk berkas yang benar-benar ada.
+                js_dir = ROOT / 'site' / 'assets' / 'js'
+                kandidat = sorted(js_dir.glob('%s.*.js' % base_new))
+                if kandidat:
+                    hash_baru = kandidat[0].name[len(base_new):-3]  # '.cc6df5b331'
+                    text = pola.sub(r'\g<1>' + base_new + hash_baru + '.js', text)
+                else:
+                    text = pola.sub(r'\g<1>' + base_new + '.js', text)
+            elif ('/assets/js/%s' % base_new) not in text:
+                missed.append('tag skrip tidak ditemukan: %s' % base_old)
+
+        # ── path aset harus absolut ──────────────────────────────────────────
+        # Halaman Indonesia ada di /beli/ (satu tingkat), jadi "../assets/"
+        # benar. Halaman Inggris ada di /en/buy/ (dua tingkat), jadi
+        # "../assets/" menunjuk ke /en/assets/ yang tidak ada - dan hasilnya
+        # halaman tanpa CSS sama sekali: teks polos, logo rusak, tata letak
+        # hilang. Persis itu yang terjadi sebelum baris ini ada.
+        #
+        # Semua halaman Inggris lain di situs ini memakai path absolut
+        # ("/assets/..."), jadi versi Inggris di sini disamakan. Itu juga
+        # membuat kedalaman folder tidak lagi menjadi soal.
+        if dst.parts and 'en' in dst.parts:
+            before = text
+            text = text.replace('"../assets/', '"/assets/')
+            text = text.replace("'../assets/", "'/assets/")
+            # Tautan antar-halaman juga ikut: dari /en/buy/ ke /en/ bukan "../".
+            text = text.replace('href="../#', 'href="/en/#')
+            text = text.replace('href="../"', 'href="/en/"')
+            if text == before and '"/assets/' not in text:
+                missed.append('tidak ada path aset yang perlu diperbaiki')
 
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(text, encoding='utf-8')
