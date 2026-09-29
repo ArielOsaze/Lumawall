@@ -32,6 +32,14 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 18 | **Paket MS Store** | ✅ | `outputs/LumaWall_4.5.5.0_x64.msix`; BadgeLogo = glyph putih di transparansi (22% opaque), bukan kotak putih | `tools/check-store-package.py` |
 | 19 | **Wallpaper hitam setelah keluar dari app fullscreen** | ✅ diperbaiki | Dulu desktop hitam **1–2 menit** setelah game ditutup. Penyebabnya bukan playback (log tetap menulis `resume-frame rs=4`) melainkan komposisi desktop: `--disable-features=CalculateNativeWinOcclusion` membuat Chromium tidak pernah tahu jendelanya ter-occlude, jadi ia tidak punya alasan menggambar ulang saat desktop kembali. Sekarang `ForceRepaint()` dipanggil pada transisi resume: **kembali dalam 0,4 detik** | `python tools/check-fullscreen-recovery.py --display DISPLAY3` |
 | 20 | **Installer di web ikut ter-update otomatis** | ✅ diperbaiki | Dulu installer disalin ke `site/assets/downloads/` — artinya berkasnya bisa diunduh siapa pun yang menebak alamatnya, **gratis, tanpa membayar**. Sekarang setiap rilis mengunggah installer ke bucket **privat**; server yang mengambilnya setelah token diverifikasi. URL lama dialihkan ke halaman beli | `python tools/release.py <versi>` (langkah 7) |
+| 21 | **Pembayaran berhasil, tidak sekadar terpasang** | ✅ | Tautan bayar sungguhan dari iPaymu: `Status: 200 Success`. Lewat jembatan, **10/10 permintaan** berhasil; langsung ke iPaymu **15/15** | `python tools/test-live-checkout.py` |
+| 22 | **Bayar tanpa pindah situs (snap)** | ✅ baru | QRIS tampil di halaman beli sendiri lewat `payment-direct`. QR asli **450×450** muncul di halaman pada **280×280 px**, sumbernya data URL. Tidak ada pengalihan ke iPaymu | `python tools/check-snap-qr-asli.py` |
+| 23 | **Halaman memeriksa pembayaran sendiri** | ✅ baru | `/api/status-pembayaran` memeriksa database lalu iPaymu sebagai cadangan; jumlah diperiksa, bukan dipercaya. Kode pesanan tidak sah ditolak: `{"ok":false,"error":"Kode pesanan tidak sah."}` | `curl "https://lumawall.xinet.id/api/status-pembayaran/?order=HACK"` |
+| 24 | **Promo Rp10.000 naik otomatis ke Rp18.000** | ✅ | 11 kasus diuji termasuk 15 Okt 23:59:59 (masih promo) dan 16 Okt 00:00:00 (sudah naik), serta dua kasus dalam UTC. Batasnya jam Jakarta, bukan UTC | `python tools/check-price-schedule.py` |
+| 25 | **Harga tidak pernah bertentangan di halaman** | ✅ diperbaiki | Blok promo dan blok setelah-promo pernah tampil bersamaan (`[hidden]` kalah dari `display:flex`) sehingga halaman menyatakan dua harga sekaligus. Sekarang: promo 5/5 terlihat, setelah-promo 0/1 | `python tools/check-promo-display.py` |
+| 26 | **Harga di web = harga yang ditagih** | ✅ | Halaman mengambil harga dari `/api/price`, jadi angka yang ditampilkan selalu sama dengan yang ditagih server. `Rp20.000` sudah **0 kemunculan** di seluruh situs | `curl https://lumawall.xinet.id/api/price/` |
+| 27 | **Ganti bahasa tidak error** | ✅ diperbaiki | `/en/beli/` tidak pernah ada — tombol ID di `/en/buy/` dan `/en/success/` naik **satu** tingkat, seharusnya **dua** → 404. Tombol EN di `/sukses/` malah menuju halaman beli. Sekarang 6/6 tombol menuju halaman yang benar, **158 tautan diperiksa, 0 rusak** | `python tools/check-links.py` |
+| 28 | **Tombol bahasa punya gaya** | ✅ diperbaiki | Tidak ada aturan `.lang` di berkas CSS mana pun: tautan EN/ID muncul sebagai teks biru bergaris bawah, terlihat seperti halaman yang belum selesai | `python tools/check-links.py` |
 
 ---
 
@@ -164,3 +172,40 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
     melaporkan 182 "frasa tidak ditemukan" — padahal sebagian besar frasa itu memang milik
     halaman lain. Laporan yang penuh kebisingan membuat masalah yang sungguhan tidak
     terlihat.
+
+20. **iPaymu membatasi DUA hal, bukan satu: alamat IP dan domain.** "Invalid IP" adalah
+    masalah pertama, dan setelah itu diperbaiki muncul "Invalid domain" — `returnUrl`
+    harus memakai domain yang terdaftar di akun, dan untuk akun ini hanya **satu** domain
+    yang diterima. Diuji satu per satu: `lumawall.xinet.id`, `xinet.id`,
+    `akuntuntas.xinet.id`, dan versi `www` semuanya ditolak; hanya `nexshop.cloud` diterima.
+    Itulah jawaban dari "kenapa proyek lain bisa langsung tanpa whitelist" — domain mereka
+    memang sudah terdaftar di akun masing-masing.
+
+21. **iPaymu menolak nomor telepon kosong dengan pesan yang menyesatkan.** Pesannya
+    `unauthorized signature`, yang menunjuk ke tanda tangan — padahal tanda tangannya benar.
+    Dibuktikan dengan uji berulang: lima permintaan dengan nomor telepon berhasil semua,
+    lima tanpa nomor gagal semua. Pesan yang menunjuk ke tempat yang salah membuat
+    penyebabnya sulit ditemukan; satu-satunya cara adalah menguji variabelnya satu per satu.
+
+22. **`QrImage` dari iPaymu bukan berkas gambar.** Alamat itu mengembalikan halaman **HTML**
+    dengan PNG tertanam sebagai data URL. Memasangnya ke `src` sebuah `<img>` menghasilkan
+    gambar yang **tidak pernah muncul**, tanpa satu pun pesan kesalahan di halaman. Karena
+    itu isinya harus diambil dan data URL-nya yang dipakai — dan pengambilannya harus di
+    server, karena permintaan dari peramban ke domain iPaymu ditolak aturan lintas-asal.
+
+23. **Batas waktu yang terlalu pendek mengubah keberhasilan menjadi kegagalan.** iPaymu
+    terukur 4,4 detik untuk permintaan normal dan pernah melewati 20 detik. Satu pesanan
+    tercatat gagal karena itu, padahal transaksinya mungkin sedang diproses — dan pembeli
+    yang mencoba lagi menghasilkan **dua transaksi untuk satu pembelian**.
+
+24. **Teks yang "terpotong" di tangkapan layar sering artefak Chrome, bukan bug halaman.**
+    `--window-size` punya lebar minimum sekitar 500px, jadi tangkapan "390px" sebenarnya
+    mewakili lebar desktop. Diukur dengan iframe yang lebarnya bisa disetel bebas: viewport
+    320/360/390/414/768/1200 semuanya sama dengan lebar dokumen — tidak ada yang meluber.
+    Sebelum memperbaiki tampilan karena tangkapan layar, ukur dulu angkanya.
+
+25. **Halaman yang tidak didaftarkan di `cache-bust.py` akan tertinggal menunjuk berkas
+    yang sudah diganti nama.** Halaman privasi memuat CSS yang sama dengan halaman lain
+    tetapi tidak ada di daftar `PAGES`, jadi tautannya rusak setiap kali cache-bust
+    dijalankan — dan baru terlihat kalau diperiksa terpisah. Checker tautan menangkapnya
+    seketika; sebelumnya tidak ada yang memeriksanya.
