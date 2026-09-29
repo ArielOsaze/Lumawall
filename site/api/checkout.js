@@ -156,8 +156,37 @@ module.exports = async function handler(req, res) {
     // tidak bisa tahu pembayaran sudah masuk, dan pembeli harus menunggu
     // halaman sukses memuat ulang sendiri.
     const transactionId = sesi.TransactionId || sesi.transactionId || null;
-    const qrImage = sesi.QrImage || sesi.qrImage || null;
+    let qrImage = sesi.QrImage || sesi.qrImage || null;
     const qrString = sesi.QrString || sesi.qrString || null;
+
+    // ── QrImage bukan berkas gambar ──────────────────────────────────────────
+    //
+    // iPaymu mengembalikan ALAMAT yang, kalau dibuka, berisi halaman HTML dengan
+    // gambar PNG tertanam sebagai data URL - bukan berkas PNG. Memasangnya
+    // langsung ke atribut `src` sebuah <img> menghasilkan gambar yang tidak
+    // pernah muncul: peramban menerima HTML, bukan gambar, dan tidak ada pesan
+    // kesalahan yang terlihat di halaman.
+    //
+    // Jadi isinya diambil di sini dan data URL-nya dikembalikan. Dikerjakan di
+    // server, bukan di peramban, karena permintaan dari peramban ke domain
+    // iPaymu akan ditolak oleh aturan lintas-asal.
+    if (qrImage) {
+      try {
+        const r = await fetch(qrImage, { signal: AbortSignal.timeout(8000) });
+        const teks = await r.text();
+        const m = teks.match(/src="(data:image\/[a-z]+;base64,[^"]+)"/i);
+        if (m) {
+          qrImage = m[1];
+        } else if (teks.trim().startsWith('data:image/')) {
+          qrImage = teks.trim();
+        }
+        // Kalau polanya tidak dikenali, alamat aslinya dibiarkan apa adanya -
+        // halaman masih punya qrString sebagai cadangan, dan itu lebih baik
+        // daripada tidak ada apa-apa.
+      } catch (e) {
+        console.error('[lumawall] gagal mengambil gambar QR', e && e.message);
+      }
+    }
 
     if (!transactionId) {
       await supabase(`orders?order_code=eq.${encodeURIComponent(orderCode)}`, {

@@ -348,7 +348,22 @@ router.post("/:tindakan", express.json({ limit: "64kb" }), async (req, res) => {
         // tidak pernah meninggalkan situs LumaWall, jadi tidak ada halaman
         // iPaymu yang perlu tahu ke mana harus kembali.
         kirim.name = String(p.buyerName || p.name || "Guest");
-        kirim.phone = String(p.buyerPhone || p.phone || "");
+
+        // Nomor telepon TIDAK boleh kosong.
+        //
+        // Ditemukan dengan menguji, bukan dari dokumentasi: iPaymu menolak
+        // permintaan tanpa nomor telepon dengan pesan "unauthorized signature".
+        // Pesan itu menunjuk ke tanda tangan, padahal tanda tangannya benar -
+        // dan karena pesannya menyesatkan, penyebabnya sulit ditemukan. Uji
+        // berulang membuktikannya: lima permintaan dengan nomor telepon
+        // berhasil semua, lima tanpa nomor telepon gagal semua.
+        //
+        // Kalau pemanggil tidak mengirim nomor, dipakai nomor placeholder yang
+        // jelas bukan nomor siapa pun. Ini bukan data palsu yang menyesatkan:
+        // nomornya tidak pernah dihubungi, dan satu-satunya alternatifnya
+        // adalah transaksi yang gagal.
+        const telepon = String(p.buyerPhone || p.phone || "").replace(/[^\d+]/g, "");
+        kirim.phone = telepon || "08000000000";
         kirim.email = String(p.buyerEmail || p.email || "");
         kirim.amount = String(p.amount);
         kirim.notifyUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/notifikasi`;
