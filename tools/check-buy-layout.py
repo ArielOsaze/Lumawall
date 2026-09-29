@@ -84,11 +84,41 @@ function probe(w) {
   for (var j = 0; j < texty.length; j++) {
     var t = texty[j];
     if (t.children.length > 0) continue;
-    if (t.scrollWidth > t.clientWidth + 2 && t.clientWidth > 0 && out.clipped.length < 10) {
+
+    // Yang diukur adalah TEKSNYA, bukan elemennya.
+    //
+    // `scrollWidth > clientWidth` pada elemen tidak bisa dipakai di sini:
+    // `<summary>` adalah flex container yang punya panah ::after diputar 45
+    // derajat, dan kotak pembatas panah yang berputar itu ikut terhitung -
+    // sehingga teks pendek seperti "Is there a monthly fee?" dilaporkan
+    // terpotong padahal muat dengan lapang. Positif palsu seperti itu membuat
+    // laporan tidak bisa dipercaya, dan itu lebih buruk daripada tidak ada
+    // laporan.
+    //
+    // Range mengukur rentang teks yang sebenarnya, jadi panah dan padding tidak
+    // ikut terhitung.
+    var rentang = doc.createRange();
+    rentang.selectNodeContents(t);
+    var kotakTeks = rentang.getBoundingClientRect();
+    rentang.detach && rentang.detach();
+
+    if (kotakTeks.width === 0) continue;
+
+    var isi = t.getBoundingClientRect();
+    var cs = w.getComputedStyle(t);
+    var padKiri = parseFloat(cs.paddingLeft) || 0;
+    var padKanan = parseFloat(cs.paddingRight) || 0;
+    var batasKanan = isi.right - padKanan;
+
+    // Teks terpotong kalau ujung kanannya melewati kotak isinya.
+    var lebih = kotakTeks.right - batasKanan;
+    if (lebih > 2 && out.clipped.length < 10) {
       out.clipped.push({
         tag: t.tagName.toLowerCase(),
         text: (t.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40),
-        scrollW: t.scrollWidth, clientW: t.clientWidth
+        lebarTeks: Math.round(kotakTeks.width),
+        lebarIsi: Math.round(isi.width - padKiri - padKanan),
+        lebih: Math.round(lebih)
       });
     }
   }
@@ -206,6 +236,27 @@ def main():
                 clip = r.get('clipped') or []
                 doc = r.get('docWidth', 0)
 
+                # Hasil yang mencurigakan diulang sekali sebelum dilaporkan.
+                #
+                # Alasannya: pengukuran ini pernah melaporkan "doc 1440px" pada
+                # viewport 360px untuk satu halaman, sementara pengukuran ulang
+                # tiga kali berturut-turut memberi 360px yang benar. Artinya
+                # sesekali halaman belum selesai ditata saat probe berjalan.
+                # Laporan yang berubah-ubah antar-jalankan membuat orang berhenti
+                # mempercayai checker-nya - jadi hasil buruk diverifikasi dulu.
+                if (over or clip or doc > w + 1):
+                    write_probe(url, w)
+                    ulang = run_probe(w)
+                    if 'error' not in ulang:
+                        over2 = ulang.get('overflowing') or []
+                        clip2 = ulang.get('clipped') or []
+                        doc2 = ulang.get('docWidth', 0)
+                        if not over2 and not clip2 and doc2 <= w + 1:
+                            print('     %4dpx  \u2713 bersih (doc %dpx, pengukuran pertama '
+                                  'menyesatkan)' % (w, doc2))
+                            continue
+                        over, clip, doc = over2, clip2, doc2
+
                 if not over and not clip and doc <= w + 1:
                     print('     %4dpx  \u2713 bersih (doc %dpx)' % (w, doc))
                     continue
@@ -216,8 +267,9 @@ def main():
                     print('             meluber %+dpx  <%s class="%s"> %s'
                           % (o['over'], o['tag'], o['cls'], o['text'][:36]))
                 for c in clip[:6]:
-                    print('             terpotong     %s (%dpx > %dpx) %s'
-                          % (c['tag'], c['scrollW'], c['clientW'], c['text'][:32]))
+                    print('             terpotong     %s (%dpx, isi %dpx, lebih %+dpx) %s'
+                          % (c['tag'], c['lebarTeks'], c['lebarIsi'],
+                             c['lebih'], c['text'][:30]))
             print()
     finally:
         # Berkas probe tidak boleh tertinggal di folder situs: ia akan ikut
