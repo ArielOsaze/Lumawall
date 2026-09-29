@@ -55,6 +55,12 @@ PAGES = [
     os.path.join(SITE, 'en', 'buy', 'index.html'),
     os.path.join(SITE, 'sukses', 'index.html'),
     os.path.join(SITE, 'en', 'success', 'index.html'),
+    # Halaman privasi juga memuat CSS dan logo yang sama. Sebelum ini
+    # didaftarkan, halaman itu tertinggal menunjuk nama berkas yang sudah
+    # diganti - dan karena cache-bust hanya memproses halaman yang terdaftar,
+    # tautannya baru terlihat rusak setelah diperiksa terpisah.
+    os.path.join(SITE, 'privacy', 'index.html'),
+    os.path.join(SITE, 'en', 'privacy', 'index.html'),
 ]
 
 # Which assets are served with a long cache and therefore need a versioned URL.

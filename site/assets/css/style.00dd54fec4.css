@@ -913,6 +913,46 @@ p { text-wrap: pretty; }
 
 /* Lihat catatan di buy.css: tanpa ini, `hidden` kalah dari display: flex. */
 [hidden] { display: none !important; }
+
+/* ── pemilih bahasa ─────────────────────────────────────────────────────────
+   Tombol ini sebelumnya TIDAK punya gaya sama sekali - tidak ada aturan `.lang`
+   di berkas CSS mana pun. Akibatnya tautan "EN" dan "ID" muncul sebagai teks
+   biru bergaris bawah di tengah navigasi: terlihat seperti tautan yang belum
+   selesai dikerjakan, bukan seperti pilihan bahasa. Yang paling parah, ia
+   terlihat seperti kesalahan halaman - dan itulah yang dilaporkan. */
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 32px;
+  padding: 0 .55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink-muted);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-decoration: none;
+  transition: border-color .18s, color .18s, background .18s;
+}
+
+.lang:hover {
+  border-color: rgba(255, 255, 255, .22);
+  background: var(--elevated);
+  color: var(--ink);
+}
+
+.lang:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .store-logo { flex: none; width: 1.35rem; height: 1.35rem; fill: var(--ink); opacity: .9; }
 .store-text { display: flex; flex-direction: column; line-height: 1.15; }
 .store-text small {

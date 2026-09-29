@@ -502,6 +502,18 @@
 #qr-card,
 #done-card { max-width: 460px; margin: 0 auto; }
 
+/* Kepala kartu QR: judul di kiri, total di kanan.
+ *
+ * `align-items: flex-end` dan `white-space: nowrap` dipasang karena versi
+ * pertama membiarkan totalnya melipat: "Rp10.249 (+Rp249 biaya)" terlalu
+ * panjang untuk separuh kartu, sehingga kata "total" jatuh ke baris berikutnya
+ * dan terlihat berantakan tepat di angka yang paling diperhatikan pembeli.
+ * Sekarang biayanya dipindah ke daftar rincian di bawah, dan totalnya tidak
+ * boleh terpotong. */
+#qr-card .buy-card-head { align-items: flex-end; gap: 1rem; }
+#qr-card .buy-price { text-align: right; }
+#qr-card .buy-amount { white-space: nowrap; }
+
 .qr-wrap {
   position: relative;
   display: flex;

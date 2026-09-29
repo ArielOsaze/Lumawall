@@ -25,8 +25,8 @@
 <link rel="apple-touch-icon" href="../assets/logo/logo-150.e23f998f8e.png">
 <link rel="preload" href="../assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/css/fonts.ad37d8582b.css">
-<link rel="stylesheet" href="../assets/css/style.322b8497e4.css">
-<link rel="stylesheet" href="../assets/css/buy.63ca7c269f.css">
+<link rel="stylesheet" href="../assets/css/style.00dd54fec4.css">
+<link rel="stylesheet" href="../assets/css/buy.6615221305.css">
 </head>
 <body class="buy-page">
 
@@ -178,6 +178,11 @@
       </div>
 
       <dl class="qr-detail">
+        <div><dt>Harga lisensi</dt><dd id="qr-harga">&mdash;</dd></div>
+        <!-- Biaya layanan hanya muncul kalau memang ada. Baris yang selalu ada
+             tetapi kadang berisi Rp0 membuat pembeli mengira ada biaya
+             tersembunyi di transaksi lain. -->
+        <div id="qr-biaya-baris" hidden><dt>Biaya layanan</dt><dd id="qr-biaya">&mdash;</dd></div>
         <div><dt>Kode pesanan</dt><dd id="qr-order">&mdash;</dd></div>
         <div><dt>Berlaku sampai</dt><dd id="qr-expired">&mdash;</dd></div>
       </dl>
@@ -349,6 +354,6 @@
 </footer>
 
 <script src="../assets/js/harga.js"></script>
-<script src="../assets/js/buy.635150f9d1.js"></script>
+<script src="../assets/js/buy.4cb65e299c.js"></script>
 </body>
 </html>

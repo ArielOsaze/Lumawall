@@ -142,13 +142,31 @@
     orderCode = data.order;
     qrOrder.textContent = data.order;
 
-    // Total ditampilkan lengkap dengan biaya layanan kalau ada. Pembeli yang
-    // melihat angka berbeda antara halaman ini dan aplikasi banknya akan
-    // mengira dirinya dikenai biaya tersembunyi.
-    var total = data.total || data.amount;
-    qrTotal.textContent = rupiah(total);
-    if (data.fee && data.fee > 0) {
-      qrTotal.textContent += ' (+' + rupiah(data.fee) + ' biaya)';
+    // Harga dan biaya dipisah, bukan digabung di sebelah total.
+    //
+    // Versi pertama menulis "Rp10.249 (+Rp249 biaya)" di sebelah kanan judul,
+    // dan di layar sempit teks itu melipat sehingga kata "total" jatuh ke baris
+    // berikutnya - terlihat berantakan tepat di angka yang paling diperhatikan
+    // pembeli. Sekarang totalnya sendirian di atas, dan rinciannya turun ke
+    // daftar di bawah, tempat baris baru tidak merusak apa pun.
+    //
+    // Pembeli yang melihat angka berbeda antara halaman ini dan aplikasi
+    // banknya akan mengira dirinya dikenai biaya tersembunyi, jadi rinciannya
+    // tetap harus ada - hanya tempatnya yang dipindah.
+    qrTotal.textContent = rupiah(data.total || data.amount);
+
+    var hargaEl = document.getElementById('qr-harga');
+    if (hargaEl) hargaEl.textContent = rupiah(data.amount);
+
+    var biayaBaris = document.getElementById('qr-biaya-baris');
+    var biayaEl = document.getElementById('qr-biaya');
+    if (biayaBaris && biayaEl) {
+      if (data.fee && data.fee > 0) {
+        biayaEl.textContent = rupiah(data.fee);
+        biayaBaris.hidden = false;
+      } else {
+        biayaBaris.hidden = true;
+      }
     }
 
     qrExpired.textContent = formatWaktu(data.expiredAt);
