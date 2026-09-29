@@ -68,14 +68,15 @@ ID = {
         "- Antarmuka bahasa Indonesia dan Inggris"
     ),
     "What's new in this version": (
-        "Versi 4.5.7\n"
-        "- Paket tervalidasi untuk pengiriman ke Microsoft Store\n"
-        "- Memperbaiki layar utama yang tidak beranimasi saat nama file wallpaper "
-        "mengandung karakter tidak biasa\n"
-        "- Widget jam kini menempel di desktop, jadi tidak pernah menutupi aplikasi kamu\n"
-        "- Sepuluh gaya jam dengan font bergaya iOS yang berbeda\n"
-        "- Peluncuran pertama lebih mulus dan pemakaian CPU saat menganggur lebih rendah\n"
-        "- Tata letak Luma Studio lebih seimbang dan pemilih penempatan lebih jelas"
+        "Versi 4.5.8\n"
+        "- Wallpaper tidak lagi hitam satu-dua menit setelah keluar dari aplikasi "
+        "fullscreen - sekarang kembali dalam waktu kurang dari satu detik\n"
+        "- Layar utama beranimasi lagi saat nama berkas wallpaper mengandung karakter "
+        "tidak biasa\n"
+        "- Widget jam tidak pernah menutupi aplikasi kamu; ia menempel di desktop "
+        "setara dengan wallpaper\n"
+        "- Pemilih penempatan jam tidak lagi menendang halaman ke atas\n"
+        "- Tepi jendela tidak berkedip lagi saat keluar dari aplikasi fullscreen"
     ),
     'Product features': (
         "Mesin wallpaper dinamis;Wallpaper per monitor;Dipercepat GPU;"

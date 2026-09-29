@@ -91,6 +91,22 @@ def set_versions(version):
         body = re.sub(r'LumaWall-Setup-[\d.]+\.exe', 'LumaWall-Setup-%s.exe' % version, body)
         body = re.sub(r'LumaWall-portable-[\d.]+\.zip', 'LumaWall-portable-%s.zip' % version, body)
         body = re.sub(r'LumaWall_[\d.]+_x64\.msix', 'LumaWall_%s_x64.msix' % version, body)
+
+        # Versi yang TAMPIL di halaman, bukan hanya nama berkasnya.
+        #
+        # Ini terlewat sampai rilis 4.5.8.0: nama berkasnya ikut berubah, tetapi
+        # teks "Versi 4.5.7.0" dan `softwareVersion` di structured data tetap
+        # menyebut versi lama. Akibatnya rilis terlihat gagal padahal berhasil -
+        # langkah verifikasi memeriksa versi di halaman, menemukan yang lama, dan
+        # melaporkan "does not link".
+        #
+        # Dua bentuk spasi ditangani karena kedua halaman ditulis oleh alat yang
+        # berbeda dan salah satunya tidak memakai spasi setelah titik dua.
+        body = re.sub(r'"softwareVersion"\s*:\s*"[\d.]+"',
+                      '"softwareVersion": "%s"' % version, body)
+        body = re.sub(r'Versi [\d.]+', 'Versi %s' % version, body)
+        body = re.sub(r'Version [\d.]+', 'Version %s' % version, body)
+
         page.write_text(body, encoding='utf-8')
 
 
@@ -135,6 +151,20 @@ def verify(version, live=True):
                        % (SITE_URL, page)], check=False)
             if version not in out:
                 bad.append('%s does not link %s' % (page, version))
+
+        # Berkas berbayar harus TIDAK bisa diunduh langsung.
+        #
+        # Sampai rilis 4.5.7.0 langkah ini justru menuntut sebaliknya: ia
+        # memeriksa bahwa installer, zip, dan msix bisa diunduh dari
+        # /assets/downloads/ dengan status 200. Itu memang benar saat itu, dan
+        # itulah masalahnya - berkas di dalam folder situs bisa diambil siapa
+        # pun yang menebak alamatnya, gratis, tanpa membayar, dan selama
+        # berkasnya di sana seluruh gerbang pembayaran tidak ada artinya.
+        #
+        # Pemeriksaan yang menuntut keadaan tidak aman lebih berbahaya daripada
+        # tidak ada pemeriksaan: ia akan menolak perbaikan, dan mendorong siapa
+        # pun yang menjalankannya untuk mengembalikan celahnya. Karena itu yang
+        # diperiksa sekarang adalah kebalikannya.
         for asset in ['LumaWall-Setup-%s.exe' % version,
                       'LumaWall-portable-%s.zip' % version,
                       'LumaWall_%s_x64.msix' % version]:
@@ -142,8 +172,16 @@ def verify(version, live=True):
                        "try { (Invoke-WebRequest -UseBasicParsing -Method Head "
                        "'%s/assets/downloads/%s' -TimeoutSec 25).StatusCode } catch { $_.Exception.Response.StatusCode.value__ }"
                        % (SITE_URL, asset)], check=False).strip()
-            if out != '200':
-                bad.append('%s is not served (%s)' % (asset, out or 'no answer'))
+            if out == '200':
+                bad.append('%s is still downloadable without paying (200)' % asset)
+
+        # Dan tautan unduhan tanpa token harus ditolak.
+        out = run(['powershell', '-NoProfile', '-Command',
+                   "try { (Invoke-WebRequest -UseBasicParsing "
+                   "'%s/api/download?t=token-palsu' -TimeoutSec 25).StatusCode } catch { $_.Exception.Response.StatusCode.value__ }"
+                   % SITE_URL], check=False).strip()
+        if out == '200':
+            bad.append('the download gate accepts a made-up token (200)')
 
     return bad
 
@@ -262,8 +300,14 @@ def main():
     # Ini juga yang membuat "installer di web ikut ter-update otomatis"
     # benar-benar berlaku: setiap rilis menimpa objek yang sama di bucket, jadi
     # tautan yang sudah diterbitkan tidak pernah menunjuk ke versi lama.
+    #
+    # Jalurnya dikirim absolut. Installer dibangun ke OUT, dan OUT berada di
+    # luar ROOT - jadi `relative_to(ROOT)` melempar ValueError dan rilis
+    # berhenti di langkah ini, setelah installer dan MSIX sudah jadi tetapi
+    # sebelum apa pun diterbitkan. Yang dilaporkan hanyalah pesan path yang
+    # tidak menjelaskan bahwa langkah sebelumnya sudah berhasil.
     up = run(['python', 'tools/upload_installer.py', '--upload',
-              '--local', str(setup.relative_to(ROOT)),
+              '--local', str(setup),
               '--remote', 'LumaWall-Setup-%s.exe' % version],
              timeout=1800, check=False)
     if up.returncode != 0:

@@ -58,8 +58,21 @@ def current_version():
     return ''
 
 
-DEFAULT_INSTALLER = os.path.join('site', 'assets', 'downloads',
-                                 'LumaWall-Setup-%s.exe' % current_version())
+# Installer dibangun ke folder outputs/, yang berada di sebelah folder kerja ini
+# - BUKAN di dalam site/.
+#
+# Sampai rilis 4.5.7.0 installer disalin ke site/assets/downloads/ supaya bisa
+# diunduh dari situs. Salinan itu dihapus karena berkas di dalam folder situs
+# bisa diunduh siapa pun yang menebak alamatnya, gratis, tanpa membayar - dan
+# selama berkasnya ada di sana, seluruh gerbang pembayaran tidak ada artinya.
+#
+# Jalur ini harus ikut berubah saat itu terjadi. Kalau tidak, alat ini mencari
+# berkas yang sudah sengaja dihapus, gagal dengan "installer not found", dan
+# pesan itu terbaca seolah installernya belum dibangun - padahal ia sudah ada,
+# dan langkah verifikasinya yang tidak pernah berjalan.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_OUTPUTS = os.path.join(os.path.dirname(_ROOT), 'outputs')
+DEFAULT_INSTALLER = os.path.join(_OUTPUTS, 'LumaWall-Setup-%s.exe' % current_version())
 RELEASE_DIR = os.path.join('LumaWall', 'bin', 'Release')
 KEY_BINARY = 'LumaWall.exe'
 

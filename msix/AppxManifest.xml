@@ -22,7 +22,7 @@
   <Identity
     Name="XinetGroup.LumaWall"
     Publisher="CN=82AE483E-A9EB-487B-BDE6-4D690C249608"
-    Version="4.5.7.0"
+    Version="4.5.8.0"
     ProcessorArchitecture="x64" />
 
   <Properties>

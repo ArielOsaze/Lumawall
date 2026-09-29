@@ -96,14 +96,15 @@ EN = {
         "- English and Indonesian interface"
     ),
     "What's new in this version": (
-        "Version 4.5.7\n"
-        "- Packages validated for Microsoft Store submission\n"
-        "- Fixed the primary display not animating when a wallpaper filename contained "
+        "Version 4.5.8\n"
+        "- The wallpaper no longer goes black for a minute or two after closing a "
+        "fullscreen app - it comes back in under a second\n"
+        "- The primary display animates again when a wallpaper filename contains "
         "unusual characters\n"
-        "- Timer widget is now parented to the desktop, so it never covers your apps\n"
-        "- Ten clock styles with distinct iOS-style fonts\n"
-        "- Smoother first launch and lower idle CPU usage\n"
-        "- Balanced Luma Studio layout and clearer placement picker"
+        "- The clock widget never covers your apps; it sits on the desktop with the "
+        "wallpaper\n"
+        "- The clock placement picker no longer throws the page to the top\n"
+        "- Window edges no longer flicker when leaving a fullscreen app"
     ),
     'Product features': (
         "Dynamic wallpaper engine;Per-monitor wallpapers;GPU accelerated;"
