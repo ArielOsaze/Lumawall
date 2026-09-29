@@ -58,6 +58,12 @@
   "functions": {
     "api/download.js": {
       "maxDuration": 60
+    },
+    "api/checkout.js": {
+      "maxDuration": 60
+    },
+    "api/status-pembayaran.js": {
+      "maxDuration": 30
     }
   }
 }

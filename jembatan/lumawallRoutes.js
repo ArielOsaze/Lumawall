@@ -135,7 +135,11 @@ function mintaKeIpaymu(jalur, badan) {
                     timestamp: capWaktuJakarta(),
                     "Content-Length": Buffer.byteLength(badan),
                 },
-                timeout: 20000,
+                // iPaymu kadang butuh lebih dari 20 detik saat sibuk. Batas
+                // yang terlalu pendek membuat permintaan yang sebenarnya
+                // berhasil dilaporkan sebagai kegagalan - dan pembeli mencoba
+                // lagi, sehingga ada dua transaksi untuk satu pembelian.
+                timeout: 40000,
             },
             (res) => {
                 let teks = "";

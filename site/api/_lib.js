@@ -240,14 +240,19 @@ async function panggilJembatan(cfg, tindakan, muatan) {
         'x-lumawall-signature': tandaTangan,
       },
       body: JSON.stringify(muatan),
-      // Jembatan meneruskan ke iPaymu yang kadang lambat. 20 detik lebih
-      // pendek daripada batas fungsi serverless, sehingga kegagalan jembatan
-      // dilaporkan sebagai pesan yang jelas alih-alih timeout platform.
-      signal: AbortSignal.timeout(20000),
+      // Jembatan meneruskan ke iPaymu, dan iPaymu kadang butuh lebih dari 20
+      // detik - terukur 4,4 detik untuk permintaan yang normal, dan pernah
+      // melewati 20 detik saat sibuk. Batas 20 detik membuat pembeli melihat
+      // "gagal" padahal transaksinya sedang diproses dan mungkin berhasil.
+      //
+      // 45 detik dipilih supaya tetap di bawah maxDuration fungsi (60 detik):
+      // kalau jembatan yang menggantung, yang dilaporkan adalah pesan ini,
+      // bukan timeout platform yang tidak menjelaskan apa pun.
+      signal: AbortSignal.timeout(45000),
     });
   } catch (err) {
     const pesan = err && err.name === 'TimeoutError'
-      ? 'Jembatan tidak menjawab dalam 20 detik.'
+      ? 'Pembayaran tidak menjawab dalam 45 detik. Coba lagi.'
       : `Tidak bisa menghubungi jembatan: ${err && err.message}`;
     return { ok: false, status: 0, data: null, error: pesan };
   }
