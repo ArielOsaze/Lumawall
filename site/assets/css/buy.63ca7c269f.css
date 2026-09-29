@@ -494,6 +494,134 @@
 }
 .store-text b { font-size: .875rem; font-weight: 600; color: var(--ink); }
 
+/* ── panel QR ─────────────────────────────────────────────────────────────── */
+
+/* Kartu QR dan kartu selesai memakai lebar yang sama dengan kartu formulir,
+   supaya halaman tidak melompat saat panelnya berganti. Perubahan tata letak
+   yang mendadak membuat pembeli mengira halamannya rusak. */
+#qr-card,
+#done-card { max-width: 460px; margin: 0 auto; }
+
+.qr-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  /* Putih, bukan gelap: kode QR harus terbaca pemindai, dan pemindai butuh
+     kontras gelap-di-atas-terang. QR di atas latar gelap sering gagal dibaca
+     meskipun terlihat jelas oleh mata. */
+  background: #fff;
+}
+
+#qr-img {
+  display: block;
+  width: 280px;
+  height: 280px;
+  /* `image-rendering: pixelated` menjaga tepi modul QR tetap tajam. Kalau
+     gambar diskalakan dengan interpolasi, modulnya jadi kabur dan pemindai
+     yang lebih lemah menolaknya. */
+  image-rendering: pixelated;
+}
+
+.qr-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: .9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.qr-help {
+  margin: 0 0 1rem;
+  color: var(--ink-muted);
+  font-size: .92rem;
+  line-height: 1.6;
+}
+
+.qr-help b { color: var(--ink); font-weight: 600; }
+
+/* Status pembayaran. Titiknya berdenyut selama menunggu, dan berhenti saat
+   pemeriksaan otomatis sudah habis - gerakan yang berhenti adalah cara paling
+   jelas memberi tahu bahwa sesuatu tidak lagi berjalan. */
+.qr-status {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--elevated);
+  font-size: .9rem;
+  color: var(--ink-muted);
+}
+
+.qr-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f5a623;
+  animation: qr-pulse 1.6s ease-in-out infinite;
+}
+
+.qr-status.ok .qr-dot { background: #2ecc71; animation: none; }
+.qr-status.lama .qr-dot { background: #6b7280; animation: none; }
+
+@keyframes qr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .45; transform: scale(.82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qr-dot { animation: none; }
+}
+
+.qr-detail {
+  margin: 1.1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: .55rem;
+}
+
+.qr-detail > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: .88rem;
+}
+
+.qr-detail dt { color: var(--ink-muted); }
+.qr-detail dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+.qr-note {
+  margin: 1.1rem 0 0;
+  font-size: .85rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.done-lead {
+  margin: 0 0 1.25rem;
+  line-height: 1.65;
+  color: var(--ink-muted);
+}
+
+.done-lead b { color: var(--ink); }
+
+@media (max-width: 420px) {
+  #qr-img { width: 100%; height: auto; }
+  .qr-wrap { min-height: 0; }
+}
+
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .buy-hero-in { grid-template-columns: minmax(0, 1fr); }

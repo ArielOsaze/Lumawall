@@ -193,6 +193,47 @@ def main():
             handled = False
             for p in pages:
                 referenced_name = refs[p]
+
+                # ── halaman menunjuk nama TANPA versi ────────────────────────
+                #
+                # Ini keadaan yang ditinggalkan tools/make-site-i18n.py: berkas
+                # Inggris (video, poster, og-card) sengaja ditulis tanpa hash,
+                # karena hash render Indonesia tidak berlaku untuk berkas yang
+                # isinya berbeda - dan cache-bust.py yang seharusnya menambahkan
+                # hash yang benar.
+                #
+                # Tetapi berkas dasarnya sudah tidak ada: percobaan sebelumnya
+                # sudah memindahkannya ke nama ber-hash dan membuang salinan
+                # dasarnya. Tanpa cabang ini, halaman Inggris menunjuk berkas
+                # yang tidak ada, dan cache-bust menolak menulis apa pun -
+                # halaman itu terbit dengan video dan poster yang 404.
+                #
+                # Kalau ada tepat satu berkas ber-hash untuk nama itu, halaman
+                # cukup diarahkan ke sana. Kalau ada lebih dari satu, tidak ada
+                # cara tahu mana yang benar, jadi lebih baik berhenti daripada
+                # menebak.
+                if not referenced_name and name in html[p]:
+                    kandidat = sorted(
+                        f for f in os.listdir(folder_path)
+                        if re.match(re.escape(stem) + r'\.[0-9a-f]{%d}' % HASH_LEN
+                                    + re.escape(ext) + r'$', f))
+                    if len(kandidat) == 1:
+                        fixed = kandidat[0]
+                        if check_only:
+                            print('  %-38s UNVERSIONED in %s - points at %s, should be %s'
+                                  % (rel, os.path.basename(p), name, fixed))
+                            continue
+                        html[p] = html[p].replace(name, fixed)
+                        refs[p] = fixed
+                        print('  %-38s repointed %s -> %s'
+                              % (rel, name, fixed))
+                        handled = True
+                        continue
+                    if len(kandidat) > 1:
+                        print('  %-38s BROKEN - %s points at %s, and %d versioned copies exist'
+                              % (rel, os.path.basename(p), name, len(kandidat)))
+                        return 1
+
                 if not referenced_name:
                     continue
                 on_disk = os.path.join(folder_path, referenced_name)

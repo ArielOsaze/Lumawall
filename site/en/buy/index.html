@@ -26,7 +26,7 @@
 <link rel="preload" href="/assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.ad37d8582b.css">
 <link rel="stylesheet" href="/assets/css/style.322b8497e4.css">
-<link rel="stylesheet" href="/assets/css/buy.7c4de2eddd.css">
+<link rel="stylesheet" href="/assets/css/buy.63ca7c269f.css">
 </head>
 <body class="buy-page">
 
@@ -42,7 +42,7 @@
       <a href="/en/#download">Download</a>
     </nav>
     <div class="nav-cta">
-      <a href="../beli/" class="lang">ID</a>
+      <a href="../../beli/" class="lang">ID</a>
       <a href="/en/#download" class="btn btn-ghost btn-sm">See it first</a>
     </div>
   </div>
@@ -137,10 +137,71 @@
         </button>
 
         <p class="buy-note" id="buy-note">
-          You will be taken to the iPaymu payment page. QRIS, bank transfer, and e-wallet are all available.
+          Pay by QRIS, right on this page. No redirect and no account needed.
         </p>
         <div class="buy-alert" id="buy-alert" hidden></div>
       </form>
+    </div>
+
+    <!-- ── panel QR ──────────────────────────────────────────────────────────
+         Tampil menggantikan formulir setelah pesanan dibuat. Pembeli tetap di
+         halaman ini: yang berubah hanya isi kartunya, bukan alamat situsnya.
+         Alasannya bukan sekadar kenyamanan - begitu pembeli berpindah situs,
+         tidak ada lagi yang bisa memberi tahu bahwa pembayarannya sudah masuk,
+         dan ia harus memuat ulang halaman sukses berulang kali sambil menebak. -->
+    <div class="buy-card" id="qr-card" hidden>
+      <div class="buy-card-head">
+        <h2 class="h3">Pay by QRIS</h2>
+        <div class="buy-price">
+          <span class="buy-amount" id="qr-total">Rp10.000</span>
+          <span class="buy-per">total</span>
+        </div>
+      </div>
+
+      <div class="qr-wrap">
+        <img id="qr-img" alt="Payment QR code" width="280" height="280">
+        <div class="qr-loading" id="qr-loading">Preparing the QR code&hellip;</div>
+      </div>
+
+      <p class="qr-help">
+        Open any bank or e-wallet app, choose <b>Pay</b> then <b>Scan QR</b>, and point it at the code above.
+      </p>
+
+      <div class="qr-status" id="qr-status">
+        <span class="qr-dot"></span>
+        <span id="qr-status-text">Waiting for payment&hellip;</span>
+      </div>
+
+      <dl class="qr-detail">
+        <div><dt>Order code</dt><dd id="qr-order">&mdash;</dd></div>
+        <div><dt>Valid until</dt><dd id="qr-expired">&mdash;</dd></div>
+      </dl>
+
+      <p class="qr-note">
+        This page checks the payment automatically. Leave it open and the download link will appear by itself once the payment arrives.
+      </p>
+    </div>
+
+    <!-- ── panel selesai ─────────────────────────────────────────────────────
+         Tampil setelah pembayaran terkonfirmasi. Tautan unduhannya hanya
+         ditampilkan sekali di sini, dan hanya untuk pembeli ini. -->
+    <div class="buy-card" id="done-card" hidden>
+      <div class="buy-card-head">
+        <h2 class="h3">Payment received</h2>
+      </div>
+
+      <p class="done-lead">
+        Thank you. The download link below can be used <b>once</b> and is tied to your current internet connection, so do not open it on another device or network.
+      </p>
+
+      <a class="btn btn-primary btn-block btn-lg" id="done-download" href="#">
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+                Download LumaWall
+      </a>
+
+      <p class="qr-note" id="done-note">
+        Keep this page. If the link has already been used, contact support with your order code.
+      </p>
     </div>
   </div>
 </section>
@@ -262,6 +323,6 @@
 </footer>
 
 <script src="/assets/js/harga.js"></script>
-<script src="/assets/js/buy-en.602d4edd24.js"></script>
+<script src="/assets/js/buy-en.7a72a8f058.js"></script>
 </body>
 </html>

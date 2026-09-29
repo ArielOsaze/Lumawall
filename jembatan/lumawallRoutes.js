@@ -4,22 +4,43 @@
 // KENAPA JEMBATAN INI ADA
 // ===========================================================
 //
-// iPaymu membatasi permintaan berdasarkan alamat IP pengirim. Vercel keluar
-// dari IP dinamis yang tidak terdaftar, jadi setiap checkout dari situs
-// LumaWall ditolak. Buktinya ada di database pesanan:
+// iPaymu membatasi permintaan berdasarkan DUA hal, dan keduanya harus
+// dipenuhi dari tempat yang sama:
 //
-//     {"order_code":"LW-XXSX3D","status":"gagal",
-//      "catatan":"ipaymu gagal: Invalid IP"}
+//   1. Alamat IP pengirim. Vercel keluar dari IP dinamis yang tidak
+//      terdaftar, jadi checkout dari situs LumaWall ditolak "Invalid IP".
+//      Buktinya ada di database pesanan:
 //
-// Server ini (VPS, IP tetap 202.10.38.167) sudah terdaftar di akun iPaymu
-// yang sama - diuji langsung dari sini, /balance menjawab Status 200. Jadi
-// panggilan ke iPaymu dialihkan lewat server ini.
+//          {"order_code":"LW-XXSX3D","status":"gagal",
+//           "catatan":"ipaymu gagal: Invalid IP"}
+//
+//      Server ini (VPS, IP tetap 202.10.38.167) sudah terdaftar di akun
+//      iPaymu yang sama - diuji langsung dari sini, /balance menjawab
+//      Status 200.
+//
+//   2. Domain pada returnUrl/notifyUrl/cancelUrl. iPaymu menolak domain
+//      yang tidak terdaftar di akun dengan pesan "Invalid domain". Untuk
+//      akun ini, SATU-SATUNYA domain yang diterima adalah nexshop.cloud:
+//
+//          https://lumawall.xinet.id    -> Invalid domain
+//          https://xinet.id             -> Invalid domain
+//          https://akuntuntas.xinet.id  -> Invalid domain
+//          https://nexshop.cloud        -> Success
+//
+//      Itu sebabnya proyek lain bisa langsung jalan tanpa mengurus
+//      whitelist: domain mereka memang sudah terdaftar di akun iPaymu
+//      masing-masing. Yang belum terdaftar harus lewat domain yang sudah
+//      ada - dan itulah fungsi jembatan ini.
+//
+// Karena itu jembatan ini melakukan dua hal: memanggil iPaymu, dan menjadi
+// alamat callback yang diterima iPaymu lalu meneruskannya ke LumaWall.
 //
 // Berkas ini berdiri sendiri dan tidak mengubah bagian NexShop yang lain.
-// Yang mengalir lewat sini hanya panggilan ke iPaymu: database pesanan, token
-// unduhan, dan berkas installer tetap di tempatnya masing-masing. Server ini
-// tidak menyimpan data LumaWall sama sekali, jadi ia tidak bisa menjadi
-// sumber kebocoran, dan kalau nanti tidak diperlukan cukup dimatikan.
+// Yang mengalir lewat sini hanya panggilan ke iPaymu dan notifikasinya:
+// database pesanan, token unduhan, dan berkas installer tetap di tempatnya
+// masing-masing. Server ini tidak menyimpan data LumaWall sama sekali, jadi
+// ia tidak bisa menjadi sumber kebocoran, dan kalau nanti tidak diperlukan
+// cukup dimatikan.
 
 const express = require("express");
 const crypto = require("crypto");
@@ -33,6 +54,16 @@ const router = express.Router();
 const VA = process.env.LUMAWALL_IPAYMU_VA || "";
 const API_KEY = process.env.LUMAWALL_IPAYMU_API_KEY || "";
 const RAHASIA = process.env.LUMAWALL_BRIDGE_SECRET || "";
+
+// Alamat situs LumaWall. Semua pengalihan kembali ke pembeli menuju ke sini.
+const SITUS = (process.env.LUMAWALL_SITE_URL || "https://lumawall.xinet.id").replace(/\/+$/, "");
+
+// Domain yang terdaftar di akun iPaymu. Alamat callback WAJIB memakai domain
+// ini, apa pun alamat aslinya. Diambil dari host permintaan yang masuk supaya
+// tidak perlu dikonfigurasi terpisah, tetapi hanya host nexshop.cloud yang
+// diterima - kalau permintaan datang lewat host lain, callbacks tetap memakai
+// domain resmi.
+const DOMAIN_TERDAFTAR = process.env.LUMAWALL_IPAYMU_DOMAIN || "https://nexshop.cloud";
 
 const IPAYMU_PRODUCTION = "https://my.ipaymu.com/api/v2";
 
@@ -123,7 +154,14 @@ function mintaKeIpaymu(jalur, badan) {
     });
 }
 
-router.use(express.json({ limit: "64kb" }));
+// Pengurai JSON dipasang pada rute yang memang menerima JSON, bukan di seluruh
+// router.
+//
+// Ini penting: `router.use(express.json())` akan membaca dan menghabiskan body
+// untuk SEMUA permintaan, termasuk notifikasi iPaymu. Notifikasi itu harus
+// diteruskan mentah, dan begitu body sudah diurai jadi objek, byte aslinya
+// hilang - signature di sisi LumaWall tidak akan pernah cocok. Karena itu
+// pengurai dipasang per rute, bukan global.
 
 router.get("/health", (req, res) => {
     res.json({
@@ -132,10 +170,102 @@ router.get("/health", (req, res) => {
         // Hanya menyatakan ada atau tidak, tidak pernah nilainya.
         kredensial: VA ? "ada" : "tidak ada",
         rahasia: RAHASIA ? "ada" : "tidak ada",
+        domain: DOMAIN_TERDAFTAR,
     });
 });
 
-router.post("/:tindakan", async (req, res) => {
+// ── alamat callback yang diterima iPaymu ────────────────────────────────────
+//
+// iPaymu hanya mau mengirim pembeli dan notifikasi ke domain terdaftar
+// (nexshop.cloud). Rute-rute ini menerima mereka di sana, lalu mengalihkan ke
+// LumaWall - jadi pembeli tetap berakhir di situs yang benar meskipun iPaymu
+// tidak pernah tahu alamat itu.
+
+// Pembeli selesai membayar: alihkan ke halaman sukses LumaWall.
+router.get("/kembali", (req, res) => {
+    const order = String(req.query.order || req.query.referenceId || "");
+    const tujuan = order
+        ? `${SITUS}/sukses?order=${encodeURIComponent(order)}`
+        : `${SITUS}/sukses`;
+    res.redirect(302, tujuan);
+});
+
+// Pembeli membatalkan: alihkan ke halaman beli dengan penanda batal.
+router.get("/batal", (req, res) => {
+    const order = String(req.query.order || "");
+    const tujuan = order
+        ? `${SITUS}/beli?batal=1&order=${encodeURIComponent(order)}`
+        : `${SITUS}/beli?batal=1`;
+    res.redirect(302, tujuan);
+});
+
+// Notifikasi pembayaran dari iPaymu. Diteruskan ke webhook LumaWall.
+//
+// PENTING: yang menentukan sah atau tidaknya pembayaran adalah webhook di
+// LumaWall, bukan rute ini. Rute ini hanya memindahkan notifikasi; ia tidak
+// menandai apa pun sebagai lunas dan tidak menyimpan apa pun. Kalau rute ini
+// dimatikan, tidak ada pembayaran yang menjadi sah karenanya.
+//
+// Body diteruskan MENTAH, byte per byte. Ini bukan kehati-hatian berlebih:
+// signature webhook dihitung atas body mentah yang diterima LumaWall, dan
+// mengurai lalu menyusun ulang JSON bisa mengubah urutan kunci atau spasi -
+// hasilnya signature tidak pernah cocok dan setiap pembayaran ditolak tanpa
+// alasan yang jelas. Karena itu rute ini memasang pengurai mentahnya sendiri,
+// terpisah dari express.json() di atas.
+router.post("/notifikasi", express.raw({ type: "*/*", limit: "256kb" }), async (req, res) => {
+    const mentah = Buffer.isBuffer(req.body) ? req.body : Buffer.from("");
+
+    if (!mentah.length) {
+        console.warn("[lumawall-bridge] notifikasi kosong");
+        return res.status(200).json({ ok: false, pesan: "Body kosong." });
+    }
+
+    // Jenis isi asli diteruskan apa adanya. LumaWall memutuskan sendiri cara
+    // membacanya; jembatan tidak perlu tahu bentuknya.
+    const jenis = String(req.get("content-type") || "application/x-www-form-urlencoded");
+
+    try {
+        const hasil = await kirimKeSitus(`${SITUS}/api/ipaymu-callback`, mentah, jenis);
+        console.log("[lumawall-bridge] notifikasi diteruskan:", hasil.statusCode, hasil.teks.slice(0, 200));
+        res.status(200).json({ ok: true, diteruskan: hasil.statusCode });
+    } catch (e) {
+        console.error("[lumawall-bridge] gagal meneruskan notifikasi:", e.message);
+        // Tetap 200 supaya iPaymu tidak mengulang tanpa henti. Notifikasi yang
+        // gagal diteruskan akan terlihat di log ini.
+        res.status(200).json({ ok: false, pesan: "Gagal meneruskan." });
+    }
+});
+
+function kirimKeSitus(url, body, jenis) {
+    return new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const isi = Buffer.isBuffer(body) ? body : Buffer.from(String(body), "utf8");
+        const req = https.request(
+            {
+                hostname: u.hostname,
+                path: u.pathname + u.search,
+                method: "POST",
+                headers: {
+                    "Content-Type": jenis || "application/x-www-form-urlencoded",
+                    "Content-Length": isi.length,
+                    "User-Agent": "lumawall-bridge/1.0",
+                },
+                timeout: 20000,
+            },
+            (res) => {
+                let teks = "";
+                res.on("data", (c) => { teks += c; });
+                res.on("end", () => resolve({ statusCode: res.statusCode, teks }));
+            }
+        );
+        req.on("timeout", () => req.destroy(new Error("Timeout")));
+        req.on("error", reject);
+        req.write(isi);
+        req.end();
+    });
+}
+
+router.post("/:tindakan", express.json({ limit: "64kb" }), async (req, res) => {
     const tindakan = String(req.params.tindakan || "").toLowerCase();
 
     if (!RAHASIA) {
@@ -180,14 +310,27 @@ router.post("/:tindakan", async (req, res) => {
         if (!p.amount || !p.referenceId) {
             return res.status(400).json({ ok: false, pesan: "amount dan referenceId wajib." });
         }
+        const kode = String(p.referenceId);
+
+        // ── alamat callback WAJIB memakai domain terdaftar ──────────────────
+        //
+        // iPaymu menolak returnUrl/notifyUrl/cancelUrl yang domainnya tidak
+        // terdaftar di akun, dengan pesan "Invalid domain". Alamat apa pun yang
+        // dikirim pemanggil diabaikan dan diganti dengan alamat di domain
+        // terdaftar; dari sana jembatan ini mengalihkan pembeli ke situs
+        // LumaWall yang sebenarnya.
+        //
+        // Dibiarkan memakai alamat kiriman pemanggil akan berarti jembatan
+        // hanya berhasil untuk domain yang kebetulan sudah terdaftar, dan
+        // gagal tanpa penjelasan untuk domain lain.
         kirim.product = [String(p.product || "LumaWall")];
         kirim.qty = ["1"];
         kirim.price = [String(p.amount)];
         kirim.amount = String(p.amount);
-        kirim.returnUrl = String(p.returnUrl || "");
-        kirim.notifyUrl = String(p.notifyUrl || "");
-        kirim.cancelUrl = String(p.cancelUrl || "");
-        kirim.referenceId = String(p.referenceId);
+        kirim.returnUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/kembali?order=${encodeURIComponent(kode)}`;
+        kirim.notifyUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/notifikasi`;
+        kirim.cancelUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/batal?order=${encodeURIComponent(kode)}`;
+        kirim.referenceId = kode;
         kirim.buyerName = String(p.buyerName || "Guest");
         if (p.buyerEmail) kirim.buyerEmail = String(p.buyerEmail);
         if (p.buyerPhone) kirim.buyerPhone = String(p.buyerPhone);
@@ -195,12 +338,21 @@ router.post("/:tindakan", async (req, res) => {
         if (!p.amount || !p.referenceId) {
             return res.status(400).json({ ok: false, pesan: "amount dan referenceId wajib." });
         }
-        kirim.name = String(p.name || "Guest");
-        kirim.phone = String(p.phone || "");
-        kirim.email = String(p.email || "");
+        const kode = String(p.referenceId);
+
+        // notifyUrl WAJIB memakai domain terdaftar, sama seperti pada
+        // `payment`. Tanpa ini iPaymu menjawab "Invalid domain" dan tidak ada
+        // QR yang terbuat.
+        //
+        // returnUrl dan cancelUrl tidak dikirim sama sekali di sini: pembeli
+        // tidak pernah meninggalkan situs LumaWall, jadi tidak ada halaman
+        // iPaymu yang perlu tahu ke mana harus kembali.
+        kirim.name = String(p.buyerName || p.name || "Guest");
+        kirim.phone = String(p.buyerPhone || p.phone || "");
+        kirim.email = String(p.buyerEmail || p.email || "");
         kirim.amount = String(p.amount);
-        kirim.notifyUrl = String(p.notifyUrl || "");
-        kirim.referenceId = String(p.referenceId);
+        kirim.notifyUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/notifikasi`;
+        kirim.referenceId = kode;
         kirim.paymentMethod = String(p.paymentMethod || "qris");
         if (p.paymentChannel) kirim.paymentChannel = String(p.paymentChannel);
     } else {

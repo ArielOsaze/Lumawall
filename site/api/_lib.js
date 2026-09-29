@@ -256,6 +256,22 @@ async function panggilJembatan(cfg, tindakan, muatan) {
   let data = null;
   try { data = JSON.parse(teks); } catch { /* biarkan null */ }
 
+  // Jembatan membungkus balasan iPaymu dalam bentuk { ok, status, data }.
+  // Yang dibutuhkan pemanggil adalah isi iPaymu-nya, jadi lapisan pembungkus
+  // itu dibuka di sini - di SATU tempat.
+  //
+  // Ini bukan kerapian belaka. Versi pertama membiarkan pemanggil membukanya
+  // sendiri, dan checkout.js memeriksa `data.Status` padahal yang benar
+  // `data.data.Status`. Akibatnya iPaymu menjawab "200 Success" tetapi
+  // checkout melaporkan gagal, dan pesanan tercatat gagal padahal tautan
+  // pembayarannya sudah tercipta - pembeli tidak bisa membayar, dan tidak ada
+  // yang tahu kenapa. Membukanya sekali di sini membuat kesalahan seperti itu
+  // tidak mungkin terjadi lagi.
+  if (data && typeof data === 'object' && !Array.isArray(data)
+      && 'ok' in data && 'data' in data) {
+    data = data.data;
+  }
+
   return { ok: res.ok, status: res.status, data };
 }
 

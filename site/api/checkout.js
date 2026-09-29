@@ -96,38 +96,48 @@ module.exports = async function handler(req, res) {
 
     // ── panggil iPaymu lewat jembatan ─────────────────────────────────────────
     //
-    // TIDAK langsung ke iPaymu. Alasannya: iPaymu membatasi permintaan
-    // berdasarkan alamat IP pengirim, dan Vercel keluar dari IP dinamis yang
-    // tidak terdaftar. Permintaan langsung dari sini ditolak dengan
-    // "Invalid IP" - terbukti dari log pesanan:
+    // TIDAK langsung ke iPaymu. Ada dua alasan, dan keduanya ditemukan dengan
+    // menguji, bukan dengan membaca dokumentasi:
     //
-    //     {"order_code":"LW-XXSX3D","status":"gagal",
-    //      "catatan":"ipaymu gagal: Invalid IP"}
+    //   1. iPaymu membatasi permintaan berdasarkan alamat IP pengirim, dan
+    //      Vercel keluar dari IP dinamis yang tidak terdaftar. Permintaan
+    //      langsung ditolak "Invalid IP".
+    //   2. iPaymu juga membatasi DOMAIN pada returnUrl/notifyUrl/cancelUrl.
+    //      Untuk akun ini hanya nexshop.cloud yang diterima; lumawall.xinet.id
+    //      ditolak "Invalid domain". Jembatan mengganti alamat itu dengan
+    //      domainnya sendiri lalu mengalihkan pembeli ke sini.
     //
-    // Jembatan di server NexShop punya IP tetap yang sudah terdaftar, dan
-    // sudah diuji dari sana: /balance menjawab Status 200.
-    const site = cfg.siteUrl.replace(/\/$/, '');
-
+    // Yang dipakai adalah `payment-direct`, BUKAN `payment`. Bedanya penting:
+    // `payment` mengembalikan tautan ke halaman iPaymu dan pembeli meninggalkan
+    // situs ini; `payment-direct` mengembalikan kode QR yang bisa ditampilkan di
+    // halaman ini sendiri. Pembeli tidak pernah berpindah situs, jadi tidak ada
+    // halaman pihak ketiga yang bisa membingungkan atau kehilangan jejak
+    // pesanannya.
     const muatan = {
-      product: `${cfg.productName} - lisensi lifetime`,
       amount: amount,
-      returnUrl: `${site}/sukses?order=${encodeURIComponent(orderCode)}`,
-      cancelUrl: `${site}/beli?batal=1`,
-      notifyUrl: `${site}/api/ipaymu-callback`,
       referenceId: orderCode,
       buyerName: nama,
       buyerEmail: email,
+      // QRIS dipilih karena satu-satunya kanal yang tidak butuh pembeli memilih
+      // bank dulu, dan sudah diuji bekerja untuk akun ini.
+      paymentMethod: 'qris',
+      paymentChannel: 'qris',
     };
     // iPaymu menolak body yang memuat kunci bernilai undefined, jadi nomor
     // WhatsApp hanya ditambahkan kalau memang diisi.
     if (wa) muatan.buyerPhone = wa;
 
-    const upstream = await panggilJembatan(cfg, 'payment', muatan);
+    const upstream = await panggilJembatan(cfg, 'payment-direct', muatan);
 
     if (!upstream.ok || !upstream.data || String(upstream.data.Status) !== '200') {
-      const detail = upstream.data && (upstream.data.Message || upstream.data.message)
-        ? String(upstream.data.Message || upstream.data.message)
-        : `HTTP ${upstream.status}`;
+      // Detailnya diambil selengkap mungkin. Versi pertama hanya menyimpan
+      // "HTTP 400", dan itu tidak cukup untuk tahu apa yang salah - pesan
+      // sebenarnya dari iPaymu ada di dalam `data`, bukan di status HTTP.
+      const detail = upstream.data
+        ? (upstream.data.Message || upstream.data.message
+           || (upstream.data.data && (upstream.data.data.Message || upstream.data.data.message))
+           || JSON.stringify(upstream.data).slice(0, 300))
+        : (upstream.error || `HTTP ${upstream.status}`);
       await supabase(`orders?order_code=eq.${encodeURIComponent(orderCode)}`, {
         method: 'PATCH',
         body: { status: 'gagal', catatan: `ipaymu gagal: ${detail}`.slice(0, 500) },
@@ -140,14 +150,23 @@ module.exports = async function handler(req, res) {
     }
 
     const data = upstream.data;
-    const session = (data.Data) || {};
-    const sessionId = session.SessionID || session.sessionId || null;
-    const paymentUrl = session.Url || session.url || null;
+    const sesi = data.Data || {};
 
-    if (!paymentUrl) {
+    // Nomor transaksi dipakai untuk memeriksa status nanti. Tanpa ini halaman
+    // tidak bisa tahu pembayaran sudah masuk, dan pembeli harus menunggu
+    // halaman sukses memuat ulang sendiri.
+    const transactionId = sesi.TransactionId || sesi.transactionId || null;
+    const qrImage = sesi.QrImage || sesi.qrImage || null;
+    const qrString = sesi.QrString || sesi.qrString || null;
+
+    if (!transactionId) {
+      await supabase(`orders?order_code=eq.${encodeURIComponent(orderCode)}`, {
+        method: 'PATCH',
+        body: { status: 'gagal', catatan: 'ipaymu tidak mengembalikan TransactionId' },
+      }).catch(() => {});
       return json(res, 502, {
         ok: false,
-        error: 'iPaymu tidak mengembalikan tautan pembayaran.',
+        error: 'iPaymu tidak mengembalikan nomor transaksi.',
         order: orderCode,
       });
     }
@@ -155,8 +174,11 @@ module.exports = async function handler(req, res) {
     await supabase(`orders?order_code=eq.${encodeURIComponent(orderCode)}`, {
       method: 'PATCH',
       body: {
-        sesi_pembayaran: sessionId,
-        acuan_pembayaran: session.ReferenceId || orderCode,
+        sesi_pembayaran: sesi.SessionId || null,
+        // Nomor transaksi disimpan di sini supaya halaman status bisa
+        // memeriksanya tanpa memanggil iPaymu lagi dari sisi peramban - dan
+        // tanpa membocorkan kredensial ke peramban.
+        acuan_pembayaran: String(transactionId),
       },
     }).catch(() => {});
 
@@ -164,8 +186,14 @@ module.exports = async function handler(req, res) {
       ok: true,
       order: orderCode,
       amount,
-      paymentUrl,
-      sessionId,
+      // Jumlah yang benar-benar dibayar pembeli, termasuk biaya layanan kalau
+      // ada. Ditampilkan terpisah supaya tidak ada kejutan di halaman QR.
+      total: sesi.Total || amount,
+      fee: sesi.Fee || 0,
+      qrImage,
+      qrString,
+      channel: sesi.Channel || 'QRIS',
+      expiredAt: sesi.Expired || null,
     });
   } catch (err) {
     return fail(res, err);

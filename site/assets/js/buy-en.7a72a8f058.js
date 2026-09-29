@@ -95,18 +95,18 @@
     var email = fields.email.input.value.trim();
     var wa = fields.wa.input.value.trim();
 
-    if (nama.length < 2) { showError('nama', 'Nama minimal 2 huruf.'); ok = false; }
+    if (nama.length < 2) { showError('nama', 'Name must be at least 2 characters.'); ok = false; }
     else showError('nama', '');
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      showError('email', 'Alamat email belum benar.');
+      showError('email', 'That email address does not look right.');
       ok = false;
     } else showError('email', '');
 
     if (wa) {
       var digits = wa.replace(/[^\d]/g, '');
       if (digits.length < 9 || digits.length > 15) {
-        showError('wa', 'Nomor WhatsApp belum benar.');
+        showError('wa', 'That WhatsApp number does not look right.');
         ok = false;
       } else showError('wa', '');
     } else showError('wa', '');
@@ -249,8 +249,8 @@
     };
 
     submit.disabled = true;
-    submit.textContent = 'Menyiapkan QR\u2026';
-    note.textContent = 'Menghubungi penyedia pembayaran, mohon tunggu sebentar.';
+    submit.textContent = 'Preparing QR\u2026';
+    note.textContent = 'Contacting the payment provider, please wait a moment.';
 
     fetch('/api/checkout', {
       method: 'POST',
@@ -270,12 +270,12 @@
         // konfigurasi server ini.
         if (result.status === 503) {
           submit.disabled = false;
-          submit.textContent = 'Bayar sekarang';
-          note.textContent = 'Pembayaran lewat situs ini sedang disiapkan.';
+          submit.textContent = 'Pay now';
+          note.textContent = 'Payment on this site is being set up.';
           showAlert(
-            'Pembayaran lewat situs ini belum aktif. Sementara itu kamu bisa ' +
-            'membeli di Microsoft Store dengan harga Rp18.000 - lebih murah ' +
-            'Rp2.000 dan tidak perlu menunggu. Buka Microsoft Store di tab baru.',
+            'Payment on this site is not active yet. In the meantime you can ' +
+            'buy from the Microsoft Store for Rp18,000 - Rp2,000 cheaper ' +
+            'and no waiting. Opening the Microsoft Store in a new tab.',
             false
           );
           window.open('https://apps.microsoft.com/detail/9PN82QJLV05B', '_blank', 'noopener');
@@ -283,7 +283,7 @@
         }
 
         if (!data.ok || !data.order) {
-          throw new Error(data.error || 'Pembayaran tidak bisa dibuka. Coba lagi.');
+          throw new Error(data.error || 'Could not open the payment page. Please try again.');
         }
 
         // Panel QR dipakai kalau ada QR. Kalau iPaymu mengembalikan tautan
@@ -294,7 +294,7 @@
           return;
         }
         if (data.paymentUrl) {
-          showAlert('Mengalihkan ke halaman pembayaran\u2026', true);
+          showAlert('Redirecting to the payment page\u2026', true);
           window.location.href = data.paymentUrl;
           return;
         }
@@ -303,9 +303,9 @@
       })
       .catch(function (err) {
         submit.disabled = false;
-        submit.textContent = 'Bayar sekarang';
-        note.textContent = 'Pembayaran lewat QRIS, langsung di halaman ini.';
-        showAlert(err.message || 'Terjadi kesalahan. Coba lagi.', false);
+        submit.textContent = 'Pay now';
+        note.textContent = 'Pay by QRIS, right on this page.';
+        showAlert(err.message || 'Something went wrong. Please try again.', false);
       });
   });
 
@@ -314,7 +314,7 @@
   try {
     var params = new URLSearchParams(window.location.search);
     if (params.get('batal') === '1') {
-      showAlert('Pembayaran dibatalkan. Tidak ada biaya yang terpotong. Kamu bisa mencoba lagi kapan saja.', false);
+      showAlert('Payment cancelled. Nothing was charged. You can try again any time.', false);
     }
   } catch (e) { /* URLSearchParams tidak ada: abaikan */ }
 })();

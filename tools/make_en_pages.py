@@ -46,7 +46,36 @@ BUY = [
     ('<a href="../#download">Unduh</a>', '<a href="../#download">Download</a>'),
     ('<a href="../#download" class="btn btn-ghost btn-sm">Lihat dulu</a>',
      '<a href="../#download" class="btn btn-ghost btn-sm">See it first</a>'),
-    ('<a href="../en/buy/" class="lang">EN</a>', '<a href="../beli/" class="lang">ID</a>'),
+    # Tombol bahasa naik DUA tingkat, bukan satu: halaman ini ada di
+    # en/buy/, jadi "../beli/" menunjuk ke en/beli/ yang tidak pernah ada.
+    # Kesalahannya tidak terlihat di halaman mana pun - baru ketahuan saat ada
+    # pengunjung menekan tombolnya dan mendapat 404.
+    ('<a href="../en/buy/" class="lang">EN</a>', '<a href="../../beli/" class="lang">ID</a>'),
+    # ── panel QR ──
+    ('<h2 class="h3">Bayar dengan QRIS</h2>', '<h2 class="h3">Pay by QRIS</h2>'),
+    ('<span class="buy-per">total</span>', '<span class="buy-per">total</span>'),
+    ('<img id="qr-img" alt="Kode QR pembayaran" width="280" height="280">',
+     '<img id="qr-img" alt="Payment QR code" width="280" height="280">'),
+    ('<div class="qr-loading" id="qr-loading">Menyiapkan kode QR&hellip;</div>',
+     '<div class="qr-loading" id="qr-loading">Preparing the QR code&hellip;</div>'),
+    ('Buka aplikasi bank atau e-wallet apa pun, pilih <b>Bayar</b> lalu\n        <b>Scan QR</b>, dan arahkan ke kode di atas.',
+     'Open any bank or e-wallet app, choose <b>Pay</b> then <b>Scan QR</b>, and point it at the code above.'),
+    ('<span id="qr-status-text">Menunggu pembayaran&hellip;</span>',
+     '<span id="qr-status-text">Waiting for payment&hellip;</span>'),
+    ('<div><dt>Kode pesanan</dt><dd id="qr-order">&mdash;</dd></div>',
+     '<div><dt>Order code</dt><dd id="qr-order">&mdash;</dd></div>'),
+    ('<div><dt>Berlaku sampai</dt><dd id="qr-expired">&mdash;</dd></div>',
+     '<div><dt>Valid until</dt><dd id="qr-expired">&mdash;</dd></div>'),
+    ('Halaman ini memeriksa pembayaran secara otomatis. Biarkan tetap terbuka,\n        dan tautan unduhan akan muncul sendiri begitu pembayaran masuk.',
+     'This page checks the payment automatically. Leave it open and the download link will appear by itself once the payment arrives.'),
+    # ── panel selesai ──
+    ('<h2 class="h3">Pembayaran diterima</h2>', '<h2 class="h3">Payment received</h2>'),
+    ('Terima kasih. Tautan unduhan di bawah ini hanya bisa dipakai\n        <b>satu kali</b> dan terikat pada koneksi internetmu sekarang, jadi\n        jangan dibuka di perangkat atau jaringan lain.',
+     'Thank you. The download link below can be used <b>once</b> and is tied to your current internet connection, so do not open it on another device or network.'),
+    ('Simpan halaman ini. Kalau tautannya sudah terpakai, hubungi dukungan dengan kode pesananmu.',
+     'Keep this page. If the link has already been used, contact support with your order code.'),
+    # Tombol unduhan di panel selesai.
+    ('        Unduh LumaWall', '        Download LumaWall'),
     ('<span class="eyebrow">Pembelian</span>', '<span class="eyebrow">Checkout</span>'),
     ('Satu kali bayar,<br>dipakai selamanya', 'Pay once,<br>keep it forever'),
     ('<span data-price-promo-harga>Rp10.000</span> untuk lisensi lifetime',
@@ -86,8 +115,8 @@ BUY = [
      '<span class="field-label">WhatsApp number <span class="opt">(optional)</span></span>'),
     ('<b data-price>Rp10.000</b>', '<b data-price>Rp10,000</b>'),
     ('Bayar sekarang\n        </button>', 'Pay now\n        </button>'),
-    ('Kamu akan diarahkan ke halaman pembayaran iPaymu. QRIS, transfer bank, dan e-wallet tersedia.',
-     'You will be taken to the iPaymu payment page. QRIS, bank transfer, and e-wallet are all available.'),
+    ('Pembayaran lewat QRIS, langsung di halaman ini. Tidak perlu pindah situs dan tidak perlu membuat akun.',
+     'Pay by QRIS, right on this page. No redirect and no account needed.'),
     ('<span class="eyebrow">Cara kerjanya</span>', '<span class="eyebrow">How it works</span>'),
     ('Empat langkah, selesai', 'Four steps, done'),
     ('<h3 class="h3">Isi data</h3>', '<h3 class="h3">Enter your details</h3>'),
@@ -130,7 +159,10 @@ SUCCESS = [
     ('<a href="../#features">Fitur</a>', '<a href="../#features">Features</a>'),
     ('<a href="../#performance">Performa</a>', '<a href="../#performance">Performance</a>'),
     ('<a href="../#download">Unduh</a>', '<a href="../#download">Download</a>'),
-    ('<a href="../en/buy/" class="lang">EN</a>', '<a href="../beli/" class="lang">ID</a>'),
+    # Halaman sukses EN: tombol ID harus menuju halaman SUKSES Indonesia,
+    # bukan halaman beli. Bahasa yang berpindah tidak boleh sekaligus
+    # memindahkan pengunjung ke langkah lain dalam alurnya.
+    ('<a href="../en/success/" class="lang">EN</a>', '<a href="../../sukses/" class="lang">ID</a>'),
     ('<a href="../" class="btn btn-ghost btn-sm">Beranda</a>',
      '<a href="../" class="btn btn-ghost btn-sm">Home</a>'),
     ('Memeriksa pesanan&hellip;', 'Checking your order&hellip;'),
@@ -172,9 +204,9 @@ SUCCESS = [
 # assets/js/buy.js
 # ══════════════════════════════════════════════════════════════════════════════
 BUY_JS = [
-    ("submit.textContent = 'Membuka pembayaran\\u2026';", "submit.textContent = 'Opening payment\\u2026';"),
-    ("note.textContent = 'Menghubungi iPaymu, mohon tunggu sebentar.';",
-     "note.textContent = 'Contacting iPaymu, one moment.';"),
+    ("submit.textContent = 'Menyiapkan QR\\u2026';", "submit.textContent = 'Preparing QR\\u2026';"),
+    ("note.textContent = 'Menghubungi penyedia pembayaran, mohon tunggu sebentar.';",
+     "note.textContent = 'Contacting the payment provider, please wait a moment.';"),
     ("showError('nama', 'Nama minimal 2 huruf.');", "showError('nama', 'Name must be at least 2 characters.');"),
     ("showError('email', 'Alamat email belum benar.');", "showError('email', 'That email address does not look right.');"),
     ("showError('wa', 'Nomor WhatsApp belum benar.');", "showError('wa', 'That WhatsApp number does not look right.');"),
@@ -191,8 +223,8 @@ BUY_JS = [
     ("showAlert('Mengalihkan ke halaman pembayaran\\u2026', true);",
      "showAlert('Redirecting to the payment page\\u2026', true);"),
     ("submit.textContent = 'Bayar sekarang';", "submit.textContent = 'Pay now';"),
-    ("note.textContent = 'Kamu akan diarahkan ke halaman pembayaran iPaymu.';",
-     "note.textContent = 'You will be taken to the iPaymu payment page.';"),
+    ("note.textContent = 'Pembayaran lewat QRIS, langsung di halaman ini.';",
+     "note.textContent = 'Pay by QRIS, right on this page.';"),
     ("err.message || 'Terjadi kesalahan. Coba lagi.'", "err.message || 'Something went wrong. Please try again.'"),
     ("showAlert('Pembayaran dibatalkan. Tidak ada biaya yang terpotong. Kamu bisa mencoba lagi kapan saja.', false);",
      "showAlert('Payment cancelled. Nothing was charged. You can try again any time.', false);"),
