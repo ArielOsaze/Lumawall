@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pesanan LumaWall</title>
+<meta name="description" content="Status pesanan LumaWall dan tautan unduhannya.">
+<meta name="theme-color" content="#080a0c">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://lumawall.xinet.id/sukses/">
+<link rel="icon" href="../assets/logo/app.0e36f28e75.ico">
+<link rel="apple-touch-icon" href="../assets/logo/logo-150.e23f998f8e.png">
+<link rel="preload" href="../assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/css/fonts.ad37d8582b.css">
+<link rel="stylesheet" href="../assets/css/style.01d89eaadb.css">
+<link rel="stylesheet" href="../assets/css/buy.be8df8aa6c.css">
+</head>
+<body class="buy-page">
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="../" class="brand" aria-label="LumaWall">
+      <img src="../assets/logo/logo-50.49911a6882.png" alt="" class="brand-mark" width="28" height="28">
+      <span class="brand-name">LumaWall</span>
+    </a>
+    <nav class="nav-links" aria-label="Utama">
+      <a href="../#features">Fitur</a>
+      <a href="../#performance">Performa</a>
+      <a href="../#download">Unduh</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="../en/buy/" class="lang">EN</a>
+      <a href="../" class="btn btn-ghost btn-sm">Beranda</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<section class="buy-hero">
+  <div class="wrap">
+    <div class="succ" id="succ" aria-live="polite">
+
+      <div class="succ-state" id="state-loading">
+        <div class="spin" aria-hidden="true"></div>
+        <h1 class="h2">Memeriksa pesanan&hellip;</h1>
+        <p class="lead">Sebentar, kami sedang mencocokkan pembayaranmu dengan iPaymu.</p>
+      </div>
+
+      <div class="succ-state" id="state-waiting" hidden>
+        <div class="succ-icon wait" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/></svg>
+        </div>
+        <h1 class="h2">Pembayaran belum terkonfirmasi</h1>
+        <p class="lead">
+          Kalau kamu baru saja membayar, tunggu sebentar lalu muat ulang halaman
+          ini. Konfirmasi dari bank biasanya masuk dalam beberapa detik, tetapi
+          bisa sampai satu menit pada jam sibuk.
+        </p>
+        <div class="succ-actions">
+          <button type="button" class="btn btn-primary" id="btn-reload">Periksa lagi</button>
+          <a href="https://wa.me/6282224293639" class="btn btn-ghost" target="_blank" rel="noopener">Hubungi dukungan</a>
+        </div>
+        <p class="succ-order">Kode pesanan: <code id="order-waiting">&mdash;</code></p>
+      </div>
+
+      <div class="succ-state" id="state-paid" hidden>
+        <div class="succ-icon ok" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <h1 class="h2">Pembayaran diterima</h1>
+        <p class="lead">
+          Terima kasih! Tautan unduhanmu sudah siap. Simpan halaman ini sebelum
+          menutup tab, karena tautannya tidak dikirim lewat email.
+        </p>
+
+        <div class="dl-box">
+          <a class="btn btn-primary btn-lg btn-block" id="btn-download" href="#">
+            <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+            Unduh LumaWall
+          </a>
+          <div class="dl-meta-row">
+            <span id="meta-size">LumaWall-Setup.exe</span>
+            <span id="meta-uses">&mdash;</span>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm copy-btn" id="btn-copy">
+            Salin tautan unduhan
+          </button>
+          <span class="copy-done" id="copy-done" hidden>Tersalin</span>
+        </div>
+
+        <div class="succ-warn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+          <p>
+            Tautan ini hanya berlaku dari jaringan yang kamu pakai sekarang,
+            maksimal <b id="warn-uses">3</b> kali unduh dalam
+            <b id="warn-hours">72</b> jam. Kalau berpindah jaringan atau
+            tautannya sudah habis, hubungi dukungan dengan kode pesanan di bawah.
+          </p>
+        </div>
+
+        <p class="succ-order">Kode pesanan: <code id="order-paid">&mdash;</code></p>
+
+        <details class="succ-help">
+          <summary>Sudah pernah mengunduh dan butuh bantuan?</summary>
+          <p>
+            Tautan unduhan tidak bisa dipindahkan ke perangkat atau jaringan
+            lain. Kalau kamu ganti jaringan, atau unduhanmu terputus sampai
+            batasnya habis, hubungi
+            <a href="https://wa.me/6282224293639" target="_blank" rel="noopener">WhatsApp dukungan</a>
+            dengan kode pesanan di atas &mdash; kami terbitkan tautan baru.
+          </p>
+        </details>
+      </div>
+
+      <div class="succ-state" id="state-error" hidden>
+        <div class="succ-icon bad" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg>
+        </div>
+        <h1 class="h2">Pesanan tidak ditemukan</h1>
+        <p class="lead" id="err-text">
+          Kami tidak menemukan pesanan dengan kode itu. Pastikan tautannya utuh,
+          atau hubungi dukungan dengan kode pesananmu.
+        </p>
+        <div class="succ-actions">
+          <a href="../beli/" class="btn btn-primary">Coba beli lagi</a>
+          <a href="https://wa.me/6282224293639" class="btn btn-ghost" target="_blank" rel="noopener">Hubungi dukungan</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="foot-legal">LumaWall &mdash; Rp20.000 sekali bayar, lisensi lifetime. Lebih murah Rp18.000 di Microsoft Store.</span>
+    <span class="foot-links">
+      <a href="../privacy/">Privasi</a>
+      <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" target="_blank" rel="noopener">Microsoft Store</a>
+    </span>
+  </div>
+</footer>
+
+<script src="../assets/js/success.7ce5ceef50.js"></script>
+</body>
+</html>

@@ -47,6 +47,14 @@ SITE = 'site'
 PAGES = [
     os.path.join(SITE, 'index.html'),
     os.path.join(SITE, 'en', 'index.html'),
+    # Halaman pembelian dan status pesanan ikut diproses. Halaman-halaman ini
+    # memuat CSS dan JS yang sama, jadi kalau tidak didaftarkan di sini, berkas
+    # yang di-cache di sana akan tertinggal di versi lama sementara halaman
+    # utama sudah memakai versi baru.
+    os.path.join(SITE, 'beli', 'index.html'),
+    os.path.join(SITE, 'en', 'buy', 'index.html'),
+    os.path.join(SITE, 'sukses', 'index.html'),
+    os.path.join(SITE, 'en', 'success', 'index.html'),
 ]
 
 # Which assets are served with a long cache and therefore need a versioned URL.
@@ -85,6 +93,16 @@ WATCHED = [
     'assets/logo/logo-50.png',
     'assets/logo/app-logo.png',
     'assets/logo/app.ico',
+    # Berkas khusus halaman pembelian dan status pesanan. Keduanya punya nama
+    # tetap tanpa versi, jadi tanpa didaftarkan di sini perubahan pada berkasnya
+    # tidak akan terlihat oleh pembeli yang sudah pernah membuka halaman ini -
+    # dan pada halaman pembayaran, berkas JS yang tertinggal di versi lama bisa
+    # berarti tombol yang tidak berfungsi.
+    'assets/css/buy.css',
+    'assets/js/buy.js',
+    'assets/js/success.js',
+    'assets/js/buy-en.js',
+    'assets/js/success-en.js',
 ]
 
 HASH_LEN = 10
@@ -103,6 +121,19 @@ KEEP_UNVERSIONED = {
     'assets/logo/logo-50.png',
     'assets/logo/app-logo.png',
     'assets/logo/app.ico',
+    # Berkas halaman pembelian dan status pesanan.
+    #
+    # Alasannya sama dengan logo: `tools/make_en_pages.py` membaca
+    # assets/js/buy.js dan assets/js/success.js untuk menghasilkan versi
+    # Inggrisnya. Kalau berkas sumbernya dihapus setelah di-hash, menjalankan
+    # skrip itu berikutnya gagal dengan "sumber tidak ada" - dan kegagalan itu
+    # terlihat seperti bug penerjemahan, bukan berkas yang hilang.
+    #
+    # Halaman tetap menunjuk ke berkas ber-hash; yang dipertahankan hanya
+    # salinan tanpa hash untuk dibaca alat.
+    'assets/css/buy.css',
+    'assets/js/buy.js',
+    'assets/js/success.js',
 }
 
 

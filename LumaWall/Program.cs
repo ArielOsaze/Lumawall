@@ -877,6 +877,11 @@ namespace LumaWall
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
         /// <summary>Public wrapper: other classes must not P/Invoke user32 themselves.</summary>
         public static bool IsWindowAlive(IntPtr hwnd) { return hwnd != IntPtr.Zero && IsWindow(hwnd); }
+        [DllImport("user32.dll")] public static extern bool RedrawWindow(IntPtr hwnd, IntPtr updateRect, IntPtr updateRgn, uint flags);
+        public const uint RdwInvalidate = 0x0001;
+        public const uint RdwFrame = 0x0400;
+        public const uint RdwAllChildren = 0x0080;
+        public const uint RdwUpdatenow = 0x0100;
         [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern int GetClassName(IntPtr hwnd, StringBuilder className, int maxCount);
         [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int maxCount);
 
@@ -3163,6 +3168,63 @@ namespace LumaWall
             try { if (browserReady && !IsDisposed && IsHandleCreated) NativeDesktop.AttachToWallpaper(Handle, screen.Bounds); } catch { }
         }
 
+        // ── coming back from a fullscreen app ──────────────────────────────────
+        //
+        // Leaving a fullscreen app used to leave the wallpaper black for a minute or
+        // two. The video was still decoding - the log showed `resume-frame rs=4` on
+        // every display - so nothing was wrong with playback. What went black was the
+        // desktop composition.
+        //
+        // While a game is fullscreen Windows switches DWM into its fullscreen mode and
+        // stops compositing the desktop at all. The wallpaper window keeps its last
+        // presented frame, so the desktop is correct behind the game. When the game
+        // closes, DWM returns to windowed mode and asks the windows on the desktop to
+        // repaint - and that request is the one this app never answered.
+        //
+        // It never answered it because of a flag in the browser arguments:
+        // `--disable-features=CalculateNativeWinOcclusion` tells Chromium not to track
+        // whether its window is occluded. That flag is there for a good reason (it also
+        // stops Chromium from throttling a wallpaper it wrongly believes is hidden),
+        // but the same switch means Chromium sees no occlusion transition to react to,
+        // so it has no reason to produce a new frame when the desktop comes back. The
+        // page keeps decoding into a surface DWM no longer presents, and the desktop
+        // stays black until something else forces a repaint - which is why waiting a
+        // while, or moving a window across it, fixed it.
+        //
+        // The fix is to force that repaint ourselves on the resume edge, rather than
+        // relying on Chromium to notice. Both halves are needed:
+        //
+        //   1. `RedrawWindow` on the host window with RDW_FRAME|RDW_INVALIDATE|
+        //      RDW_ALLCHILDREN, which is what makes DWM composite this window again.
+        //   2. A page-side nudge that forces the video element to hand over a fresh
+        //      frame, because the compositor may hold the last presented one and
+        //      answer the invalidation with the same stale surface.
+        //
+        // This runs only on the paused -> resumed transition, so a wallpaper that is
+        // already playing is never disturbed.
+        public void ForceRepaint()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                NativeDesktop.RedrawWindow(Handle, IntPtr.Zero, IntPtr.Zero,
+                    NativeDesktop.RdwInvalidate | NativeDesktop.RdwFrame |
+                    NativeDesktop.RdwAllChildren | NativeDesktop.RdwUpdatenow);
+            }
+            catch { }
+
+            // Ask the page for a fresh frame. Wrapping the video's own frame callback in
+            // a no-op style change is what makes the compositor produce a new surface:
+            // the element is untouched, so nothing about the wallpaper's appearance
+            // changes.
+            if (pageReady && webView != null && webView.CoreWebView2 != null)
+            {
+                RunScript("(function(){var v=document.querySelector('video,img');" +
+                          "if(!v)return;var s=v.style.transform;v.style.transform='translateZ(0)';" +
+                          "void v.offsetHeight;v.style.transform=s||'';})()");
+            }
+        }
+
         /// <summary>
         /// True while this window is still parented to a live desktop host.
         ///
@@ -3488,13 +3550,14 @@ namespace LumaWall
             int pausedNow = 0, resumedNow = 0;
             var pausedNames = new List<string>();
             var resumedNames = new List<string>();
+            var resumedWindows = new List<WallpaperWindow>();
             foreach (var pair in windows)
             {
                 bool shouldPause = IsPaused(pair.Key);
                 if (pair.Value.SetPaused(shouldPause))
                 {
                     if (shouldPause) { pausedNow++; pausedNames.Add(pair.Key); }
-                    else { resumedNow++; resumedNames.Add(pair.Key); }
+                    else { resumedNow++; resumedNames.Add(pair.Key); resumedWindows.Add(pair.Value); }
                 }
             }
             foreach (var pair in pending)
@@ -3503,7 +3566,7 @@ namespace LumaWall
                 if (pair.Value.SetPaused(shouldPause))
                 {
                     if (shouldPause) { pausedNow++; pausedNames.Add(pair.Key); }
-                    else { resumedNow++; resumedNames.Add(pair.Key); }
+                    else { resumedNow++; resumedNames.Add(pair.Key); resumedWindows.Add(pair.Value); }
                 }
             }
             if (pausedNow > 0 || resumedNow > 0)
@@ -3517,6 +3580,46 @@ namespace LumaWall
                 AppLog.Write("Playback updated (" + scope + "): " +
                     "paused [" + string.Join(", ", pausedNames.ToArray()) + "] " +
                     "resumed [" + string.Join(", ", resumedNames.ToArray()) + "]");
+
+                // A resume after a fullscreen app needs a repaint of its own: Windows
+                // stops compositing the desktop while a game is fullscreen, and with
+                // occlusion tracking disabled the browser never notices the desktop
+                // coming back. Without this the wallpaper stays black for a minute or
+                // two after the game closes, even though the video is decoding.
+                //
+                // Deferred to the next dispatcher tick on purpose: DWM has not finished
+                // leaving fullscreen mode at the instant the pause state flips, and a
+                // RedrawWindow issued into that window is dropped.
+                if (resumedWindows.Count > 0)
+                {
+                    var toRepaint = new List<WallpaperWindow>(resumedWindows);
+                    Action repaint = delegate()
+                    {
+                        foreach (WallpaperWindow window in toRepaint)
+                        {
+                            try { window.ForceRepaint(); } catch { }
+                        }
+                    };
+                    try
+                    {
+                        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                        dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, repaint);
+                        // Second pass: the first one can land while DWM is still
+                        // switching modes, so one more a moment later makes the fix
+                        // deterministic rather than a race that usually wins.
+                        var timer = new System.Windows.Threading.DispatcherTimer
+                        {
+                            Interval = TimeSpan.FromMilliseconds(450)
+                        };
+                        timer.Tick += delegate(object s, EventArgs a)
+                        {
+                            timer.Stop();
+                            repaint();
+                        };
+                        timer.Start();
+                    }
+                    catch { repaint(); }
+                }
 
                 // No trim here. See the note on WallpaperWindow.MaintainPausedMemory
                 // for the measurements: trimming the browser group killed the video

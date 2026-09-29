@@ -24,26 +24,36 @@ __pycache__/
 build/
 outputs/
 installer/Output/
+installer/private/
 *.log
 
 # ── installers ──
-# These were ignored on the reasoning that they are "published as Releases, never
-# committed". That was wrong for this project: the site links to
-# site/assets/downloads/LumaWall-Setup-4.0.1.exe, so the files have to be in the
-# deploy. Ignoring them meant every download on the live site returned 404 while the
-# files sat on this machine - the site looked finished and could not be installed
-# from. 42 MB of installers is the point of a download page.
+# Riwayat aturan ini, supaya tidak diubah bolak-balik lagi:
 #
-# The pattern is scoped to the site's own folder; a stray .exe elsewhere (a build
-# artefact, a test binary) is still ignored.
+# 1. Mula-mula installer diabaikan, dengan alasan "dipublikasikan sebagai
+#    Release, tidak pernah di-commit". Itu salah: situs menautkan
+#    site/assets/downloads/LumaWall-Setup-4.0.1.exe, jadi berkasnya harus ada
+#    di deploy. Akibatnya setiap unduhan di situs live mengembalikan 404
+#    sementara berkasnya diam di mesin ini.
+#
+# 2. Lalu installer di-commit ke dalam folder situs. Itu memperbaiki 404, tapi
+#    menciptakan masalah yang lebih buruk: berkasnya jadi bisa diunduh siapa pun
+#    yang menebak alamatnya, gratis, tanpa membayar. Gerbang pembayaran tidak
+#    ada artinya kalau berkasnya sendiri punya URL publik.
+#
+# 3. Sekarang installer TIDAK di-commit dan TIDAK disajikan dari folder situs.
+#    Berkasnya ada di bucket privat Supabase Storage; server yang mengambilnya
+#    setelah token unduhan diverifikasi. Tidak ada alamat publik sama sekali.
+#
+# Pola *.exe di bawah ini berlaku juga untuk folder situs: itu disengaja.
 *.exe
 !tools/FullscreenCover.exe
-!site/assets/downloads/*.exe
 *.msi
 *.msix
-!site/assets/downloads/*.msix
-site/assets/downloads/*.zip
-!site/assets/downloads/*.zip
+*.zip
+
+# Sisa berkas lama di folder situs: diabaikan, dan juga dihapus dari git.
+site/assets/downloads/
 
 # ── wallpaper library (user content, not source) ──
 LumaWall/assets/*

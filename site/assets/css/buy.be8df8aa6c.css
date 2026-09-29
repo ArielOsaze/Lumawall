@@ -1,0 +1,391 @@
+/* Halaman pembelian.
+
+   Mengikuti bahasa desain yang sama dengan situs utama: satu aksen, satu
+   permukaan per bagian, tanpa efek dekoratif. Berkas terpisah karena halaman
+   ini punya kebutuhan sendiri (kartu form yang harus tetap terbaca saat
+   setengah layar) dan karena situs utama tidak boleh ikut membengkak. */
+
+.buy-page { background: var(--base); }
+
+/* ── hero ─────────────────────────────────────────────────────────────────── */
+.buy-hero {
+  padding: calc(var(--nav-h) + clamp(2.5rem, 6vw, 4.5rem)) 0 clamp(3rem, 7vw, 5rem);
+  position: relative;
+  overflow: hidden;
+}
+.buy-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 0%, rgba(255, 59, 87, .07), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 10%, rgba(62, 207, 142, .04), transparent 70%);
+  pointer-events: none;
+}
+.buy-hero-in {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+.buy-copy .h1 { margin: 0 0 1.25rem; font-size: clamp(2rem, 4.4vw, 3.25rem); }
+.buy-copy .lead { color: var(--ink-muted); max-width: 34rem; margin: 0 0 1.75rem; }
+
+.buy-points { list-style: none; margin: 0 0 2rem; padding: 0; display: grid; gap: .7rem; }
+.buy-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  color: var(--ink-muted);
+  font-size: .9375rem;
+}
+.buy-points .i {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: .2rem;
+  stroke: var(--good);
+  stroke-width: 2.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.store-hint {
+  display: flex;
+  gap: .85rem;
+  align-items: flex-start;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-width: 34rem;
+}
+.store-hint .i {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: .15rem;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  fill: none;
+  stroke-linejoin: round;
+}
+.store-hint p { margin: 0; font-size: .875rem; color: var(--ink-muted); line-height: 1.6; }
+.store-hint b { color: var(--ink); }
+.store-hint a { color: var(--accent); white-space: nowrap; }
+.store-hint a:hover { text-decoration: underline; }
+
+/* ── kartu form ───────────────────────────────────────────────────────────── */
+.buy-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: clamp(1.35rem, 3vw, 1.85rem);
+  position: sticky;
+  top: calc(var(--nav-h) + 1.5rem);
+}
+.buy-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.15rem;
+  margin-bottom: 1.35rem;
+  border-bottom: 1px solid var(--line);
+}
+.buy-card-head .h3 { margin: 0; font-size: 1.05rem; }
+.buy-price { text-align: right; line-height: 1.2; }
+.buy-amount { display: block; font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em; }
+.buy-per { display: block; font-size: .75rem; color: var(--ink-subtle); }
+
+.field { display: block; margin-bottom: 1.05rem; }
+.field-label {
+  display: block;
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: .45rem;
+}
+.field-label .opt { font-weight: 400; color: var(--ink-subtle); }
+.field input {
+  width: 100%;
+  padding: .72rem .85rem;
+  font: inherit;
+  font-size: .9375rem;
+  color: var(--ink);
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+.field input::placeholder { color: var(--ink-subtle); }
+.field input:focus {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field input[aria-invalid="true"] { border-color: var(--accent); }
+.field-hint { display: block; font-size: .75rem; color: var(--ink-subtle); margin-top: .4rem; }
+.field-err { display: block; font-size: .78rem; color: var(--accent); margin-top: .4rem; }
+
+.buy-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 0;
+  margin: .35rem 0 1.15rem;
+  border-top: 1px solid var(--line);
+  font-size: .9rem;
+  color: var(--ink-muted);
+}
+.buy-total b { font-size: 1.15rem; color: var(--ink); letter-spacing: -.01em; }
+
+.btn-block { width: 100%; }
+.buy-note {
+  margin: .9rem 0 0;
+  font-size: .78rem;
+  color: var(--ink-subtle);
+  line-height: 1.55;
+  text-align: center;
+}
+.buy-alert {
+  margin-top: .9rem;
+  padding: .8rem .9rem;
+  border-radius: 10px;
+  font-size: .85rem;
+  line-height: 1.55;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.buy-alert.ok { border-color: rgba(62, 207, 142, .35); background: rgba(62, 207, 142, .1); }
+
+#buy-submit[disabled] { opacity: .6; cursor: progress; }
+
+/* ── langkah ──────────────────────────────────────────────────────────────── */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: clamp(1.25rem, 3vw, 2rem);
+  counter-reset: step;
+}
+.steps li { position: relative; padding-top: 2.6rem; }
+.step-n {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: .8125rem;
+  font-weight: 700;
+}
+.steps .h3 { margin: 0 0 .45rem; font-size: 1rem; }
+.steps p { margin: 0; color: var(--ink-muted); font-size: .9rem; }
+
+/* ── faq ──────────────────────────────────────────────────────────────────── */
+.faq { display: grid; gap: .65rem; max-width: 48rem; }
+.faq details {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0 1.15rem;
+}
+.faq summary {
+  cursor: pointer;
+  padding: 1rem 0;
+  font-weight: 600;
+  font-size: .9375rem;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: '';
+  flex: none;
+  width: .5rem;
+  height: .5rem;
+  border-right: 1.6px solid var(--ink-subtle);
+  border-bottom: 1.6px solid var(--ink-subtle);
+  transform: rotate(45deg) translateY(-.15rem);
+  transition: transform .2s var(--ease);
+}
+.faq details[open] summary::after { transform: rotate(225deg) translateY(-.1rem); }
+.faq p {
+  margin: 0;
+  padding: 0 0 1.1rem;
+  color: var(--ink-muted);
+  font-size: .9rem;
+  line-height: 1.65;
+}
+.faq a { color: var(--accent); }
+.faq a:hover { text-decoration: underline; }
+.faq code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .85em;
+  background: var(--elevated);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+}
+
+/* ── halaman status pesanan ───────────────────────────────────────────────── */
+.succ {
+  max-width: 42rem;
+  margin: 0 auto;
+  text-align: center;
+}
+.succ-state { padding: 1rem 0; }
+.succ-state .h2 { margin: 0 0 .9rem; font-size: clamp(1.4rem, 3vw, 1.9rem); }
+.succ-state .lead { color: var(--ink-muted); margin: 0 auto 1.75rem; max-width: 34rem; }
+
+.succ-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1.4rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.succ-icon svg { width: 1.7rem; height: 1.7rem; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.succ-icon.ok { border-color: rgba(62, 207, 142, .35); background: rgba(62, 207, 142, .1); }
+.succ-icon.ok svg { stroke: var(--good); stroke-width: 2.4; }
+.succ-icon.wait svg { stroke: var(--ink-muted); }
+.succ-icon.bad { border-color: var(--accent-line); background: var(--accent-soft); }
+.succ-icon.bad svg { stroke: var(--accent); }
+
+.spin {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0 auto 1.4rem;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.succ-actions {
+  display: flex;
+  gap: .7rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.succ-order {
+  font-size: .85rem;
+  color: var(--ink-subtle);
+  margin: 1.5rem 0 0;
+}
+.succ-order code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .9em;
+  color: var(--ink-muted);
+  background: var(--elevated);
+  padding: .15rem .45rem;
+  border-radius: 5px;
+  letter-spacing: .02em;
+}
+
+.dl-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: clamp(1.1rem, 3vw, 1.5rem);
+  margin-bottom: 1.25rem;
+}
+.dl-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: .85rem;
+  font-size: .8125rem;
+  color: var(--ink-subtle);
+}
+.copy-btn { margin-top: 1rem; }
+.copy-done {
+  display: inline-block;
+  margin-left: .6rem;
+  font-size: .8125rem;
+  color: var(--good);
+}
+
+.succ-warn {
+  display: flex;
+  gap: .8rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: .95rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 1.25rem;
+}
+.succ-warn svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: .2rem;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.succ-warn p { margin: 0; font-size: .84rem; color: var(--ink-muted); line-height: 1.6; }
+.succ-warn b { color: var(--ink); }
+
+.succ-help {
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0 1.15rem;
+}
+.succ-help summary {
+  cursor: pointer;
+  padding: .95rem 0;
+  font-weight: 600;
+  font-size: .9rem;
+  list-style: none;
+}
+.succ-help summary::-webkit-details-marker { display: none; }
+.succ-help p {
+  margin: 0;
+  padding: 0 0 1rem;
+  font-size: .875rem;
+  color: var(--ink-muted);
+  line-height: 1.65;
+}
+.succ-help a { color: var(--accent); }
+.succ-help a:hover { text-decoration: underline; }
+
+/* ── responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .buy-hero-in { grid-template-columns: minmax(0, 1fr); }
+  .buy-card { position: static; }
+  .buy-copy .lead { max-width: none; }
+}
+
+/* Halaman ini tidak butuh animasi masuk: pembeli datang untuk mengisi form,
+   bukan menonton. Menghilangkan reveal juga membuat form langsung bisa
+   diklik tanpa menunggu JavaScript. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

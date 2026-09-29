@@ -3,7 +3,7 @@
 Setiap baris punya angka yang diukur, bukan klaim. Perintah di kolom kanan bisa dijalankan
 ulang kapan saja; kalau checker-nya tidak bisa gagal, ia tidak dipakai.
 
-Terakhir diperbarui: rilis 4.5.5.0.
+Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 
 ---
 
@@ -30,6 +30,8 @@ Terakhir diperbarui: rilis 4.5.5.0.
 | 16 | **Switch bisa dioperasikan screen reader** | ✅ diperbaiki | Dulu app mengekspos **0 CheckBox** (switch adalah `Border` + handler klik). Sekarang **4 CheckBox** dengan `TogglePattern` dan nama | `tools/ui_buttons.py --kind CheckBox` |
 | 17 | **Pengujian tidak mengganggu layar utama** | ✅ baru | Semua checker berbasis jendela pindah ke monitor non-primary terkecil (DISPLAY3 1366x768); posisi dan ukuran dipulihkan di `finally` | `python tools/test_screen.py` |
 | 18 | **Paket MS Store** | ✅ | `outputs/LumaWall_4.5.5.0_x64.msix`; BadgeLogo = glyph putih di transparansi (22% opaque), bukan kotak putih | `tools/check-store-package.py` |
+| 19 | **Wallpaper hitam setelah keluar dari app fullscreen** | ✅ diperbaiki | Dulu desktop hitam **1–2 menit** setelah game ditutup. Penyebabnya bukan playback (log tetap menulis `resume-frame rs=4`) melainkan komposisi desktop: `--disable-features=CalculateNativeWinOcclusion` membuat Chromium tidak pernah tahu jendelanya ter-occlude, jadi ia tidak punya alasan menggambar ulang saat desktop kembali. Sekarang `ForceRepaint()` dipanggil pada transisi resume: **kembali dalam 0,4 detik** | `python tools/check-fullscreen-recovery.py --display DISPLAY3` |
+| 20 | **Installer di web ikut ter-update otomatis** | ✅ diperbaiki | Dulu installer disalin ke `site/assets/downloads/` — artinya berkasnya bisa diunduh siapa pun yang menebak alamatnya, **gratis, tanpa membayar**. Sekarang setiap rilis mengunggah installer ke bucket **privat**; server yang mengambilnya setelah token diverifikasi. URL lama dialihkan ke halaman beli | `python tools/release.py <versi>` (langkah 7) |
 
 ---
 
@@ -121,3 +123,44 @@ Terakhir diperbarui: rilis 4.5.5.0.
 
 13. **Proses anak Chrome harus dibunuh sebagai pohon.** `chrome.kill()` hanya memberi sinyal
     ke peluncur; 61 proses yatim menumpuk sampai checker browser berikutnya gagal.
+
+14. **Jendela yang ter-occlude tidak otomatis digambar ulang.** Selama aplikasi fullscreen
+    berjalan, Windows berhenti mengomposisi desktop sama sekali. Saat aplikasi ditutup, DWM
+    meminta jendela desktop menggambar ulang — dan permintaan itulah yang tidak pernah
+    dijawab. Penyebabnya satu flag: `--disable-features=CalculateNativeWinOcclusion` membuat
+    Chromium tidak melacak occlusion, jadi ia tidak melihat ada transisi untuk ditanggapi.
+    Flag itu sendiri benar (ia mencegah Chromium membatasi wallpaper yang dikiranya
+    tersembunyi), jadi perbaikannya bukan menghapus flag, melainkan memaksa repaint sendiri
+    pada transisi resume: `RedrawWindow` + satu nudge di sisi halaman. Dijalankan **dua kali**
+    (segera + 450 ms) karena percobaan pertama bisa mendarat saat DWM masih berpindah mode.
+
+15. **Berkas yang bisa diunduh publik membatalkan gerbang pembayaran.** Installer pernah
+    di-commit ke `site/assets/downloads/` supaya tidak 404. Itu memperbaiki satu masalah dan
+    menciptakan yang lebih besar: `curl` ke alamat itu mengembalikan **206** — siapa pun bisa
+    mengunduh tanpa membayar, dan seluruh sistem token jadi hiasan. Aturan yang berlaku:
+    berkas berbayar tidak boleh berada di folder yang disajikan publik, sebagus apa pun
+    sistem token di atasnya.
+
+16. **Uji yang tidak bisa gagal lebih buruk daripada tidak ada uji.** Versi pertama
+    `check-fullscreen-recovery.py` melaporkan "LULUS 0,5 detik" sementara kecerahan layar
+    tidak berubah sama sekali (48,4 → 48,4) — jendela ujinya tidak pernah menutupi layar,
+    jadi tidak ada yang diuji. Sekarang uji itu **memeriksa dulu bahwa keadaannya benar**
+    (kecerahan harus turun ke ~0 saat fullscreen) dan menyatakan **TIDAK VALID**, bukan lulus,
+    kalau tidak. Uji yang sama juga membaca log untuk memastikan jalur resume benar-benar
+    terpicu, karena "layar terlihat benar" bisa saja berarti wallpaper tidak pernah dijeda.
+
+17. **iPaymu menandatangani HASH body, bukan body mentah.** Tanda tangan
+    `HMAC_SHA256(method:va:body:key)` dengan body apa adanya ditolak (`unauthorized
+    signature`); bentuk yang diterima adalah `HMAC_SHA256(method:va:sha256(body):key)`.
+    Bedanya satu langkah hash, dan gejalanya hanya "401 unauthorized" tanpa petunjuk.
+
+18. **Kredensial sandbox tidak berlaku di endpoint produksi.** Kunci di `.env` NexShop
+    bertanda `sandbox` dan ditolak di `my.ipaymu.com`; kunci produksi di proyek lain diterima
+    (`Status: 200`). Menyalin kunci antar lingkungan adalah kesalahan yang tampak seperti
+    "kunci sudah kedaluwarsa".
+
+19. **Skrip konversi harus dikelompokkan per berkas tujuan.** Versi pertama
+    `make_en_pages.py` menerapkan **semua** pasangan frasa ke **setiap** berkas, lalu
+    melaporkan 182 "frasa tidak ditemukan" — padahal sebagian besar frasa itu memang milik
+    halaman lain. Laporan yang penuh kebisingan membuat masalah yang sungguhan tidak
+    terlihat.

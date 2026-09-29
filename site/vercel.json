@@ -42,5 +42,22 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ]
+  ],
+  "redirects": [
+    {
+      "source": "/assets/downloads/:file",
+      "destination": "/beli/",
+      "permanent": true
+    },
+    {
+      "source": "/en/assets/downloads/:file",
+      "destination": "/en/buy/",
+      "permanent": true
+    }
+  ],
+  "functions": {
+    "api/download.js": {
+      "maxDuration": 60
+    }
+  }
 }

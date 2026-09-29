@@ -44,4 +44,23 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/privacy/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/privacy/"/>
   </url>
+  <!-- Halaman pembelian ikut didaftarkan. Ia berguna di hasil pencarian: orang
+       yang mencari "beli LumaWall" atau menanyakan harganya akan menemukan
+       halaman yang menjawab, bukan halaman utama yang harus mereka telusuri
+       sendiri. Halaman status pesanan sengaja TIDAK didaftarkan - isinya milik
+       satu pembeli dan sudah diblokir di robots.txt. -->
+  <url>
+    <loc>https://lumawall.xinet.id/beli/</loc>
+    <lastmod>2026-09-29</lastmod>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/beli/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/buy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/beli/"/>
+  </url>
+  <url>
+    <loc>https://lumawall.xinet.id/en/buy/</loc>
+    <lastmod>2026-09-29</lastmod>
+    <xhtml:link rel="alternate" hreflang="id" href="https://lumawall.xinet.id/beli/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/buy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/beli/"/>
+  </url>
 </urlset>

@@ -250,23 +250,31 @@ def main():
         msix = OUT / msix.name
     print('     %s  (%.1f MB)' % (msix.name, msix.stat().st_size / (1024 * 1024)))
 
-    print('  7. stage them on the site')
-    DL.mkdir(parents=True, exist_ok=True)
-    for src in [setup, zip_path, msix]:
-        shutil.copy2(src, DL / src.name)
-        print('     %s' % src.name)
-    # Remove the superseded ones, or the folder grows forever and a stale download stays
-    # reachable by its old URL.
-    for old in DL.glob('LumaWall-*'):
-        m = re.search(r'-(\d+\.\d+\.\d+\.\d+)\.(exe|zip)$', old.name)
-        if m and m.group(1) != version:
-            old.unlink()
-            print('     removed %s' % old.name)
-    for old in DL.glob('LumaWall_*'):
-        m = re.search(r'_(\d+\.\d+\.\d+\.\d+)_x64\.msix$', old.name)
-        if m and m.group(1) != version:
-            old.unlink()
-            print('     removed %s' % old.name)
+    print('  7. publish the installer to private storage')
+    # Installer TIDAK lagi disalin ke site/assets/downloads.
+    #
+    # Alasannya keamanan, bukan kerapian: berkas di dalam folder situs bisa
+    # diunduh siapa pun yang menebak alamatnya, gratis, tanpa membayar. Selama
+    # berkasnya di sana, gerbang pembayaran tidak ada artinya. Berkasnya
+    # sekarang ada di bucket privat, dan server yang mengambilnya setelah token
+    # unduhan diverifikasi.
+    #
+    # Ini juga yang membuat "installer di web ikut ter-update otomatis"
+    # benar-benar berlaku: setiap rilis menimpa objek yang sama di bucket, jadi
+    # tautan yang sudah diterbitkan tidak pernah menunjuk ke versi lama.
+    up = run(['python', 'tools/upload_installer.py', '--upload',
+              '--local', str(setup.relative_to(ROOT)),
+              '--remote', 'LumaWall-Setup-%s.exe' % version],
+             timeout=1800, check=False)
+    if up.returncode != 0:
+        print('  FAIL installer tidak terunggah ke penyimpanan privat')
+        print('       unduhan di situs akan gagal sampai ini diperbaiki')
+        return 1
+    print('     LumaWall-Setup-%s.exe -> bucket privat' % version)
+
+    # Berkas portable dan MSIX tidak dijual lewat situs (MSIX untuk Microsoft
+    # Store, portable untuk keperluan internal), jadi keduanya cukup di outputs/.
+    print('     portable + msix tetap di outputs/ (tidak disajikan publik)')
 
     print('  8. cache-bust the pages')
     run(['python', 'tools/cache-bust.py'], timeout=600)

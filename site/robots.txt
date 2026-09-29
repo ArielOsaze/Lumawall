@@ -1,7 +1,16 @@
 User-agent: *
 Allow: /
 
-# The installer and the portable build are downloads, not pages.
+# Berkas installer tidak lagi disajikan dari folder situs. Berkasnya ada di
+# bucket privat dan hanya keluar lewat /api/download setelah token unduhan
+# diverifikasi, jadi tidak ada apa pun di sini yang perlu disembunyikan dari
+# perayap - folder lamanya tetap diblokir hanya sebagai sabuk pengaman kalau
+# ada tautan lama yang masih beredar.
 Disallow: /assets/downloads/
+
+# Halaman status pesanan tidak boleh diindeks: isinya tautan unduhan milik satu
+# pembeli, dan tidak ada gunanya muncul di hasil pencarian.
+Disallow: /sukses/
+Disallow: /en/success/
 
 Sitemap: https://lumawall.xinet.id/sitemap.xml

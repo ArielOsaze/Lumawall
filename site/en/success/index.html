@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your LumaWall order</title>
+<meta name="description" content="Your LumaWall order status and download link.">
+<meta name="theme-color" content="#080a0c">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://lumawall.xinet.id/sukses/">
+<link rel="icon" href="../assets/logo/app.0e36f28e75.ico">
+<link rel="apple-touch-icon" href="../assets/logo/logo-150.e23f998f8e.png">
+<link rel="preload" href="../assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/css/fonts.ad37d8582b.css">
+<link rel="stylesheet" href="../assets/css/style.01d89eaadb.css">
+<link rel="stylesheet" href="../assets/css/buy.be8df8aa6c.css">
+</head>
+<body class="buy-page">
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="../" class="brand" aria-label="LumaWall">
+      <img src="../assets/logo/logo-50.49911a6882.png" alt="" class="brand-mark" width="28" height="28">
+      <span class="brand-name">LumaWall</span>
+    </a>
+    <nav class="nav-links" aria-label="Utama">
+      <a href="../#features">Features</a>
+      <a href="../#performance">Performance</a>
+      <a href="../#download">Download</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="../beli/" class="lang">ID</a>
+      <a href="../" class="btn btn-ghost btn-sm">Home</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<section class="buy-hero">
+  <div class="wrap">
+    <div class="succ" id="succ" aria-live="polite">
+
+      <div class="succ-state" id="state-loading">
+        <div class="spin" aria-hidden="true"></div>
+        <h1 class="h2">Checking your order&hellip;</h1>
+        <p class="lead">One moment while we match your payment with iPaymu.</p>
+      </div>
+
+      <div class="succ-state" id="state-waiting" hidden>
+        <div class="succ-icon wait" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/></svg>
+        </div>
+        <h1 class="h2">Payment not confirmed yet</h1>
+        <p class="lead">
+          If you have just paid, give it a moment and reload this page. Bank confirmations usually land within seconds, but can take up to a minute at busy times.
+        </p>
+        <div class="succ-actions">
+          <button type="button" class="btn btn-primary" id="btn-reload">Check again</button>
+          <a href="https://wa.me/6282224293639" class="btn btn-ghost" target="_blank" rel="noopener">Contact support</a>
+        </div>
+        <p class="succ-order">Order code: <code id="order-waiting">&mdash;</code></p>
+      </div>
+
+      <div class="succ-state" id="state-paid" hidden>
+        <div class="succ-icon ok" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <h1 class="h2">Payment received</h1>
+        <p class="lead">
+          Thank you! Your download link is ready. Keep this page before you close the tab, because the link is not sent by email.
+        </p>
+
+        <div class="dl-box">
+          <a class="btn btn-primary btn-lg btn-block" id="btn-download" href="#">
+            <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+            Download LumaWall
+          </a>
+          <div class="dl-meta-row">
+            <span id="meta-size">LumaWall-Setup.exe</span>
+            <span id="meta-uses">&mdash;</span>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm copy-btn" id="btn-copy">
+            Copy download link
+          </button>
+          <span class="copy-done" id="copy-done" hidden>Copied</span>
+        </div>
+
+        <div class="succ-warn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+          <p>
+            This link only works from the network you are on now, for up to <b id="warn-uses">3</b> downloads within <b id="warn-hours">72</b> hours. If you change networks or the link runs out, contact support with the order code below.
+          </p>
+        </div>
+
+        <p class="succ-order">Order code: <code id="order-paid">&mdash;</code></p>
+
+        <details class="succ-help">
+          <summary>Already downloaded and need help?</summary>
+          <p>
+            The download link cannot be moved to another device or network. If you change networks, or your download was interrupted until the limit ran out, message <a href="https://wa.me/6282224293639" target="_blank" rel="noopener">support on WhatsApp</a> with the order code above &mdash; we will issue a new link.
+          </p>
+        </details>
+      </div>
+
+      <div class="succ-state" id="state-error" hidden>
+        <div class="succ-icon bad" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg>
+        </div>
+        <h1 class="h2">Order not found</h1>
+        <p class="lead" id="err-text">
+          We could not find an order with that code. Check that the link is complete, or contact support with your order code.
+        </p>
+        <div class="succ-actions">
+          <a href="../buy/" class="btn btn-primary">Try buying again</a>
+          <a href="https://wa.me/6282224293639" class="btn btn-ghost" target="_blank" rel="noopener">Contact support</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="foot-legal">LumaWall &mdash; Rp20,000 one-time, lifetime licence. Rp18,000 on the Microsoft Store.</span>
+    <span class="foot-links">
+      <a href="../privacy/">Privacy</a>
+      <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" target="_blank" rel="noopener">Microsoft Store</a>
+    </span>
+  </div>
+</footer>
+
+<script src="../assets/js/success-en.0fac3760d7.js"></script>
+</body>
+</html>
