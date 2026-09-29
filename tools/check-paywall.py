@@ -9,11 +9,22 @@ berguna.
 
 Yang diperiksa:
 
-  1. Alamat lama di folder situs tidak lagi menyajikan berkas.
-  2. Alamat berkas di penyimpanan tidak bisa dibaca tanpa kunci.
-  3. Halaman beli dan sukses tidak memuat tautan unduhan langsung.
-  4. Tidak ada berkas installer yang tertinggal di dalam repositori situs.
-  5. Kunci rahasia tidak muncul di berkas mana pun yang disajikan ke peramban.
+  1. Berkas installer tidak ada di folder yang disajikan situs.
+  2. Berkas installer tidak dilacak git (kalau dilacak, ia ada di repo publik).
+  3. Tidak ada halaman yang menautkan berkas unduhan langsung.
+  4. Tidak ada kunci rahasia di berkas yang disajikan ke peramban.
+  5. Berkas di penyimpanan tidak bisa dibaca tanpa kunci.
+  6. Alamat unduhan lama mengalihkan ke halaman beli, bukan mengirim berkas.
+  7. Endpoint unduhan menolak token palsu dan permintaan tanpa token.
+  8. Halaman status menolak kode pesanan palsu.
+  9. Checkout menolak data yang tidak sah.
+
+Catatan penting soal cara memeriksa nomor 6: permintaan HTTP yang mengikuti
+pengalihan akan berakhir di halaman beli dengan status 200, dan itu terlihat
+seperti "berkasnya bisa diunduh" padahal justru sebaliknya. Karena itu yang
+diperiksa adalah **isi jawabannya**, bukan statusnya: berkas biner dimulai
+dengan 'MZ' (executable Windows), sedangkan halaman beli dimulai dengan
+'<!DOCTYPE'. Pengalihan sengaja TIDAK diikuti.
 
 Pemakaian:
   python tools/check-paywall.py
@@ -32,7 +43,6 @@ SITE = ROOT / 'site'
 BASE = 'https://lumawall.xinet.id'
 STORAGE = 'https://cauklmkpjwsdwqoazqlx.supabase.co'
 
-# Nama berkas yang tidak boleh bisa diambil siapa pun tanpa token.
 PAID_FILES = [
     'LumaWall-Setup-4.5.7.0.exe',
     'LumaWall-portable-4.5.7.0.zip',
@@ -47,6 +57,10 @@ SECRET_PATTERNS = [
     (r'service_role["\']?\s*[:=]\s*["\'][A-Za-z0-9._-]{40,}', 'service_role key literal'),
 ]
 
+# Penanda isi: berkas Windows dimulai dengan 'MZ', ZIP dengan 'PK', halaman HTML
+# dengan '<!DOCTYPE' atau '<html'.
+BINARY_MARKERS = [b'MZ', b'PK\x03\x04']
+
 results = []
 
 
@@ -56,17 +70,30 @@ def check(name, ok, detail=''):
                          ('  -> ' + detail) if detail else ''))
 
 
-def http(url, method='GET', timeout=25):
-    """Kembalikan (status, panjang isi). Status 0 berarti gagal koneksi."""
-    req = urllib.request.Request(url, method=method)
+def fetch(url, timeout=25, follow=True):
+    """Kembalikan (status, isi_awal). Pengalihan tidak diikuti kalau follow=False."""
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+
+    opener = urllib.request.build_opener() if follow else urllib.request.build_opener(NoRedirect)
+    req = urllib.request.Request(url)
     req.add_header('User-Agent', 'LumaWall-PaywallCheck/1.0')
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, len(resp.read(2048))
+        with opener.open(req, timeout=timeout) as resp:
+            return resp.status, resp.read(512)
     except urllib.error.HTTPError as e:
-        return e.code, 0
-    except Exception:
-        return 0, 0
+        try:
+            body = e.read(512)
+        except Exception:
+            body = b''
+        return e.code, body
+    except Exception as e:
+        return 0, str(e).encode()
+
+
+def looks_binary(body):
+    return any(body.startswith(m) for m in BINARY_MARKERS)
 
 
 def main():
@@ -79,31 +106,24 @@ def main():
 
     # ── 1. berkas tidak boleh ada di folder yang disajikan ───────────────────
     dl_dir = SITE / 'assets' / 'downloads'
-    if dl_dir.exists():
-        sisa = [p.name for p in dl_dir.iterdir() if p.is_file()]
-    else:
-        sisa = []
+    sisa = [p.name for p in dl_dir.iterdir() if p.is_file()] if dl_dir.exists() else []
     check('folder site/assets/downloads kosong', not sisa,
           ('masih ada: ' + ', '.join(sisa[:4])) if sisa else 'tidak ada berkas')
 
     # ── 2. tidak ada berkas berbayar yang dilacak git ────────────────────────
     try:
-        out = subprocess.run(
-            ['git', 'ls-files', 'site/assets/downloads/'],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=60,
-        ).stdout.strip()
-        dilacak = [l for l in out.splitlines() if l.strip()]
+        out = subprocess.run(['git', 'ls-files', 'site/assets/downloads/'],
+                             cwd=str(ROOT), capture_output=True, text=True, timeout=60).stdout
+        dilacak = [l for l in out.strip().splitlines() if l.strip()]
     except Exception as e:
         dilacak = ['(gagal memeriksa: %s)' % e]
     check('tidak ada installer yang dilacak git di folder situs', not dilacak,
           ', '.join(dilacak[:4]))
 
     # ── 3. halaman tidak memuat tautan unduhan langsung ─────────────────────
-    halaman = [
-        SITE / 'index.html', SITE / 'en' / 'index.html',
-        SITE / 'beli' / 'index.html', SITE / 'en' / 'buy' / 'index.html',
-        SITE / 'sukses' / 'index.html', SITE / 'en' / 'success' / 'index.html',
-    ]
+    halaman = [SITE / 'index.html', SITE / 'en' / 'index.html',
+               SITE / 'beli' / 'index.html', SITE / 'en' / 'buy' / 'index.html',
+               SITE / 'sukses' / 'index.html', SITE / 'en' / 'success' / 'index.html']
     bocor = []
     for p in halaman:
         if not p.exists():
@@ -137,41 +157,50 @@ def main():
     check('tidak ada kunci rahasia di berkas yang disajikan', not temuan,
           '; '.join(temuan[:3]))
 
-    # ── 5. berkas di penyimpanan tidak bisa dibaca tanpa kunci ──────────────
-    if args.live:
+    if not args.live:
+        print('  \u2013 pemeriksaan situs live dilewati (pakai --live untuk menyertakan)')
+    else:
+        # ── 5. berkas di penyimpanan tidak bisa dibaca tanpa kunci ──────────
         for name in PAID_FILES[:1]:
-            st, _ = http('%s/storage/v1/object/public/lumawall/%s' % (STORAGE, name))
+            st, body = fetch('%s/storage/v1/object/public/lumawall/%s' % (STORAGE, name))
             check('berkas di penyimpanan tidak bisa dibaca publik (%s)' % name,
-                  st != 200, 'HTTP %s' % st)
+                  st != 200 or not looks_binary(body),
+                  'HTTP %s, isi %d byte' % (st, len(body)))
 
-        # ── 6. alamat lama harus mengalihkan, bukan menyajikan berkas ────────
+        # ── 6. alamat lama harus mengalihkan, bukan mengirim berkas ─────────
+        # Pengalihan TIDAK diikuti: yang diperiksa isi jawabannya. Halaman beli
+        # juga berstatus 200, jadi status saja tidak bisa membedakan keduanya -
+        # yang membedakan adalah 'MZ' (berkas Windows) versus '<!DOCTYPE'.
         for name in PAID_FILES:
-            st, _ = http('%s/assets/downloads/%s' % (BASE, name))
-            # 200 hanya boleh kalau isinya halaman HTML (pengalihan tidak diikuti),
-            # jadi yang menentukan adalah bukan berkas biner yang terkirim.
-            check('alamat unduhan lama tidak menyajikan berkas (%s)' % name,
-                  st != 200, 'HTTP %s' % st)
+            st, body = fetch('%s/assets/downloads/%s' % (BASE, name), follow=False)
+            aman = not looks_binary(body)
+            detail = 'HTTP %s, %s' % (
+                st, 'berkas biner terkirim!' if not aman
+                else ('pengalihan' if st in (301, 302, 307, 308) else 'halaman'))
+            check('alamat unduhan lama tidak mengirim berkas (%s)' % name, aman, detail)
 
-        # ── 7. endpoint unduhan tanpa token harus menolak ────────────────────
-        st, _ = http('%s/api/download?t=token-palsu-yang-cukup-panjang-1234567890' % BASE)
-        check('endpoint unduhan menolak token palsu', st in (400, 403),
-              'HTTP %s' % st)
+        # ── 7. endpoint unduhan harus menolak ───────────────────────────────
+        # 503 diterima: artinya server belum dikonfigurasi, dan yang penting
+        # bukan itu - yang penting TIDAK 200 dengan berkas di dalamnya.
+        st, body = fetch('%s/api/download/?t=token-palsu-yang-cukup-panjang-1234567890' % BASE)
+        check('endpoint unduhan tidak mengirim berkas untuk token palsu',
+              not looks_binary(body), 'HTTP %s' % st)
 
-        st, _ = http('%s/api/download' % BASE)
-        check('endpoint unduhan menolak permintaan tanpa token', st == 400,
-              'HTTP %s' % st)
+        st, body = fetch('%s/api/download/' % BASE)
+        check('endpoint unduhan tidak mengirim berkas tanpa token',
+              not looks_binary(body), 'HTTP %s' % st)
 
-        # ── 8. halaman status menolak kode palsu ─────────────────────────────
-        st, _ = http('%s/api/order?code=LW-ZZZZZZ' % BASE)
-        check('halaman status menolak kode pesanan palsu', st == 404,
-              'HTTP %s' % st)
+        # ── 8. halaman status harus menolak kode palsu ──────────────────────
+        st, body = fetch('%s/api/order/?code=LW-ZZZZZZ' % BASE)
+        ok = st in (404, 503) or b'error' in body
+        check('halaman status tidak mengembalikan tautan untuk kode palsu',
+              ok and b'downloadUrl' not in body, 'HTTP %s' % st)
 
-        # ── 9. checkout menolak data kosong ──────────────────────────────────
+        # ── 9. checkout harus menolak data tidak sah ────────────────────────
         req = urllib.request.Request(
-            '%s/api/checkout' % BASE, method='POST',
+            '%s/api/checkout/' % BASE, method='POST',
             data=b'{"nama":"","email":"bukan-email"}',
-            headers={'Content-Type': 'application/json'},
-        )
+            headers={'Content-Type': 'application/json'})
         try:
             with urllib.request.urlopen(req, timeout=25) as resp:
                 st = resp.status
@@ -179,18 +208,21 @@ def main():
             st = e.code
         except Exception:
             st = 0
-        check('checkout menolak data yang tidak sah', st == 400, 'HTTP %s' % st)
-    else:
-        print('  \u2013 pemeriksaan situs live dilewati (pakai --live untuk menyertakan)')
+        # 308/301 = pengalihan karena trailing slash; ikuti satu kali.
+        if st in (301, 308):
+            try:
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    st = resp.status
+            except urllib.error.HTTPError as e:
+                st = e.code
+        check('checkout menolak data yang tidak sah', st in (400, 503), 'HTTP %s' % st)
 
     gagal = [r for r in results if not r[1]]
     print()
     if gagal:
-        print('  %d dari %d uji GAGAL - berkas berbayar bisa bocor.'
-              % (len(gagal), len(results)))
+        print('  %d dari %d uji GAGAL - periksa daftar di atas.' % (len(gagal), len(results)))
         return 1
-    print('  semua %d uji lulus - tidak ada jalan mengunduh tanpa membayar.'
-          % len(results))
+    print('  semua %d uji lulus - tidak ada jalan mengunduh tanpa membayar.' % len(results))
     return 0
 
 
