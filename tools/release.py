@@ -306,13 +306,18 @@ def main():
     # berhenti di langkah ini, setelah installer dan MSIX sudah jadi tetapi
     # sebelum apa pun diterbitkan. Yang dilaporkan hanyalah pesan path yang
     # tidak menjelaskan bahwa langkah sebelumnya sudah berhasil.
+    # run() mengembalikan keluaran teks, bukan objek hasil - jadi kode keluarnya
+    # tidak bisa dibaca dari sini. Pemeriksaannya dilakukan dengan mencari tanda
+    # kegagalan di keluarannya, dan kegagalan itu dilaporkan apa adanya.
     up = run(['python', 'tools/upload_installer.py', '--upload',
               '--local', str(setup),
               '--remote', 'LumaWall-Setup-%s.exe' % version],
              timeout=1800, check=False)
-    if up.returncode != 0:
+    if 'FAIL' in up.upper() or 'ERROR' in up.upper() or 'Traceback' in up:
         print('  FAIL installer tidak terunggah ke penyimpanan privat')
         print('       unduhan di situs akan gagal sampai ini diperbaiki')
+        for line in up.strip().splitlines()[-8:]:
+            print('       %s' % line)
         return 1
     print('     LumaWall-Setup-%s.exe -> bucket privat' % version)
 

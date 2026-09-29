@@ -791,7 +791,7 @@ namespace LumaWall
         private const long WS_POPUP = unchecked((long)0x80000000L);
         private const long WS_EX_TRANSPARENT = 0x00000020L;
         private const long WS_EX_TOOLWINDOW = 0x00000080L;
-        private const long WS_EX_LAYERED = 0x00080000L;
+        internal const long WS_EX_LAYERED = 0x00080000L;
         private const long WS_EX_NOREDIRECTIONBITMAP = 0x00200000L;
         private const long WS_EX_NOACTIVATE = 0x08000000L;
         private const uint LWA_ALPHA = 0x00000002;
@@ -948,7 +948,58 @@ namespace LumaWall
             // Health checks run frequently. Reparenting an already attached
             // wallpaper can make DWM expose the black WorkerW for one frame.
             // Leave a healthy host completely untouched.
-            if (GetRealParent(hwnd) == desktopHost) return;
+            if (GetRealParent(hwnd) == desktopHost)
+            {
+                // Reparenting is skipped, but the SIZE still has to be enforced.
+                //
+                // This early return used to skip everything, and that is what made the
+                // wallpaper render cropped on a 1366x768 screen: the window was created
+                // 1x1 at -32000,-32000, and only the first attach ever gave it the size
+                // of its monitor. Any later attach - every health check, every reassert -
+                // returned here without touching it, so once the window's size drifted it
+                // stayed wrong forever. A Windows Forms window that is never given a size
+                // falls back to its default, which is what produced a 136x39 wallpaper.
+                //
+                // The check is cheap and idempotent: SetWindowPos with the size it already
+                // has does nothing and cannot cause a repaint.
+                Drawing.Rectangle repairHost = HostBounds(desktopHost);
+                int wantX = bounds.Left - repairHost.Left;
+                int wantY = bounds.Top - repairHost.Top;
+
+                // A raised desktop composites only alpha-blended child windows, so this has
+                // to be (re)applied on every pass - not just on the first attach.
+                //
+                // It was previously set only on the path that reparents, and that path only
+                // runs once. Every later attach came through here instead, so the attribute
+                // was never set for a window whose first attach had been skipped or whose
+                // style was reset. The result: the window is sized and positioned correctly,
+                // IsWindowVisible is true, the log says "committed without blank frame" -
+                // and nothing appears, because DWM never composites it.
+                //
+                // SetLayeredWindowAttributes is cheap and idempotent.
+                if (IsRaisedDesktop())
+                {
+                    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+                }
+
+                RECT current = new RECT();
+                bool wrong = true;
+                if (GetWindowRect(hwnd, out current))
+                {
+                    wrong = current.Left != wantX || current.Top != wantY
+                         || (current.Right - current.Left) != bounds.Width
+                         || (current.Bottom - current.Top) != bounds.Height;
+                }
+
+                if (!wrong) return;
+
+                AppLog.Write("Wallpaper window resized to its monitor: "
+                             + (current.Right - current.Left) + "x" + (current.Bottom - current.Top)
+                             + " -> " + bounds.Width + "x" + bounds.Height);
+                SetWindowPos(hwnd, HWND_BOTTOM, wantX, wantY,
+                    bounds.Width, bounds.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                return;
+            }
 
             if (IsRaisedDesktop())
             {
@@ -959,14 +1010,30 @@ namespace LumaWall
             }
             SetParent(hwnd, desktopHost);
             AppLog.Write("Desktop host attached window=" + hwnd.ToInt64() + " host=" + desktopHost.ToInt64());
-            RECT hostBounds;
-            int hostLeft = 0;
-            int hostTop = 0;
-            if (GetWindowRect(desktopHost, out hostBounds)) { hostLeft = hostBounds.Left; hostTop = hostBounds.Top; }
+            Drawing.Rectangle hostBounds = HostBounds(desktopHost);
             // HWND_BOTTOM keeps the wallpaper under the desktop icons, which live
             // in SHELLDLL_DefView - a sibling inside the same host.
-            SetWindowPos(hwnd, HWND_BOTTOM, bounds.Left - hostLeft, bounds.Top - hostTop,
+            SetWindowPos(hwnd, HWND_BOTTOM, bounds.Left - hostBounds.Left, bounds.Top - hostBounds.Top,
                 bounds.Width, bounds.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+
+        /// <summary>
+        /// Where the desktop host sits, in screen coordinates.
+        ///
+        /// The wallpaper's own position is relative to its parent, so the host's
+        /// origin has to be subtracted from the monitor's. This lives in one place
+        /// because two callers need it - the first attach and the size repair - and
+        /// two copies of the same calculation is how they drift apart.
+        /// </summary>
+        private static Drawing.Rectangle HostBounds(IntPtr host)
+        {
+            RECT rect;
+            if (GetWindowRect(host, out rect))
+            {
+                return new Drawing.Rectangle(rect.Left, rect.Top,
+                                             rect.Right - rect.Left, rect.Bottom - rect.Top);
+            }
+            return new Drawing.Rectangle(0, 0, 0, 0);
         }
 
         /// <summary>
@@ -994,6 +1061,36 @@ namespace LumaWall
         }
 
         /// <summary>True when Progman hosts the desktop surface directly.</summary>
+        /// <summary>
+        /// Read a window's extended style.
+        ///
+        /// Exposed so the wallpaper window can add WS_EX_LAYERED itself: a window's styles
+        /// can only be changed by the thread that owns it, so this cannot be done from
+        /// outside the process (that fails with ERROR_INVALID_PARAMETER).
+        /// </summary>
+        public static long GetExStyle(IntPtr hwnd)
+        {
+            return GetWindowLongPtr64(hwnd, GWL_EXSTYLE).ToInt64();
+        }
+
+        /// <summary>Write a window's extended style.</summary>
+        public static void SetExStyle(IntPtr hwnd, long value)
+        {
+            SetWindowLongPtr64(hwnd, GWL_EXSTYLE, new IntPtr(value));
+        }
+
+        /// <summary>
+        /// Give a layered window a defined opacity.
+        ///
+        /// This is not optional when WS_EX_LAYERED is set: a layered window whose alpha has
+        /// never been stated is fully transparent, so it is painted and sized correctly and
+        /// still invisible. 255 is fully opaque.
+        /// </summary>
+        public static void SetLayeredAlpha(IntPtr hwnd, byte alpha)
+        {
+            SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA);
+        }
+
         private static bool IsRaisedDesktop()
         {
             IntPtr progman = FindWindow("Progman", null);
@@ -1504,6 +1601,15 @@ namespace LumaWall
             FormBorderStyle = Forms.FormBorderStyle.None;
             StartPosition = Forms.FormStartPosition.Manual;
             ControlBox = false;
+            // Keep the window's own colour BLACK - it is never seen.
+            //
+            // This window is built off-screen and only moved onto its monitor once it has
+            // a frame to draw (see CommitSwap), so nothing here is ever visible. What
+            // matters is that the colour is fully opaque: Windows Forms does not support a
+            // translucent BackColor, and giving it one corrupts the window's creation
+            // parameters. That is not a cosmetic problem - the window is then never
+            // composited, WM_PAINT never arrives, and a static wallpaper paints nothing at
+            // all: a black screen with a log that says "ready".
             BackColor = Drawing.Color.Black;
             Bounds = new Drawing.Rectangle(-32000, -32000, 1, 1);
             Shown += async delegate { await Initialize(); };
@@ -1524,13 +1630,15 @@ namespace LumaWall
         {
             staticMode = true;
             pageReady = false;
-            browserReady = false;
-            if (webView != null)
-            {
-                try { Controls.Remove(webView); } catch { }
-                try { webView.Dispose(); } catch { }
-                webView = null;
-            }
+            // The layered style is what makes a raised desktop composite a GDI-painted
+            // window at all; without it nothing is drawn and the monitor stays black. It is
+            // applied here, once the media is known and the handle exists.
+            ApplyLayerStyle(true);
+            // The video host is deliberately NOT disposed here either, for the same reason
+            // as the static picture in SwitchToBrowser: it is still the only thing on
+            // screen. Disposing it now would leave the window painting nothing - and a
+            // window painting nothing is black - for as long as the image takes to decode.
+            // It is retired by RetireWebView() once the picture is ready to replace it.
             if (staticSurface == null)
             {
                 staticSurface = new StaticImageSurface { Dock = Forms.DockStyle.Fill };
@@ -1554,6 +1662,11 @@ namespace LumaWall
                         }
                         if (loaded == null) { ReportFailed(request); return; }
                         staticSurface.SetImage(loaded);
+                        // Only now is there something to show, so only now is it safe to put
+                        // the picture in front and let the video host go. BringToFront is
+                        // needed because a surface added after the browser sits behind it.
+                        try { staticSurface.BringToFront(); } catch { }
+                        RetireWebView();
                         AppLog.Write("Static wallpaper ready (no WebView2) " + screen.DeviceName + " -> " + target);
                         ReportReady(request);
                     }));
@@ -1562,16 +1675,63 @@ namespace LumaWall
             });
         }
 
+        /// <summary>
+        /// Let the video host go, but only once the picture replacing it is on screen.
+        /// </summary>
+        private void RetireWebView()
+        {
+            if (webView == null) return;
+            try { Controls.Remove(webView); } catch { }
+            try { webView.Dispose(); } catch { }
+            webView = null;
+            AppLog.Write("Video host retired after the static picture took over " + screen.DeviceName);
+        }
+
         private async Task SwitchToBrowser(string path)
         {
             staticMode = false;
-            if (staticSurface != null)
+            // Hand the window back to WebView2, which must not live in a layered window.
+            // A layered parent can lose its DirectComposition surface during decoder seeks,
+            // which shows up as a one-frame black flash on the desktop - so leaving the
+            // style on after a static wallpaper would trade one black bug for another.
+            ApplyLayerStyle(false);
+            // The static picture is deliberately NOT thrown away here.
+            //
+            // It used to be removed and disposed before WebView2 was even created, so the
+            // window went from showing a picture to showing nothing for as long as the
+            // browser took to start - which is seconds. On screen that reads as the
+            // wallpaper going black, and it is one of the "other bugs that make it black".
+            //
+            // Keeping it means the old picture stays up until the browser has a frame to
+            // replace it. The surface is disposed by RetireStaticSurface() once the page
+            // reports ready, which is the earliest moment there is something else to show.
+            if (webView != null)
             {
-                try { Controls.Remove(staticSurface); } catch { }
-                try { staticSurface.Dispose(); } catch { }
-                staticSurface = null;
+                try { Controls.Remove(webView); } catch { }
+                try { webView.Dispose(); } catch { }
+                webView = null;
             }
             await InitializeBrowser();
+        }
+
+        /// <summary>
+        /// Drop the static picture, but only once something else is on screen.
+        ///
+        /// Called when the page reports ready. Disposing it any earlier is what leaves the
+        /// desktop uncovered, and a desktop with nothing drawing on it is black.
+        /// </summary>
+        private void RetireStaticSurface()
+        {
+            // In static mode the surface IS the wallpaper - disposing it here would throw
+            // away the picture that was just put on screen, because the static path calls
+            // ReportReady too. The surface is only ever obsolete when a video is taking
+            // over from it.
+            if (staticMode) return;
+            if (staticSurface == null) return;
+            try { Controls.Remove(staticSurface); } catch { }
+            try { staticSurface.Dispose(); } catch { }
+            staticSurface = null;
+            AppLog.Write("Static surface retired after the browser took over " + screen.DeviceName);
         }
 
         internal static Drawing.Image LoadCoverImage(string path, Drawing.Rectangle bounds)
@@ -1603,11 +1763,73 @@ namespace LumaWall
                 // parents can briefly lose the DirectComposition surface during decoder
                 // seeks, which appears as a one-frame black flash on the desktop.
                 value.ExStyle |= 0x00000080;
+
+                // WS_EX_LAYERED is deliberately NOT set here.
+                //
+                // This getter runs from the base constructor, before the media path is
+                // known, so a decision about the media cannot be made yet - and deciding it
+                // here threw a NullReferenceException that took down the whole window.
+                // The style is applied once the handle exists instead; see ApplyLayerStyle.
                 return value;
             }
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }
+
+        /// <summary>
+        /// Make a static-image window layered, which is what a raised desktop requires.
+        ///
+        /// On Windows 11 the desktop is "raised": Progman carries
+        /// WS_EX_NOREDIRECTIONBITMAP and composites the wallpaper itself, so DWM only
+        /// composites child windows that are alpha-blended. A video window does not need
+        /// this because WebView2 draws through DirectComposition, which is composited
+        /// directly - but a static image is painted with plain GDI, and without the layered
+        /// style it is simply never composited. The window then exists, is sized to its
+        /// monitor, reports IsWindowVisible true, and never receives WM_PAINT: the monitor
+        /// stays black while every log line says the wallpaper is ready.
+        ///
+        /// This has to run from inside the process. Setting the style from another process
+        /// fails with ERROR_INVALID_PARAMETER (87), because a window's styles can only be
+        /// changed by the thread that owns it.
+        ///
+        /// Called after the handle exists and before the window is shown, so the style is in
+        /// place before the first composition.
+        /// </summary>
+        private void ApplyLayerStyle(bool layered)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                long current = NativeDesktop.GetExStyle(Handle);
+                bool has = (current & NativeDesktop.WS_EX_LAYERED) != 0;
+                if (has == layered) return;
+
+                long updated = layered
+                    ? current | NativeDesktop.WS_EX_LAYERED
+                    : current & ~NativeDesktop.WS_EX_LAYERED;
+                NativeDesktop.SetExStyle(Handle, updated);
+
+                // WS_EX_LAYERED alone makes the window INVISIBLE.
+                //
+                // A layered window has no defined alpha until SetLayeredWindowAttributes
+                // says what it is, and the default is fully transparent - so adding the
+                // style without this call produces a window that is correctly sized,
+                // correctly painted (its DC really does hold the image) and never visible.
+                // That is the state this was found in: the surface's own DC read back the
+                // test picture's green, while the monitor showed the desktop underneath.
+                if (layered)
+                {
+                    NativeDesktop.SetLayeredAlpha(Handle, 255);
+                }
+                AppLog.Write((layered ? "Layered style applied" : "Layered style removed")
+                             + " on " + screen.DeviceName);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Could not change the layered style on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
 
         private async Task InitializeBrowser()
         {
@@ -2185,6 +2407,10 @@ namespace LumaWall
             mediaGaveUp = false;
             browserReady = true;
             currentMediaPath = mediaPath;
+            // The browser has a frame to show now, so the static picture kept during the
+            // switch can finally go. Doing it here - not in SwitchToBrowser - is what keeps
+            // the old picture on screen during the whole WebView2 startup.
+            RetireStaticSurface();
             // The page has just been (re)created, so it knows nothing about the current
             // playback state - it starts from its own defaults. Pushing the state here is
             // what makes a rebuilt page actually play. Without it the host believes the
@@ -2220,6 +2446,12 @@ namespace LumaWall
 
         private static bool IsImagePath(string path)
         {
+            // Null-safe on purpose. This is called from CreateParams, which Windows Forms
+            // invokes from its own base constructor - before this class's constructor body
+            // has run and before the media path field is assigned. A null path therefore is
+            // not an error here, it is the normal state during construction, and throwing
+            // on it takes down the whole window with a NullReferenceException.
+            if (string.IsNullOrEmpty(path)) return false;
             string extension = Path.GetExtension(path).ToLowerInvariant();
             return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".bmp" || extension == ".webp";
         }
@@ -3165,7 +3397,26 @@ namespace LumaWall
         }
         public void ReassertDesktop()
         {
-            try { if (browserReady && !IsDisposed && IsHandleCreated) NativeDesktop.AttachToWallpaper(Handle, screen.Bounds); } catch { }
+            // `browserReady` is the wrong gate, and using it here is why static wallpapers
+            // were invisible.
+            //
+            // The flag is only set on the WebView2 path, so it is permanently false for a
+            // static image. This method then did nothing at all for static wallpapers: the
+            // window was never moved from its off-screen 16x16 birthplace, never sized to
+            // its monitor, and never composited - so nothing painted and the screen stayed
+            // black while the log said "Static wallpaper ready" and "renderer ready".
+            //
+            // What actually has to be true is that the window exists and has content. A
+            // static surface reports HasImage once its decode finished, and a browser host
+            // reports browserReady once its page confirmed a frame; either is a good moment
+            // to attach.
+            bool hasContent = browserReady || (staticMode && staticSurface != null && staticSurface.HasImage);
+            try
+            {
+                if (hasContent && !IsDisposed && IsHandleCreated)
+                    NativeDesktop.AttachToWallpaper(Handle, screen.Bounds);
+            }
+            catch { }
         }
 
         // ── coming back from a fullscreen app ──────────────────────────────────
@@ -3278,6 +3529,35 @@ namespace LumaWall
             try { if (staticSurface != null) { staticSurface.SetImage(null); staticSurface.Dispose(); staticSurface = null; } } catch { }
             try { if (!string.IsNullOrWhiteSpace(pagePath) && File.Exists(pagePath)) File.Delete(pagePath); } catch { }
         }
+
+        /// <summary>
+        /// Stop the video but keep the last frame on screen.
+        ///
+        /// This is what "Hentikan" has to do. Closing the window instead leaves the
+        /// desktop with nothing covering it, so the desktop shows whatever is behind the
+        /// host - black - until the next wallpaper is applied. That gap is the long black
+        /// pause reported after stop-then-apply, and it is not a slow renderer: the window
+        /// is gone, so there is nothing to render into.
+        ///
+        /// The frame is frozen by pausing playback, not by taking a screenshot. Pausing
+        /// keeps the already-decoded surface that DWM is compositing, so the switch is
+        /// instant and nothing has to be re-decoded or re-uploaded.
+        /// </summary>
+        public void FreezeVideo()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            if (pageReady && webView != null && webView.CoreWebView2 != null)
+            {
+                // Pause and keep the current frame. `pause()` alone leaves the last
+                // presented frame on screen - the element is not removed and its source is
+                // not cleared, which is exactly what is wanted here.
+                RunScript("(function(){var v=document.getElementById('media');if(v){try{v.pause();}catch(e){}}})()");
+            }
+
+            // A static wallpaper is already a frozen frame; nothing to do.
+            AppLog.Write("Wallpaper frozen on its last frame " + screen.DeviceName);
+        }
     }
 
     /// <summary>
@@ -3311,7 +3591,14 @@ namespace LumaWall
         {
             if (image == null)
             {
-                e.Graphics.Clear(Drawing.Color.Black);
+                // Paint the window's own background rather than an explicit black.
+                //
+                // Black is indistinguishable from "nothing is drawing here", which is the
+                // exact symptom this surface must never produce. This window is not shown
+                // until its image is ready, so this only matters if something upstream goes
+                // wrong - and in that case a visibly wrong colour is more useful than a
+                // black screen that looks like the desktop.
+                e.Graphics.Clear(BackColor);
                 return;
             }
             Drawing.Rectangle bounds = ClientRectangle;
@@ -3442,6 +3729,13 @@ namespace LumaWall
                 existing.ReassertDesktop();
                 SyncPause(existing, screen.DeviceName);
                 PushOptions(existing, screen.DeviceName);
+                // Resume playback, in case this window was frozen by "Hentikan".
+                //
+                // Without this, stopping a wallpaper and then applying the same one
+                // again would leave it frozen forever: the window still matches the
+                // requested screen and path, so it is reused as-is, and nothing would
+                // ever start it playing again.
+                existing.ResumeVideo();
                 AppLog.Write("Wallpaper already active; reasserted " + screen.DeviceName + " -> " + path);
                 return;
             }
@@ -3526,6 +3820,31 @@ namespace LumaWall
             if (!windows.TryGetValue(device, out old)) return;
             DisposeWindow(old);
             windows.Remove(device);
+        }
+
+        /// <summary>
+        /// Stop the wallpaper but leave its last frame on screen.
+        ///
+        /// This is what the "Hentikan" button needs, and it is deliberately not
+        /// Remove(). Remove() destroys the window, which leaves the desktop uncovered -
+        /// so the desktop turns black and stays black until something else covers it.
+        /// That is the long black pause reported after stopping a wallpaper and then
+        /// applying another one: the first action removed the only thing drawing on the
+        /// desktop, and the second needed seconds to build a new renderer.
+        ///
+        /// Keeping the frozen window also makes the next Apply instant in the common
+        /// case, because the desktop is already covered while the new wallpaper
+        /// prepares. The old window is disposed by CommitSwap once the new one is
+        /// ready, exactly like any other swap.
+        /// </summary>
+        public void Freeze(string device)
+        {
+            CancelPending(device);
+            WallpaperWindow current;
+            if (!windows.TryGetValue(device, out current)) return;
+            try { current.FreezeVideo(); } catch { }
+            // The window stays in `windows`, so a later Apply for this monitor finds it
+            // and goes through the ordinary swap path.
         }
 
         /// <summary>

@@ -2778,7 +2778,18 @@ namespace LumaWall
 
         private void StopMonitor(string device)
         {
-            manager.Remove(device);
+            // Freeze, not Remove.
+            //
+            // Remove() destroys the wallpaper window, and with it the only thing drawing
+            // on that desktop - so the desktop goes black immediately and stays black
+            // until the next wallpaper finishes building its renderer. That gap is the
+            // long black pause reported after stop-then-apply.
+            //
+            // Freezing pauses playback and keeps the window, so the last frame stays on
+            // screen. The desktop is never left uncovered, and applying a new wallpaper
+            // afterwards goes through the ordinary swap path - which already builds the
+            // replacement before disposing the old one.
+            manager.Freeze(device);
             config.MonitorVideos.Remove(device);
             store.Save(config);
             ShowToast(Tr("toast.stopped"));

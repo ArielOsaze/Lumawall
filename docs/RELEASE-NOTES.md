@@ -8,6 +8,97 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.9.0
+
+### Bahasa Indonesia
+
+**Wallpaper tidak lagi menghitam saat dihentikan lalu dipasang ulang**
+
+Menghentikan wallpaper lalu memasangnya kembali menyisakan layar hitam yang
+lumayan lama. Penyebabnya bukan lambatnya pemuatan: tombol Hentikan menutup
+jendela wallpaper, dan jendela itu satu-satunya yang menggambar di desktop. Jadi
+layarnya benar-benar kosong sampai wallpaper berikutnya selesai dibangun.
+
+Sekarang Hentikan tidak menutup jendelanya. Videonya dijeda dan frame terakhir
+tetap di layar, sehingga tidak ada satu pun saat desktop dibiarkan kosong.
+Memasang ulang wallpaper yang sama juga langsung melanjutkan pemutaran, bukan
+membiarkannya beku.
+
+**Wallpaper gambar tidak lagi hilang di Windows 11**
+
+Wallpaper berupa gambar tidak muncul sama sekali di Windows 11 — layarnya hitam,
+sementara semua catatan di log menyebut wallpaper sudah siap. Ada tiga sebab
+yang bertumpuk, dan ketiganya sudah diperbaiki:
+
+- Desktop Windows 11 adalah desktop "raised", yang hanya mau menampilkan jendela
+  dengan gaya berlapis. Gaya itu sebelumnya dipasang hanya pada satu jalur yang
+  cuma berjalan sekali; sekarang dipasang setiap kali dan dilepas lagi saat
+  wallpaper video mengambil alih, karena jendela berlapis mengganggu WebView2.
+- Jendela berlapis tanpa nilai transparansi bersifat tembus pandang sepenuhnya,
+  jadi gambar yang sudah dilukis dengan benar tetap tidak terlihat. Nilainya kini
+  ditetapkan.
+- Penjagaan yang seharusnya memutuskan "sudah siap dipasang" hanya berlaku untuk
+  wallpaper video, sehingga untuk wallpaper gambar tidak pernah dijalankan sama
+  sekali — jendelanya tetap berukuran 16x16 di luar layar.
+
+**Wallpaper tidak lagi terpotong di layar 1366x768**
+
+Jendela wallpaper yang sudah menempel ke desktop tidak pernah diperiksa ukurannya
+lagi. Kalau ukurannya menyimpang, ukuran yang salah itu bertahan selamanya, dan
+di layar 1366x768 hasilnya terlihat sebagai wallpaper yang terpotong. Ukurannya
+sekarang ditegakkan pada setiap pemeriksaan.
+
+**Perpindahan antara wallpaper gambar dan video tidak lagi menghitam**
+
+Saat beralih dari gambar ke video, gambar lama dibuang lebih dulu, dan jendela
+video belum sempat dibangun — jadi layarnya kosong selama beberapa detik.
+Sebaliknya juga sama. Sekarang yang lama tetap dipertahankan sampai yang baru
+benar-benar punya sesuatu untuk ditampilkan.
+
+### English
+
+**Wallpapers no longer go black when stopped and applied again**
+
+Stopping a wallpaper and applying one again left the screen black for a
+noticeably long time. The cause was not slow loading: the Stop button closed the
+wallpaper window, and that window is the only thing drawing on the desktop — so
+the screen was genuinely empty until the next wallpaper finished building.
+
+Stop no longer closes the window. Playback pauses and the last frame stays on
+screen, so the desktop is never left uncovered. Applying the same wallpaper again
+also resumes playback immediately instead of leaving it frozen.
+
+**Image wallpapers no longer disappear on Windows 11**
+
+Image wallpapers did not appear at all on Windows 11 — the screen stayed black
+while every log line said the wallpaper was ready. Three causes were stacked on
+top of each other, and all three are fixed:
+
+- The Windows 11 desktop is a "raised" desktop, which only composites layered
+  windows. That style was applied on a single path that runs once; it is now
+  applied on every pass, and removed again when a video wallpaper takes over,
+  because a layered window interferes with WebView2.
+- A layered window with no transparency value is fully see-through, so a
+  correctly painted image stayed invisible. The value is now set.
+- The guard that decides "ready to attach" only ever held for video wallpapers,
+  so for images it never ran at all — the window stayed 16x16 and off-screen.
+
+**Wallpapers are no longer cropped on 1366x768 screens**
+
+A wallpaper window that was already attached to the desktop was never checked
+for size again. Once its size drifted, the wrong size persisted forever, which on
+a 1366x768 screen shows up as a cropped wallpaper. The size is now enforced on
+every check.
+
+**Switching between image and video wallpapers no longer goes black**
+
+Switching from an image to a video threw the image away first, before the video
+window existed — leaving the screen empty for several seconds. The reverse was
+the same. The old content is now kept until the new content actually has
+something to show.
+
+---
+
 ## 4.5.8.0
 
 ### Bahasa Indonesia
