@@ -54,6 +54,24 @@
   var kanalDipilih = 'qris';
   var bankDipilih = 'bca';
 
+  // Biaya layanan per kanal, diukur dari iPaymu. Angka ini ditampilkan sebelum
+  // pembeli memilih, karena perbedaannya besar - Rp249 untuk QRIS versus
+  // Rp4.500 untuk transfer BCA - dan biaya yang baru muncul setelah memilih
+  // terasa seperti biaya tersembunyi.
+  //
+  // Angka di sini hanya untuk tampilan. Yang benar-benar ditagih adalah angka
+  // dari server saat pesanan dibuat, karena iPaymu bisa mengubah biayanya.
+  var BIAYA = {
+    qris: 249,
+    bni: 3500, bca: 4500, bri: 3500, mandiri: 4000,
+    permata: 3500, cimb: 3500, bsi: 3500, danamon: 3500
+  };
+
+  var hargaDasar = 0;
+  var biayaEl = document.getElementById('biaya-jumlah');
+  var biayaKanalEl = document.getElementById('biaya-kanal');
+  var totalBayarEl = document.getElementById('total-bayar');
+
   var fields = {
     nama: { input: document.getElementById('f-nama'), err: document.getElementById('e-nama') },
     email: { input: document.getElementById('f-email'), err: document.getElementById('e-email') },
@@ -134,12 +152,39 @@
       // lain sebelumnya.
       pilihBank(bankDipilih);
     }
+    perbaruiTotal();
   }
 
   function pilihBank(nilai) {
     bankDipilih = nilai;
     tandaiRadio(bankGrid.querySelectorAll('.bank'),
                 bankGrid.querySelector('[data-bank="' + nilai + '"]'));
+    perbaruiTotal();
+  }
+
+  // Total diperbarui setiap kali cara bayar berubah, supaya angka di tombol
+  // "Bayar sekarang" selalu sama dengan yang akan muncul di halaman
+  // pembayaran. Pembeli yang melihat totalnya berubah setelah memilih akan
+  // mengira dirinya dikenai biaya tambahan.
+  function perbaruiTotal() {
+    var kode = kanalDipilih === 'qris' ? 'qris' : bankDipilih;
+    var biaya = BIAYA[kode] || 0;
+    var total = hargaDasar + biaya;
+
+    if (biayaEl) biayaEl.textContent = rupiah(biaya);
+    if (biayaKanalEl) {
+      biayaKanalEl.textContent = kanalDipilih === 'qris'
+        ? 'QRIS'
+        : (bankGrid.querySelector('[data-bank="' + bankDipilih + '"]') || {}).textContent || '';
+    }
+    if (totalBayarEl) totalBayarEl.textContent = rupiah(total);
+
+    // Angka di tombol pemilih juga diperbarui, supaya pembeli bisa
+    // membandingkan biaya sebelum memilih - bukan setelah.
+    var tandaQris = document.querySelector('[data-kanal-biaya="qris"]');
+    var tandaBank = document.querySelector('[data-kanal-biaya="bca"]');
+    if (tandaQris) tandaQris.textContent = rupiah(BIAYA.qris);
+    if (tandaBank) tandaBank.textContent = rupiah(BIAYA[bankDipilih] || BIAYA.bca);
   }
 
   if (kanalGrid) {
@@ -489,6 +534,40 @@
         note.textContent = 'Pembayaran langsung di halaman ini.';
         showAlert(err.message || 'Terjadi kesalahan. Coba lagi.', false);
       });
+  });
+
+  // ── harga dasar untuk menghitung total ────────────────────────────────────
+  //
+  // Harga diambil dari harga.js, yang sudah memastikannya sama dengan yang
+  // ditagih server. Angka di HTML dipakai sebagai nilai awal supaya totalnya
+  // sudah benar sebelum permintaan harga selesai - dan diperbarui begitu harga
+  // yang sebenarnya tiba.
+  //
+  // Tanpa ini, total di tombol bayar akan memakai angka HTML yang bisa basi:
+  // pada 16 Oktober, promo berakhir dan server menagih Rp18.000 sementara
+  // halaman masih menghitung dari Rp10.000.
+
+  function bacaHargaDariHtml() {
+    var el = document.querySelector('[data-price]');
+    if (!el) return 0;
+    var angka = String(el.textContent || '').replace(/[^\d]/g, '');
+    return parseInt(angka, 10) || 0;
+  }
+
+  function pasangHarga(nilai) {
+    if (!nilai || nilai <= 0) return;
+    hargaDasar = nilai;
+    perbaruiTotal();
+  }
+
+  pasangHarga(bacaHargaDariHtml());
+
+  // Kalau harga.js sudah selesai sebelum baris ini, nilainya sudah tersedia.
+  if (window.LumaWallHarga) pasangHarga(window.LumaWallHarga);
+
+  // Kalau belum, tunggu pengumumannya.
+  window.addEventListener('lumawall:harga', function (e) {
+    if (e && e.detail && e.detail.amount) pasangHarga(e.detail.amount);
   });
 
   // Kalau pembeli kembali dengan ?batal=1, beri tahu dengan tenang bahwa tidak

@@ -634,9 +634,77 @@
   .qr-wrap { min-height: 0; }
 }
 
+/* ── rincian total ────────────────────────────────────────────────────────── */
+
+/* Biaya layanan ditampilkan sebagai baris tersendiri, bukan digabung ke dalam
+   total. Perbedaannya besar - Rp249 untuk QRIS versus Rp4.500 untuk transfer
+   BCA - dan pembeli yang baru tahu jumlah sebenarnya setelah memilih akan
+   mengira dirinya dikenai biaya tersembunyi. */
+.buy-total-rinci {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--elevated);
+  overflow: hidden;
+}
+
+.buy-total-baris {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem 1rem;
+  font-size: .88rem;
+  color: var(--ink-muted);
+}
+
+.buy-total-baris + .buy-total-baris { border-top: 1px solid var(--line); }
+
+.buy-total-baris b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Nama kanal di sebelah "Biaya layanan" berubah mengikuti pilihan pembeli.
+   Ditulis kecil dan tidak mencolok: yang penting angkanya, bukan namanya. */
+.buy-total-kanal {
+  font-size: .78rem;
+  color: var(--ink-faint, var(--ink-muted));
+  opacity: .75;
+}
+
+/* Baris terakhir adalah jumlah yang benar-benar dibayar, jadi ia yang paling
+   menonjol - dan diberi garis pemisah lebih tegas supaya jelas bahwa dua baris
+   di atasnya adalah rincian, bukan tambahan. */
+.buy-total-akhir {
+  padding-top: .85rem;
+  padding-bottom: .85rem;
+  border-top: 1px solid rgba(255, 255, 255, .12) !important;
+  background: rgba(255, 255, 255, .02);
+  font-size: .95rem;
+  color: var(--ink);
+}
+
+.buy-total-akhir b { font-size: 1.15rem; font-weight: 700; }
+
 /* ── pemilih cara bayar ───────────────────────────────────────────────────── */
 
 .field-kanal { margin-bottom: 1rem; }
+
+/* Biaya di dalam tombol pemilih. Ditampilkan SEBELUM pembeli memilih, supaya
+   ia bisa membandingkan - bukan menemukan selisihnya di halaman berikutnya. */
+.kanal-biaya {
+  display: block;
+  margin-top: .15rem;
+  font-size: .72rem;
+  color: var(--ink-muted);
+}
+
+.kanal-biaya b { font-size: .76rem; font-weight: 600; color: var(--ink); }
+
+.kanal.aktif .kanal-biaya b { color: var(--accent); }
 
 .kanal-grid {
   display: grid;

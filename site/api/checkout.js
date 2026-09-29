@@ -29,16 +29,35 @@ const { config, clientIp, supabase, json, readBody, fail, panggilJembatan } = re
 //
 // Nama bank ditulis seperti yang dikenali iPaymu (huruf kecil), sedangkan label
 // adalah yang dilihat pembeli.
+// `biaya` adalah biaya layanan yang DITANGGUNG PEMBELI, diukur langsung dari
+// iPaymu untuk dua harga berbeda (Rp10.000 dan Rp18.000) supaya terlihat mana
+// yang tetap dan mana yang mengikuti harga.
+//
+// Angka ini ada di sini karena perbedaannya besar dan harus terlihat SEBELUM
+// pembeli memilih, bukan sesudah:
+//
+//     QRIS   Rp249   (2,49% dari harga)
+//     BCA    Rp4.500 (45% dari harga Rp10.000)
+//     Mandiri Rp4.000
+//     bank lain Rp3.500
+//
+// Tanpa angka ini, pembeli melihat "Rp10.000" di formulir lalu diminta
+// mentransfer Rp14.500 di halaman berikutnya. Ia tidak salah mengira ada biaya
+// tersembunyi - memang biayanya disembunyikan, oleh halaman ini sendiri.
+//
+// `biaya` dipakai untuk menampilkan perkiraan sebelum pesanan dibuat. Yang
+// benar-benar ditagih tetap angka dari iPaymu saat transaksinya dibuat, karena
+// biaya bisa berubah tanpa pemberitahuan.
 const KANAL = {
-  qris: { metode: 'qris', channel: 'qris', label: 'QRIS', jenis: 'qr' },
-  bni: { metode: 'va', channel: 'bni', label: 'BNI', jenis: 'va' },
-  bca: { metode: 'va', channel: 'bca', label: 'BCA', jenis: 'va' },
-  bri: { metode: 'va', channel: 'bri', label: 'BRI', jenis: 'va' },
-  mandiri: { metode: 'va', channel: 'mandiri', label: 'Mandiri', jenis: 'va' },
-  permata: { metode: 'va', channel: 'permata', label: 'Permata', jenis: 'va' },
-  cimb: { metode: 'va', channel: 'cimb', label: 'CIMB Niaga', jenis: 'va' },
-  bsi: { metode: 'va', channel: 'bsi', label: 'BSI', jenis: 'va' },
-  danamon: { metode: 'va', channel: 'danamon', label: 'Danamon', jenis: 'va' },
+  qris: { metode: 'qris', channel: 'qris', label: 'QRIS', jenis: 'qr', biaya: 249 },
+  bni: { metode: 'va', channel: 'bni', label: 'BNI', jenis: 'va', biaya: 3500 },
+  bca: { metode: 'va', channel: 'bca', label: 'BCA', jenis: 'va', biaya: 4500 },
+  bri: { metode: 'va', channel: 'bri', label: 'BRI', jenis: 'va', biaya: 3500 },
+  mandiri: { metode: 'va', channel: 'mandiri', label: 'Mandiri', jenis: 'va', biaya: 4000 },
+  permata: { metode: 'va', channel: 'permata', label: 'Permata', jenis: 'va', biaya: 3500 },
+  cimb: { metode: 'va', channel: 'cimb', label: 'CIMB Niaga', jenis: 'va', biaya: 3500 },
+  bsi: { metode: 'va', channel: 'bsi', label: 'BSI', jenis: 'va', biaya: 3500 },
+  danamon: { metode: 'va', channel: 'danamon', label: 'Danamon', jenis: 'va', biaya: 3500 },
 };
 
 function newOrderCode() {
@@ -196,10 +215,17 @@ module.exports = async function handler(req, res) {
     // muncul bergantung pada banknya - jadi semuanya diperiksa. Tanpa ini,
     // pembeli yang memilih transfer bank sampai di halaman tanpa nomor tujuan,
     // dan satu-satunya cara ia bisa membayar adalah menebak.
-    const nomorVa = sesi.PaymentNo || sesi.paymentNo || sesi.Va || sesi.va
-      || sesi.VaNumber || sesi.vaNumber || sesi.VirtualAccount || sesi.virtualAccount
-      || sesi.AccountNumber || sesi.accountNumber || sesi.PaymentCode || sesi.paymentCode
-      || null;
+    //
+    // HANYA diisi untuk transfer bank. Pada QRIS, `PaymentNo` berisi QrString -
+    // dan tanpa pembatasan ini halaman menerima "nomor Virtual Account" yang
+    // isinya kode QR sepanjang 300 karakter, lalu menampilkannya sebagai nomor
+    // rekening tujuan.
+    const nomorVa = kanal.jenis === 'va'
+      ? (sesi.PaymentNo || sesi.paymentNo || sesi.Va || sesi.va
+         || sesi.VaNumber || sesi.vaNumber || sesi.VirtualAccount || sesi.virtualAccount
+         || sesi.AccountNumber || sesi.accountNumber || sesi.PaymentCode || sesi.paymentCode
+         || null)
+      : null;
 
     // ── QrImage bukan berkas gambar ──────────────────────────────────────────
     //
@@ -282,6 +308,10 @@ module.exports = async function handler(req, res) {
       jenis: kanal.jenis,
       kanal: kanal.channel,
       kanalLabel: kanal.label,
+      // Biaya yang ditanggung pembeli. Dikirim supaya halaman bisa
+      // menampilkan jumlah yang harus ditransfer - dan pembeli melihat angka
+      // yang sama di halaman ini dan di aplikasi banknya.
+      biaya: sesi.Fee || kanal.biaya || 0,
       qrImage,
       qrString,
       // Nomor tujuan transfer. Hanya ada untuk pembayaran lewat bank.

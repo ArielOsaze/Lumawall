@@ -26,7 +26,7 @@
 <link rel="preload" href="/assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.ad37d8582b.css">
 <link rel="stylesheet" href="/assets/css/style.00dd54fec4.css">
-<link rel="stylesheet" href="/assets/css/buy.8a4f1b79c3.css">
+<link rel="stylesheet" href="/assets/css/buy.e72a9ae33f.css">
 </head>
 <body class="buy-page">
 
@@ -144,11 +144,13 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg>
               <b>QRIS</b>
               <em>Any bank &amp; e-wallet</em>
+              <span class="kanal-biaya">fee <b data-kanal-biaya="qris">Rp249</b></span>
             </button>
             <button type="button" class="kanal" data-kanal="bca" role="radio" aria-checked="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18"/></svg>
               <b>Bank transfer</b>
               <em>BCA, BNI, BRI, Mandiri, etc</em>
+              <span class="kanal-biaya">fee <b data-kanal-biaya="bca">Rp4,500</b></span>
             </button>
           </div>
         </div>
@@ -168,9 +170,24 @@
           </div>
         </div>
 
-        <div class="buy-total">
-          <span>Total</span>
-          <b data-price>Rp10,000</b>
+        <!-- Rincian total.
+             Biayanya dipisah dan selalu terlihat, bukan digabung diam-diam ke
+             dalam total. Perbedaannya besar - Rp249 untuk QRIS versus Rp4.500
+             untuk transfer BCA - dan pembeli berhak melihatnya sebelum ia
+             menekan tombol, bukan sesudah. -->
+        <div class="buy-total buy-total-rinci">
+          <div class="buy-total-baris">
+            <span>Licence price</span>
+            <b data-price>Rp10,000</b>
+          </div>
+          <div class="buy-total-baris">
+            <span>Service fee <span class="buy-total-kanal" id="biaya-kanal">QRIS</span></span>
+            <b id="biaya-jumlah">Rp249</b>
+          </div>
+          <div class="buy-total-baris buy-total-akhir">
+            <span>Total to pay</span>
+            <b id="total-bayar">Rp10.249</b>
+          </div>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block btn-lg" id="buy-submit">
@@ -400,6 +417,6 @@
 </footer>
 
 <script src="/assets/js/harga.js"></script>
-<script src="/assets/js/buy-en.ff526685c6.js"></script>
+<script src="/assets/js/buy-en.js"></script>
 </body>
 </html>

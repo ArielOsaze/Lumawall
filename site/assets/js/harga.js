@@ -63,6 +63,23 @@
     // Judul halaman ikut menyebut harga, jadi harus ikut berubah - kalau tidak,
     // hasil pencarian dan tab peramban menampilkan harga yang sudah lewat.
     document.title = document.title.replace(/Rp\s?[\d.,]+/g, formatRupiah(h.amount));
+
+    // Harganya diumumkan supaya berkas lain bisa memakainya.
+    //
+    // Halaman beli perlu tahu harga dasar untuk menghitung total bersama biaya
+    // layanan - dan biaya itu berbeda jauh antar cara bayar (Rp249 untuk QRIS,
+    // Rp4.500 untuk transfer BCA). Tanpa harga yang sama, halaman akan
+    // menampilkan dua total yang berbeda: satu di daftar harga, satu di tombol
+    // bayar.
+    //
+    // Lewat event, bukan variabel global: harga.js dan buy.js tidak saling
+    // memanggil, dan urutan pemuatannya tidak menjadi masalah - kalau harga
+    // datang lebih dulu, buy.js membacanya saat dijalankan; kalau belakangan,
+    // event-nya yang memberi tahu.
+    window.LumaWallHarga = h.amount;
+    try {
+      window.dispatchEvent(new CustomEvent('lumawall:harga', { detail: h }));
+    } catch (e) { /* CustomEvent tidak ada: buy.js membaca LumaWallHarga */ }
   }
 
   // Harga ditampilkan secepat mungkin. Menunggu DOMContentLoaded berarti
