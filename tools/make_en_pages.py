@@ -147,7 +147,7 @@ BUY = [
      '<span class="kanal-biaya">fee <b data-kanal-biaya="qris">Rp249</b></span>'),
     ('<span class="kanal-biaya">biaya <b data-kanal-biaya="bca">Rp4.500</b></span>',
      '<span class="kanal-biaya">fee <b data-kanal-biaya="bca">Rp4,500</b></span>'),
-    ("'QRIS'\n        : (bankGrid", "'QRIS'\n        : (bankGrid"),
+
     ('<span class="eyebrow">Cara kerjanya</span>', '<span class="eyebrow">How it works</span>'),
     ('Empat langkah, selesai', 'Four steps, done'),
     ('<h3 class="h3">Isi data</h3>', '<h3 class="h3">Enter your details</h3>'),
