@@ -68,15 +68,14 @@ ID = {
         "- Antarmuka bahasa Indonesia dan Inggris"
     ),
     "What's new in this version": (
-        "Versi 4.5.8\n"
-        "- Wallpaper tidak lagi hitam satu-dua menit setelah keluar dari aplikasi "
-        "fullscreen - sekarang kembali dalam waktu kurang dari satu detik\n"
-        "- Layar utama beranimasi lagi saat nama berkas wallpaper mengandung karakter "
-        "tidak biasa\n"
-        "- Widget jam tidak pernah menutupi aplikasi kamu; ia menempel di desktop "
-        "setara dengan wallpaper\n"
-        "- Pemilih penempatan jam tidak lagi menendang halaman ke atas\n"
-        "- Tepi jendela tidak berkedip lagi saat keluar dari aplikasi fullscreen"
+        "Versi 4.5.9\n"
+        "- Hentikan wallpaper lalu pasang lagi tidak lagi menyisakan layar hitam; "
+        "frame terakhir tetap terlihat sampai wallpaper berikutnya siap\n"
+        "- Wallpaper gambar sekarang muncul di Windows 11 - sebelumnya tidak terlihat "
+        "sama sekali walau log menyebut sudah siap\n"
+        "- Wallpaper tidak lagi terpotong di layar 1366x768\n"
+        "- Berpindah antara wallpaper gambar dan video tidak lagi menghitam\n"
+        "- Wallpaper tidak lagi hitam setelah keluar dari aplikasi fullscreen"
     ),
     'Product features': (
         "Mesin wallpaper dinamis;Wallpaper per monitor;Dipercepat GPU;"

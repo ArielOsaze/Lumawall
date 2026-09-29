@@ -96,15 +96,14 @@ EN = {
         "- English and Indonesian interface"
     ),
     "What's new in this version": (
-        "Version 4.5.8\n"
-        "- The wallpaper no longer goes black for a minute or two after closing a "
-        "fullscreen app - it comes back in under a second\n"
-        "- The primary display animates again when a wallpaper filename contains "
-        "unusual characters\n"
-        "- The clock widget never covers your apps; it sits on the desktop with the "
-        "wallpaper\n"
-        "- The clock placement picker no longer throws the page to the top\n"
-        "- Window edges no longer flicker when leaving a fullscreen app"
+        "Version 4.5.9\n"
+        "- Stopping a wallpaper and applying one again no longer leaves the screen "
+        "black; the last frame stays up until the next wallpaper is ready\n"
+        "- Image wallpapers now appear on Windows 11 - they previously stayed "
+        "invisible while the log said they were ready\n"
+        "- Wallpapers are no longer cropped on 1366x768 screens\n"
+        "- Switching between image and video wallpapers no longer goes black\n"
+        "- The wallpaper no longer goes black after closing a fullscreen app"
     ),
     'Product features': (
         "Dynamic wallpaper engine;Per-monitor wallpapers;GPU accelerated;"
