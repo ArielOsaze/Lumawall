@@ -353,21 +353,40 @@ router.post("/:tindakan", express.json({ limit: "64kb" }), async (req, res) => {
         // iPaymu yang perlu tahu ke mana harus kembali.
         kirim.name = String(p.buyerName || p.name || "Guest");
 
-        // Nomor telepon TIDAK boleh kosong.
+        // Nomor telepon wajib, dan harus nomor yang bentuknya sah.
         //
-        // Ditemukan dengan menguji, bukan dari dokumentasi: iPaymu menolak
-        // permintaan tanpa nomor telepon dengan pesan "unauthorized signature".
-        // Pesan itu menunjuk ke tanda tangan, padahal tanda tangannya benar -
-        // dan karena pesannya menyesatkan, penyebabnya sulit ditemukan. Uji
-        // berulang membuktikannya: lima permintaan dengan nomor telepon
-        // berhasil semua, lima tanpa nomor telepon gagal semua.
+        // Dua hal ditemukan dengan menguji, bukan dari dokumentasi:
         //
-        // Kalau pemanggil tidak mengirim nomor, dipakai nomor placeholder yang
-        // jelas bukan nomor siapa pun. Ini bukan data palsu yang menyesatkan:
-        // nomornya tidak pernah dihubungi, dan satu-satunya alternatifnya
-        // adalah transaksi yang gagal.
-        const telepon = String(p.buyerPhone || p.phone || "").replace(/[^\d+]/g, "");
-        kirim.phone = telepon || "08000000000";
+        //   1. Tanpa nomor telepon sama sekali, iPaymu menolak dengan pesan
+        //      "unauthorized signature" - pesan yang menunjuk ke tanda tangan,
+        //      padahal tanda tangannya benar.
+        //
+        //   2. Nomor placeholder yang dipakai sebelumnya, 08000000000, DITOLAK
+        //      BRI dan Permata dengan "Failed to generate VA" - sementara BCA
+        //      menerimanya. Jadi nomor yang bentuknya tidak masuk akal lolos di
+        //      sebagian bank dan gagal di bank lain.
+        //
+        // Nomor WhatsApp memang opsional di formulir, jadi kasus ini nyata:
+        // pembeli yang tidak mengisinya akan menemukan dua bank yang selalu
+        // gagal, tanpa penjelasan apa pun.
+        //
+        // Nomor placeholder di bawah dipilih dengan menguji sebelas kandidat
+        // terhadap BRI, Permata, dan BCA - tiga bank yang paling ketat.
+        //
+        // Yang ditolak BRI dan Permata: 081200000000 dan 081200000001, keduanya
+        // berakhiran nol semua. Bank lain menerimanya, jadi kalau nomor itu yang
+        // dipakai, pembeli yang tidak mengisi WhatsApp akan menemukan dua bank
+        // yang selalu gagal tanpa penjelasan.
+        //
+        // Yang diterima ketiganya: nomor dengan digit berulang setelah prefix
+        // (081211111111, 081222222222, dan seterusnya). Dipakai yang paling
+        // jelas tidak mungkin milik siapa pun.
+        //
+        // Ia tidak pernah dihubungi: iPaymu hanya menyimpannya sebagai data
+        // pembeli.
+        const telepon = String(p.buyerPhone || p.phone || "").replace(/[^\d]/g, "");
+        const sah = /^0\d{9,13}$/.test(telepon);
+        kirim.phone = sah ? telepon : "081211111111";
         kirim.email = String(p.buyerEmail || p.email || "");
         kirim.amount = String(p.amount);
         kirim.notifyUrl = `${DOMAIN_TERDAFTAR}/api/lumawall/notifikasi`;
