@@ -96,9 +96,11 @@ def main():
     if not CONFIG.exists():
         print('  config tidak ada: %s' % CONFIG)
         return 1
-    if not GAMBAR.exists():
-        print('  ! gambar uji tidak ada: %s' % GAMBAR)
-        return 1
+    # Gambar uji dibuat di sini, bukan diandalkan sudah ada. Sebelumnya
+    # pemeriksaan ini gagal begitu gambar itu dibersihkan - kegagalan yang tidak
+    # ada hubungannya dengan wallpaper yang sedang diuji.
+    import siapkan_gambar_uji
+    siapkan_gambar_uji.pastikan()
 
     shutil.copy2(CONFIG, CADANGAN)
     asli = baca_config()

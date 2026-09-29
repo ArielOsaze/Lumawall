@@ -123,9 +123,9 @@ def main():
     if monitor is None:
         print('  layar %s tidak ditemukan' % args.display)
         return 1
-    if not Path(GAMBAR).exists():
-        print('  ! gambar uji tidak ada: %s' % GAMBAR)
-        return 1
+    # Dibuat di sini, bukan diandalkan sudah ada; lihat siapkan_gambar_uji.
+    import siapkan_gambar_uji
+    siapkan_gambar_uji.pastikan()
 
     print()
     print('  ══ wallpaper statis bertahan? (%s, %d detik) ══' % (args.display, args.detik))
