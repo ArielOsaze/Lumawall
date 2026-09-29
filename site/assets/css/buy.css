@@ -376,6 +376,124 @@
 .succ-help a { color: var(--accent); }
 .succ-help a:hover { text-decoration: underline; }
 
+/* ── promo & harga ────────────────────────────────────────────────────────── */
+
+/* Atribut `hidden` HARUS menang atas display apa pun.
+ *
+ * Ini bukan kehati-hatian berlebih: `.store-hint { display: flex }` menang atas
+ * `[hidden]` dari stylesheet peramban, karena aturan penulis selalu menang atas
+ * aturan bawaan. Akibatnya blok yang ditandai `hidden` tetap terlihat - dan
+ * itulah yang terjadi: dua blok Microsoft Store (yang promo dan yang
+ * setelah-promo) muncul bersamaan, saling bertentangan isinya.
+ *
+ * `!important` dipakai di sini dengan sadar. Aturan ini harus mengalahkan
+ * setiap `display` yang mungkin ditulis nanti; kalau tidak, bug yang sama akan
+ * kembali setiap kali ada komponen baru yang memakai flex atau grid. */
+[hidden] { display: none !important; }
+
+/* Label "promo" kecil di sebelah harga. Dibuat sebagai elemen terpisah, bukan
+   bagian dari kalimat, supaya bisa disembunyikan setelah promo berakhir tanpa
+   menyisakan tanda baca yang menggantung. */
+.promo-tag {
+  display: inline-block;
+  padding: .1rem .45rem;
+  margin-left: .3rem;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: .1em;
+}
+
+/* Batang pengumuman promo. Warnanya sengaja dibuat lebih tenang daripada
+   tombol beli: ia menjelaskan, bukan mengajak bertindak. */
+.promo-bar {
+  display: flex;
+  gap: .8rem;
+  align-items: flex-start;
+  padding: .9rem 1.1rem;
+  margin: 0 0 1.5rem;
+  max-width: 34rem;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.promo-bar .i {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: .15rem;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.promo-bar p { margin: 0; font-size: .875rem; color: var(--ink-muted); line-height: 1.6; }
+.promo-bar b { color: var(--ink); }
+
+/* Harga lama yang dicoret. Sengaja tetap terbaca, bukan disembunyikan: yang
+   membuat promo terasa nyata adalah melihat angka sebelumnya. */
+.buy-was {
+  display: block;
+  margin-top: .2rem;
+  font-size: .72rem;
+  color: var(--ink-subtle);
+}
+.buy-was s { opacity: .8; }
+
+/* ── badge Microsoft Store di footer ──────────────────────────────────────── */
+.foot-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.foot-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Badge ini meniru bentuk badge resmi "Get it from Microsoft": lambang di kiri,
+   dua baris teks di kanan. Bentuknya dibuat sendiri dari SVG, bukan gambar,
+   supaya ikut warna situs dan tetap tajam di layar beresolusi apa pun. */
+.store-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .55rem .95rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  transition: border-color .18s var(--ease), background .18s var(--ease);
+}
+.store-badge:hover {
+  border-color: rgba(255, 255, 255, .18);
+  background: var(--elevated);
+}
+.store-logo {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: var(--ink);
+  opacity: .9;
+}
+.store-text { display: flex; flex-direction: column; line-height: 1.15; }
+.store-text small {
+  font-size: .6rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.store-text b { font-size: .875rem; font-weight: 600; color: var(--ink); }
+
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .buy-hero-in { grid-template-columns: minmax(0, 1fr); }

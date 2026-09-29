@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 // Konfigurasi bersama untuk seluruh endpoint pembayaran LumaWall.
 //
 // Prinsip: TIDAK ADA rahasia di dalam berkas ini atau di repositori. Semua
@@ -5,7 +7,28 @@
 // permintaan ditolak dengan jelas kalau ada yang belum dipasang - lebih baik
 // gagal terang-terangan daripada diam-diam memakai kunci kosong.
 
-const PRICE_IDR = 20000;
+// ── Harga ────────────────────────────────────────────────────────────────────
+//
+// Promo web: Rp10.000 sampai 15 Oktober 2026, lalu naik otomatis ke Rp18.000.
+//
+// Harga TIDAK ditulis di HTML sebagai kebenaran. HTML hanya menampilkan; yang
+// menagih adalah berkas ini. Alasannya: kalau harga di halaman dan harga di
+// checkout bisa berbeda, cepat atau lambat ada yang membayar Rp10.000 untuk
+// produk yang seharusnya Rp18.000 - atau sebaliknya, ditagih lebih mahal
+// daripada yang tertera. Dua angka yang harus cocok sebaiknya berasal dari satu
+// tempat, dan tempat itu harus yang tidak bisa diubah pembeli.
+//
+// Batas tanggalnya memakai waktu Indonesia (WIB, UTC+7), bukan UTC: promo yang
+// berakhir "15 Oktober" bagi pembeli di Jakarta harus berakhir saat tengah
+// malam di Jakarta, bukan pukul 07.00 pagi keesokan harinya.
+const PRICE_PROMO_IDR = 10000;
+const PRICE_NORMAL_IDR = 18000;
+const PROMO_ENDS_AT = '2026-10-15T23:59:59+07:00';
+
+// Microsoft Store selalu Rp18.000. Promo Rp10.000 hanya berlaku di web, dan
+// itu disengaja: Store memotong biaya distribusi, jadi menurunkan harganya di
+// sana berarti memotong margin yang sudah tipis. Justru sebaliknya yang
+// berlaku sekarang - web lebih murah selama promo.
 const STORE_PRICE_IDR = 18000;
 const STORE_URL = 'https://apps.microsoft.com/detail/9PN82QJLV05B';
 const PRODUCT_CODE = 'lumawall';
@@ -30,10 +53,31 @@ function env(name, { required = true } = {}) {
   return v ? String(v).trim() : '';
 }
 
+// Harga yang berlaku saat ini. Dipanggil setiap request, bukan disimpan saat
+// modul dimuat: instance fungsi serverless bisa hidup berjam-jam atau berhari-
+// hari, dan harga yang disimpan di memori akan tetap promo setelah tanggalnya
+// lewat.
+function currentPrice(now = new Date()) {
+  const promoAktif = now.getTime() <= new Date(PROMO_ENDS_AT).getTime();
+  return {
+    amount: promoAktif ? PRICE_PROMO_IDR : PRICE_NORMAL_IDR,
+    promo: promoAktif,
+    promoPrice: PRICE_PROMO_IDR,
+    normalPrice: PRICE_NORMAL_IDR,
+    promoEndsAt: PROMO_ENDS_AT,
+    storePrice: STORE_PRICE_IDR,
+  };
+}
+
 function config() {
   const version = env('LUMAWALL_VERSION', { required: false }) || '4.5.7.0';
+  const harga = currentPrice();
   return {
-    price: PRICE_IDR,
+    price: harga.amount,
+    promo: harga.promo,
+    promoPrice: harga.promoPrice,
+    normalPrice: harga.normalPrice,
+    promoEndsAt: harga.promoEndsAt,
     storePrice: STORE_PRICE_IDR,
     storeUrl: STORE_URL,
     productCode: PRODUCT_CODE,
@@ -46,6 +90,12 @@ function config() {
     ipaymuKey: env('IPAYMU_API_KEY'),
     ipaymuMode: env('IPAYMU_MODE', { required: false }) || 'production',
     bridgeSecret: env('LUMAWALL_BRIDGE_SECRET'),
+
+    // Alamat jembatan pembayaran di server NexShop. Panggilan ke iPaymu
+    // dialihkan lewat sini karena IP server itu sudah terdaftar di iPaymu,
+    // sedangkan IP Vercel tidak.
+    bridgeUrl: env('LUMAWALL_BRIDGE_URL', { required: false }) ||
+      'https://nexshop.cloud/api/lumawall',
     siteUrl: env('SITE_URL', { required: false }) || 'https://lumawall.xinet.id',
 
     // Berkas installer disimpan di bucket privat milik proyek Supabase NexShop,
@@ -150,6 +200,65 @@ async function rpc(fnName, args) {
   return data;
 }
 
+// Panggil jembatan pembayaran di server NexShop.
+//
+// Jembatan ini ada karena iPaymu membatasi permintaan berdasarkan alamat IP
+// pengirim, dan Vercel keluar dari IP dinamis yang tidak terdaftar. Server
+// NexShop punya IP tetap yang sudah terdaftar di akun iPaymu yang sama.
+//
+// Tanda tangan yang dipakai adalah HMAC atas "tindakan:cap-waktu", BUKAN atas
+// body. Alasannya teknis: menandatangani body mengharuskan kedua sisi
+// menghasilkan string JSON yang identik byte per byte, dan urutan kunci bisa
+// berbeda antara pembuat dan pemeriksa - begitu berbeda, tanda tangannya tidak
+// pernah cocok, dan kegagalannya sulit dilacak karena isinya terlihat benar.
+//
+// Cap waktu dikirim dalam milidetik. Jembatan menolak tanda tangan yang lebih
+// tua dari 5 menit, sehingga permintaan yang sempat terekam tidak bisa dipakai
+// ulang.
+async function panggilJembatan(cfg, tindakan, muatan) {
+  const bridgeUrl = cfg.bridgeUrl;
+  if (!bridgeUrl) {
+    return { ok: false, status: 0, data: null, error: 'Alamat jembatan belum diisi.' };
+  }
+
+  const ts = String(Date.now());
+  const tandaTangan = crypto
+    .createHmac('sha256', cfg.bridgeSecret)
+    .update(`${tindakan}:${ts}`)
+    .digest('hex');
+
+  const url = `${bridgeUrl.replace(/\/$/, '')}/${tindakan}`;
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'x-lumawall-ts': ts,
+        'x-lumawall-signature': tandaTangan,
+      },
+      body: JSON.stringify(muatan),
+      // Jembatan meneruskan ke iPaymu yang kadang lambat. 20 detik lebih
+      // pendek daripada batas fungsi serverless, sehingga kegagalan jembatan
+      // dilaporkan sebagai pesan yang jelas alih-alih timeout platform.
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (err) {
+    const pesan = err && err.name === 'TimeoutError'
+      ? 'Jembatan tidak menjawab dalam 20 detik.'
+      : `Tidak bisa menghubungi jembatan: ${err && err.message}`;
+    return { ok: false, status: 0, data: null, error: pesan };
+  }
+
+  const teks = await res.text();
+  let data = null;
+  try { data = JSON.parse(teks); } catch { /* biarkan null */ }
+
+  return { ok: res.ok, status: res.status, data };
+}
+
 function json(res, status, payload) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -191,6 +300,8 @@ function fail(res, err) {
 
 module.exports = {
   config,
+  currentPrice,
+  panggilJembatan,
   clientIp,
   normaliseIp,
   supabase,

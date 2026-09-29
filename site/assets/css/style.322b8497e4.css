@@ -890,6 +890,55 @@ p { text-wrap: pretty; }
 }
 .foot-group:hover { border-color: rgba(255, 59, 87, .45); color: var(--ink-muted); }
 
+/* ── badge Microsoft Store ─────────────────────────────────────────────────
+   Ditempatkan di baris bawah footer, sejajar dengan hak cipta dan keterangan
+   harga. Bentuknya meniru badge resmi "Get it from Microsoft" - lambang di
+   kiri, dua baris teks di kanan - tetapi digambar sendiri dari SVG supaya
+   ikut warna situs dan tetap tajam di layar beresolusi apa pun.
+
+   Lambangnya adalah empat persegi dengan garis bagan, bukan logo Microsoft
+   empat warna: yang belakangan itu merek perusahaan, bukan merek toko, dan
+   memakainya di sini akan salah tempat. */
+.store-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .5rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--base);
+  transition: border-color .2s var(--ease), background .2s var(--ease);
+}
+.store-badge:hover { border-color: rgba(255, 255, 255, .2); background: var(--elevated); }
+
+/* Lihat catatan di buy.css: tanpa ini, `hidden` kalah dari display: flex. */
+[hidden] { display: none !important; }
+.store-logo { flex: none; width: 1.35rem; height: 1.35rem; fill: var(--ink); opacity: .9; }
+.store-text { display: flex; flex-direction: column; line-height: 1.15; }
+.store-text small {
+  font-size: .58rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+.store-text b { font-size: .84rem; font-weight: 600; color: var(--ink); }
+
+/* Label "promo" dan harga yang dicoret, dipakai di beberapa tempat. */
+.promo-tag {
+  display: inline-block;
+  padding: .1rem .45rem;
+  margin-left: .3rem;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: .1em;
+}
+
 /* The legal line is the quietest thing on the page, which is what it should be. */
 .foot-legal { color: var(--ink-subtle); }
 

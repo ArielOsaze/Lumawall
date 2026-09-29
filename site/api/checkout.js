@@ -14,10 +14,7 @@
 // unduhan tanpa pembayaran yang benar-benar tercatat di iPaymu.
 
 const crypto = require('crypto');
-const { config, clientIp, supabase, json, readBody, fail } = require('./_lib');
-
-const IPAYMU_PRODUCTION = 'https://my.ipaymu.com/api/v2';
-const IPAYMU_SANDBOX = 'https://sandbox.ipaymu.com/api/v2';
+const { config, clientIp, supabase, json, readBody, fail, panggilJembatan } = require('./_lib');
 
 function newOrderCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa I,O,0,1 yang mudah tertukar
@@ -27,23 +24,11 @@ function newOrderCode() {
   return `LW-${tail}`;
 }
 
-// Signature iPaymu v2. Yang ditandatangani adalah HASH SHA-256 dari body, bukan
-// body mentah - ini yang membuat verifikasi gagal kalau memakai body apa adanya.
-// Sudah diuji langsung ke endpoint produksi: bentuk inilah yang diterima.
-function sign(method, va, body, apiKey) {
-  const bodyHash = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
-  const payload = `${method}:${va}:${bodyHash}:${apiKey}`;
-  return crypto.createHmac('sha256', apiKey).update(payload, 'utf8').digest('hex');
-}
-
-function timestamp() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return (
-    `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
-    `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
-  );
-}
+// Signature iPaymu v2 sekarang dihitung di jembatan (server NexShop), bukan di
+// sini. Fungsi `sign` dan `timestamp` dipindahkan ke jembatan bersama seluruh
+// panggilan iPaymu, karena hanya dari sana IP-nya terdaftar. Keduanya sengaja
+// dihapus dari berkas ini supaya tidak ada dua salinan logika tanda tangan yang
+// bisa saling menyimpang.
 
 function validEmail(v) {
   return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) && v.length <= 200;
@@ -109,16 +94,23 @@ module.exports = async function handler(req, res) {
       throw Object.assign(new Error('Gagal menyimpan pesanan.'), { statusCode: 502 });
     }
 
-    // ── panggil iPaymu ────────────────────────────────────────────────────────
-    const isSandbox = String(cfg.ipaymuMode).toLowerCase() === 'sandbox';
-    const base = isSandbox ? IPAYMU_SANDBOX : IPAYMU_PRODUCTION;
+    // ── panggil iPaymu lewat jembatan ─────────────────────────────────────────
+    //
+    // TIDAK langsung ke iPaymu. Alasannya: iPaymu membatasi permintaan
+    // berdasarkan alamat IP pengirim, dan Vercel keluar dari IP dinamis yang
+    // tidak terdaftar. Permintaan langsung dari sini ditolak dengan
+    // "Invalid IP" - terbukti dari log pesanan:
+    //
+    //     {"order_code":"LW-XXSX3D","status":"gagal",
+    //      "catatan":"ipaymu gagal: Invalid IP"}
+    //
+    // Jembatan di server NexShop punya IP tetap yang sudah terdaftar, dan
+    // sudah diuji dari sana: /balance menjawab Status 200.
     const site = cfg.siteUrl.replace(/\/$/, '');
 
-    const payload = {
-      product: [`${cfg.productName} - lisensi lifetime`],
-      qty: ['1'],
-      price: [String(amount)],
-      amount: String(amount),
+    const muatan = {
+      product: `${cfg.productName} - lisensi lifetime`,
+      amount: amount,
       returnUrl: `${site}/sukses?order=${encodeURIComponent(orderCode)}`,
       cancelUrl: `${site}/beli?batal=1`,
       notifyUrl: `${site}/api/ipaymu-callback`,
@@ -128,30 +120,14 @@ module.exports = async function handler(req, res) {
     };
     // iPaymu menolak body yang memuat kunci bernilai undefined, jadi nomor
     // WhatsApp hanya ditambahkan kalau memang diisi.
-    if (wa) payload.buyerPhone = wa;
+    if (wa) muatan.buyerPhone = wa;
 
-    const rawBody = JSON.stringify(payload);
-    const ts = timestamp();
-    const signature = sign('POST', cfg.ipaymuVa, rawBody, cfg.ipaymuKey);
+    const upstream = await panggilJembatan(cfg, 'payment', muatan);
 
-    const upstream = await fetch(`${base}/payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        va: cfg.ipaymuVa,
-        signature,
-        timestamp: ts,
-      },
-      body: rawBody,
-    });
-
-    const text = await upstream.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch { data = null; }
-
-    if (!upstream.ok || !data || String(data.Status) !== '200') {
-      const detail = data && (data.Message || data.message) ? String(data.Message || data.message) : `HTTP ${upstream.status}`;
+    if (!upstream.ok || !upstream.data || String(upstream.data.Status) !== '200') {
+      const detail = upstream.data && (upstream.data.Message || upstream.data.message)
+        ? String(upstream.data.Message || upstream.data.message)
+        : `HTTP ${upstream.status}`;
       await supabase(`orders?order_code=eq.${encodeURIComponent(orderCode)}`, {
         method: 'PATCH',
         body: { status: 'gagal', catatan: `ipaymu gagal: ${detail}`.slice(0, 500) },
@@ -163,6 +139,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    const data = upstream.data;
     const session = (data.Data) || {};
     const sessionId = session.SessionID || session.sessionId || null;
     const paymentUrl = session.Url || session.url || null;

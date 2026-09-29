@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beli LumaWall - Rp20.000 sekali bayar</title>
-<meta name="description" content="Beli LumaWall Rp20.000 sekali bayar, lisensi lifetime. Bayar lewat QRIS, transfer bank, atau e-wallet. Tautan unduhan terbit otomatis setelah pembayaran.">
+<title>Beli LumaWall - Rp10.000 sekali bayar (promo)</title>
+<meta name="description" content="Beli LumaWall Rp10.000 sekali bayar, lisensi lifetime. Promo sampai 15 Oktober 2026. Bayar lewat QRIS, transfer bank, atau e-wallet.">
 <meta name="theme-color" content="#080a0c">
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://lumawall.xinet.id/beli/">
@@ -12,8 +12,8 @@
 <link rel="alternate" hreflang="en" href="https://lumawall.xinet.id/en/buy/">
 <link rel="alternate" hreflang="x-default" href="https://lumawall.xinet.id/beli/">
 <meta property="og:site_name" content="LumaWall">
-<meta property="og:title" content="Beli LumaWall - Rp20.000 sekali bayar">
-<meta property="og:description" content="Lisensi lifetime, tanpa langganan. Tautan unduhan terbit otomatis setelah pembayaran.">
+<meta property="og:title" content="Beli LumaWall - Rp10.000 sekali bayar (promo)">
+<meta property="og:description" content="Promo Rp10.000 sampai 15 Oktober 2026. Lisensi lifetime, tanpa langganan.">
 <meta property="og:image" content="https://lumawall.xinet.id/assets/shots/og-card.d7787111d3.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -25,8 +25,8 @@
 <link rel="apple-touch-icon" href="../assets/logo/logo-150.e23f998f8e.png">
 <link rel="preload" href="../assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/css/fonts.ad37d8582b.css">
-<link rel="stylesheet" href="../assets/css/style.01d89eaadb.css">
-<link rel="stylesheet" href="../assets/css/buy.be8df8aa6c.css">
+<link rel="stylesheet" href="../assets/css/style.322b8497e4.css">
+<link rel="stylesheet" href="../assets/css/buy.7c4de2eddd.css">
 </head>
 <body class="buy-page">
 
@@ -56,10 +56,20 @@
       <span class="eyebrow">Pembelian</span>
       <h1 class="h1">Satu kali bayar,<br>dipakai selamanya</h1>
       <p class="lead">
-        Rp20.000 untuk lisensi lifetime. Tanpa langganan, tanpa iklan, tanpa
-        batas jumlah wallpaper maupun monitor. Tautan unduhan terbit otomatis
-        begitu pembayaran terkonfirmasi.
+        <span data-price-promo-harga>Rp10.000</span> untuk lisensi lifetime
+        <span data-promo-only class="promo-tag">promo</span>. Tanpa langganan,
+        tanpa iklan, tanpa batas jumlah wallpaper maupun monitor. Tautan
+        unduhan terbit otomatis begitu pembayaran terkonfirmasi.
       </p>
+
+      <div class="promo-bar" data-promo-only>
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 8v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg>
+        <p>
+          Harga promo <b data-price>Rp10.000</b> berlaku sampai
+          <b>15 Oktober 2026</b> &mdash; sisa <b data-promo-days>16</b> hari.
+          Setelah itu kembali ke <b data-price-normal>Rp18.000</b>.
+        </p>
+      </div>
 
       <ul class="buy-points">
         <li><svg viewBox="0 0 24 24" class="i"><path d="M20 6L9 17l-5-5"/></svg> 22.233 wallpaper, 100% bergerak dan HD</li>
@@ -69,12 +79,21 @@
         <li><svg viewBox="0 0 24 24" class="i"><path d="M20 6L9 17l-5-5"/></svg> Pembaruan versi berikutnya gratis</li>
       </ul>
 
-      <div class="store-hint">
+      <div class="store-hint" data-after-promo hidden>
         <svg viewBox="0 0 24 24" class="i"><path d="M12 2l2.6 6.6L21 11l-6.4 2.4L12 20l-2.6-6.6L3 11l6.4-2.4z"/></svg>
         <p>
-          <b>Lebih murah Rp18.000</b> kalau memasang dari Microsoft Store &mdash;
-          hemat Rp2.000. Windows yang mengurus pemasangan dan pembaruannya.
+          Sama harganya di Microsoft Store &mdash; <b data-price-store>Rp18.000</b>.
+          Windows yang mengurus pemasangan dan pembaruannya.
           <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" target="_blank" rel="noopener">Buka Microsoft Store &rarr;</a>
+        </p>
+      </div>
+
+      <div class="store-hint" data-promo-only>
+        <svg viewBox="0 0 24 24" class="i"><path d="M12 2l2.6 6.6L21 11l-6.4 2.4L12 20l-2.6-6.6L3 11l6.4-2.4z"/></svg>
+        <p>
+          Selama promo, <b>situs ini lebih murah</b> daripada Microsoft Store
+          (<span data-price-store>Rp18.000</span>) &mdash; promo hanya berlaku di
+          sini, tidak di Store.
         </p>
       </div>
     </div>
@@ -83,8 +102,9 @@
       <div class="buy-card-head">
         <h2 class="h3">LumaWall</h2>
         <div class="buy-price">
-          <span class="buy-amount">Rp20.000</span>
+          <span class="buy-amount" data-price>Rp10.000</span>
           <span class="buy-per">sekali bayar</span>
+          <span class="buy-was" data-promo-only>normal <s data-price-normal>Rp18.000</s></span>
         </div>
       </div>
 
@@ -113,7 +133,7 @@
 
         <div class="buy-total">
           <span>Total</span>
-          <b>Rp20.000</b>
+          <b data-price>Rp10.000</b>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block btn-lg" id="buy-submit">
@@ -144,7 +164,7 @@
       </li>
       <li>
         <span class="step-n">2</span>
-        <h3 class="h3">Bayar Rp20.000</h3>
+        <h3 class="h3">Bayar <span data-price>Rp10.000</span></h3>
         <p>QRIS, transfer bank, atau e-wallet lewat iPaymu.</p>
       </li>
       <li>
@@ -169,19 +189,31 @@
     </div>
     <div class="faq">
       <details>
-        <summary>Kenapa Rp20.000 di sini, tapi Rp18.000 di Microsoft Store?</summary>
+        <summary>Berapa harganya, dan sampai kapan?</summary>
         <p>
-          Microsoft Store memotong biaya distribusi yang lebih kecil daripada
-          biaya pemrosesan pembayaran di situs ini, jadi kami bisa menjual lebih
-          murah di sana. Kalau tidak masalah memasang lewat Store, ambil yang
-          Rp18.000 &mdash; produknya persis sama.
+          Sekarang <b data-price>Rp10.000</b> sekali bayar untuk lisensi
+          lifetime. Itu harga promo yang berlaku sampai
+          <b>15 Oktober 2026</b>; setelah tanggal itu harganya kembali ke
+          <b data-price-normal>Rp18.000</b>. Promo ini hanya berlaku di situs
+          ini &mdash; di Microsoft Store harganya tetap
+          <span data-price-store>Rp18.000</span>.
+        </p>
+      </details>
+
+      <details>
+        <summary>Kenapa lebih murah di sini daripada di Microsoft Store?</summary>
+        <p>
+          Microsoft Store memotong biaya distribusi dari setiap penjualan,
+          sehingga harga di sana tidak bisa diturunkan sebanyak ini. Selama
+          promo, membeli lewat situs ini adalah cara termurah &mdash; produknya
+          persis sama, dan lisensinya tetap lifetime.
         </p>
       </details>
       <details>
         <summary>Apakah ada biaya bulanan?</summary>
         <p>
-          Tidak. Sekali bayar Rp20.000 untuk lisensi lifetime, termasuk semua
-          pembaruan versi berikutnya.
+          Tidak. Sekali bayar <span data-price>Rp10.000</span> untuk lisensi
+          lifetime, termasuk semua pembaruan versi berikutnya.
         </p>
       </details>
       <details>
@@ -216,14 +248,42 @@
 
 <footer class="foot">
   <div class="wrap foot-in">
-    <span class="foot-legal">LumaWall &mdash; Rp20.000 sekali bayar, lisensi lifetime. Lebih murah Rp18.000 di Microsoft Store.</span>
+    <div class="foot-left">
+      <span class="foot-legal">
+        LumaWall &mdash; <span data-price>Rp10.000</span> sekali bayar,
+        lisensi lifetime.
+        <span data-promo-only>Promo sampai 15 Oktober 2026, lalu <span data-price-normal>Rp18.000</span>.</span>
+      </span>
+
+      <!-- Tersedia di Microsoft Store.
+
+           Logo ini memakai lambang resmi "Microsoft Store" (empat persegi
+           dengan garis bagan), bukan logo Microsoft empat warna - yang
+           belakangan ini adalah merek perusahaan, bukan merek toko, dan
+           memakainya di sini akan salah tempat. Warnanya memakai warna teks
+           situs supaya menyatu dengan footer, bukan ditempel berwarna-warni. -->
+      <a class="store-badge" href="https://apps.microsoft.com/detail/9PN82QJLV05B"
+         target="_blank" rel="noopener" aria-label="LumaWall tersedia di Microsoft Store">
+        <svg viewBox="0 0 24 24" class="store-logo" aria-hidden="true">
+          <path d="M3 3h8.2v8.2H3z"/>
+          <path d="M12.8 3H21v8.2h-8.2z"/>
+          <path d="M3 12.8h8.2V21H3z"/>
+          <path d="M12.8 12.8H21V21h-8.2z"/>
+        </svg>
+        <span class="store-text">
+          <small>Tersedia di</small>
+          <b>Microsoft Store</b>
+        </span>
+      </a>
+    </div>
+
     <span class="foot-links">
       <a href="../privacy/">Privasi</a>
-      <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" target="_blank" rel="noopener">Microsoft Store</a>
     </span>
   </div>
 </footer>
 
+<script src="../assets/js/harga.js"></script>
 <script src="../assets/js/buy.82fce649c2.js"></script>
 </body>
 </html>

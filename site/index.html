@@ -37,7 +37,7 @@
 <link rel="apple-touch-icon" href="assets/logo/logo-150.e23f998f8e.png">
 <link rel="preload" href="assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/fonts.ad37d8582b.css">
-<link rel="stylesheet" href="assets/css/style.01d89eaadb.css">
+<link rel="stylesheet" href="assets/css/style.322b8497e4.css">
 
 <!-- Structured data, so a search result can show the app rather than a plain
      link. Every field here is verifiable: the version and the file size come from
@@ -51,13 +51,13 @@
   "operatingSystem": "Windows 10, Windows 11",
   "softwareVersion": "4.5.7.0",
   "fileSize": "15.2MB",
-  "description": "Wallpaper hidup untuk Windows. Video diproses chip grafis, jadi CPU tetap di bawah 1%, dan wallpaper berhenti otomatis saat ada aplikasi fullscreen. Rp20.000 sekali bayar untuk lisensi lifetime.",
+  "description": "Wallpaper hidup untuk Windows. Video diproses chip grafis, jadi CPU tetap di bawah 1%, dan wallpaper berhenti otomatis saat ada aplikasi fullscreen. Rp10.000 sekali bayar untuk lisensi lifetime (promo sampai 15 Oktober 2026).",
   "url": "https://lumawall.xinet.id/",
   "downloadUrl": "https://lumawall.xinet.id/beli/",
   "installUrl": "https://apps.microsoft.com/detail/9PN82QJLV05B",
   "image": "https://lumawall.xinet.id/assets/shots/og-card.d7787111d3.png",
   "license": "https://github.com/ArielOsaze/Lumawall/blob/master/LICENSE",
-  "offers": { "@type": "Offer", "price": "20000", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
+  "offers": { "@type": "Offer", "price": "10000", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
   "publisher": { "@type": "Organization", "name": "Xinet Group", "url": "https://xinet.id" }
 }
 </script>
@@ -127,15 +127,15 @@
     <div class="hero-cta" data-reveal>
       <a href="beli/" class="btn btn-primary btn-lg">
         <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
-        Beli Rp20.000 &mdash; sekali bayar
+        Beli <span data-price>Rp10.000</span> &mdash; sekali bayar
       </a>
       <a href="#video" class="btn btn-ghost btn-lg">Lihat cara kerjanya</a>
     </div>
     <div class="hero-meta" data-reveal>
-      <div><b>Rp20.000</b><span>lifetime, sekali bayar</span></div>
+      <div><b data-price>Rp10.000</b><span>lifetime, sekali bayar</span></div>
       <div><b>22.000+</b><span>wallpaper siap pakai</span></div>
       <div><b>Per layar</b><span>pause otomatis</span></div>
-      <div><b>Rp18.000</b><span>di Microsoft Store</span></div>
+      <div><b data-price-store>Rp18.000</b><span>di Microsoft Store</span></div>
     </div>
   </div>
 </section>
@@ -528,7 +528,7 @@
           <tr><td>Profil susunan multi-display</td><td class="us yes">Satu klik</td><td class="no">Tidak</td></tr>
           <tr><td>Katalog wallpaper bawaan</td><td class="us yes">5.000+</td><td class="no">Tidak</td></tr>
           <tr><td>Pemulihan otomatis setelah Explorer restart</td><td class="us yes">2,7 detik</td><td class="no">&ndash;</td></tr>
-          <tr><td>Harga</td><td class="us yes">Rp20.000 sekali bayar</td><td class="no">Gratis, tanpa video</td></tr>
+          <tr><td>Harga</td><td class="us yes"><span data-price>Rp10.000</span> sekali bayar</td><td class="no">Gratis, tanpa video</td></tr>
         </tbody>
       </table>
     </div>
@@ -555,14 +555,14 @@
 
     <div class="dl-grid">
       <article class="dl-card featured" data-reveal>
-        <span class="dl-tag">Paling murah &middot; Rp18.000</span>
+        <span class="dl-tag">Rp18.000</span>
         <h3 class="h3">Microsoft Store</h3>
         <p class="dl-desc">
-          Paling murah dan paling praktis: <b>Rp18.000</b> sekali bayar, lebih hemat
-          Rp2.000 dibanding harga di situs. Windows yang mengurus pemasangan dan
-          pembaruan otomatis, dan lisensinya terikat ke akun Microsoft kamu.
+          Paling praktis: <b data-price-store>Rp18.000</b> sekali bayar.
+          Windows yang mengurus pemasangan dan pembaruan otomatis, dan
+          lisensinya terikat ke akun Microsoft kamu.
         </p>
-        <div class="dl-meta"><span>Rp18.000</span><span>sekali bayar</span><span>auto-update</span></div>
+        <div class="dl-meta"><span data-price-store>Rp18.000</span><span>sekali bayar</span><span>auto-update</span></div>
         <a class="btn btn-primary btn-block" href="https://apps.microsoft.com/detail/9PN82QJLV05B" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
           Buka di Microsoft Store
@@ -570,14 +570,15 @@
       </article>
 
       <article class="dl-card" data-reveal data-delay="1">
-        <span class="dl-tag">Rp20.000 &middot; lifetime</span>
+        <span class="dl-tag"><span data-price>Rp10.000</span> &middot; lifetime</span>
         <h3 class="h3">Installer</h3>
         <p class="dl-desc">
           Untuk pemakaian sehari-hari. Pasang seperti aplikasi Windows biasa,
           lengkap dengan pintasan Start Menu dan opsi berjalan otomatis saat
-          Windows menyala. <b>Rp20.000</b> sekali bayar, lisensi lifetime.
+          Windows menyala. <b data-price>Rp10.000</b> sekali bayar, lisensi
+          lifetime. <span data-promo-only>Harga promo sampai 15 Oktober 2026.</span>
         </p>
-        <div class="dl-meta"><span>Rp20.000</span><span>.exe</span><span>Windows x64</span></div>
+        <div class="dl-meta"><span data-price>Rp10.000</span><span>.exe</span><span>Windows x64</span></div>
         <a class="btn btn-ghost btn-block" href="beli/">
           <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
           Beli lalu unduh
@@ -656,10 +657,12 @@
       <details class="faq">
         <summary>Apakah LumaWall gratis?</summary>
         <p>
-          Tidak, tapi harganya sekali bayar dan tidak ada langganan. Rp20.000
-          untuk lisensi lifetime kalau membeli lewat situs ini, atau Rp18.000
-          (lebih murah Rp2.000) kalau memasang dari Microsoft Store. Tidak ada
-          iklan dan tidak ada batas jumlah wallpaper maupun monitor.
+          Tidak, tapi harganya sekali bayar dan tidak ada langganan. Sekarang
+          <b data-price>Rp10.000</b> untuk lisensi lifetime lewat situs ini
+          (promo sampai 15 Oktober 2026, setelah itu
+          <span data-price-normal>Rp18.000</span>). Di Microsoft Store harganya
+          <span data-price-store>Rp18.000</span>. Tidak ada iklan dan tidak ada
+          batas jumlah wallpaper maupun monitor.
         </p>
       </details>
       <details class="faq">
@@ -716,14 +719,16 @@
     <img src="assets/logo/logo-150.e23f998f8e.png" alt="" class="cta-mark" data-reveal>
     <h2 class="h2" data-reveal>Wallpaper yang bergerak, komputer yang tetap tenang</h2>
     <p class="lead" data-reveal>
-      Rp20.000 sekali bayar, tanpa langganan, dan kamu akan lupa kalau ini sedang berjalan.
+      <span data-price>Rp10.000</span> sekali bayar, tanpa langganan, dan kamu akan lupa kalau ini sedang berjalan.
     </p>
     <div data-reveal>
-      <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" class="btn btn-primary btn-lg">
+      <a href="beli/" class="btn btn-primary btn-lg">
         <svg viewBox="0 0 24 24" class="i"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
-        Ambil di Microsoft Store &middot; Rp18.000
+        Beli di situs ini &middot; <span data-price>Rp10.000</span>
       </a>
-      <a href="#download" class="btn btn-ghost btn-lg">Beli di situs ini &middot; Rp20.000</a>
+      <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" class="btn btn-ghost btn-lg" target="_blank" rel="noopener">
+        Microsoft Store &middot; <span data-price-store>Rp18.000</span>
+      </a>
       <span class="cta-note">Versi 4.5.7.0 &middot; Windows 10 / 11 &middot; x64 &middot; 15,6 MB</span>
     </div>
   </div>
@@ -773,10 +778,27 @@
 
   <div class="wrap foot-bottom">
     <span>&copy; <span id="yr">2026</span> Xinet Group</span>
-    <span class="foot-legal">LumaWall &mdash; Rp20.000 sekali bayar, lisensi lifetime. Lebih murah Rp18.000 di Microsoft Store.</span>
+    <span class="foot-legal">
+      LumaWall &mdash; <span data-price>Rp10.000</span> sekali bayar, lisensi lifetime.
+      <span data-promo-only>Promo sampai 15 Oktober 2026.</span>
+    </span>
+    <a class="store-badge" href="https://apps.microsoft.com/detail/9PN82QJLV05B"
+       target="_blank" rel="noopener" aria-label="LumaWall tersedia di Microsoft Store">
+      <svg viewBox="0 0 24 24" class="store-logo" aria-hidden="true">
+        <path d="M3 3h8.2v8.2H3z"/>
+        <path d="M12.8 3H21v8.2h-8.2z"/>
+        <path d="M3 12.8h8.2V21H3z"/>
+        <path d="M12.8 12.8H21V21h-8.2z"/>
+      </svg>
+      <span class="store-text">
+        <small>Tersedia di</small>
+        <b>Microsoft Store</b>
+      </span>
+    </a>
   </div>
 </footer>
 
+<script src="assets/js/harga.js"></script>
 <script src="assets/js/main.9d1f69de0a.js"></script>
 </body>
 </html>
