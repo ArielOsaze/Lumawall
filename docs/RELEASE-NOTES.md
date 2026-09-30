@@ -8,6 +8,69 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.12.0
+
+### Bahasa Indonesia
+
+**Video disesuaikan dengan tiap monitor**
+
+Video yang jauh lebih besar daripada layarnya sekarang diperkecil otomatis
+untuk monitor itu. Sebuah video 4K di layar 1080p memaksa GPU men-decode empat
+kali piksel yang bisa ditampilkan, lalu membuang tiga perempatnya saat
+menskalakan - dan itulah yang membuat satu layar terasa berat sementara layar
+lain ringan. Berkas asli Anda tidak pernah disentuh; salinannya dibuat di folder
+cache. Terukur: 4K menjadi 1920p, dan pemakaian decoder turun dari 22% menjadi
+di bawah 5%.
+
+**Font jam seperti iOS**
+
+Seluruh gaya jam sekarang memakai satu keluarga font - Inter - dengan ketebalan
+yang berbeda-beda, dari ExtraLight yang tipis seperti layar kunci iOS sampai
+SemiBold untuk kartu widget. Sebelumnya setiap gaya memakai font sistem yang
+berbeda, sehingga terlihat seperti beberapa font yang ditempel menjadi satu.
+
+**Halaman Monitor sekarang jelas**
+
+Dulu hanya ada "Apply" dan "Stop" tanpa keterangan. Sekarang: pilih wallpaper
+untuk monitor ini, jeda monitor ini saja (layar lain tetap berjalan), atur warna
+dan bentuk, dan lepas dengan konfirmasi. Setiap tombol menjelaskan dirinya.
+
+**Perbaikan lain**
+
+Berkas halaman yang menumpuk (1099 berkas) sekarang dibersihkan otomatis, dan
+sisa proses WebView2 dari restart lama (761 MB) tidak lagi tertinggal.
+
+### English
+
+**Videos matched to each monitor**
+
+A video far larger than its screen is now scaled down for that monitor. A 4K
+video on a 1080p display forces the GPU to decode four times the pixels it can
+show, then discard three quarters of them rescaling - which is why one screen
+felt heavy while the others stayed light. Your original file is never touched;
+a copy is made in a cache folder. Measured: 4K becomes 1920p, and decoder usage
+drops from 22% to under 5%.
+
+**iOS-style clock font**
+
+Every clock style now uses one font family - Inter - at different weights, from
+ExtraLight as thin as the iOS lock screen up to SemiBold for the widget card.
+Previously each style used a different system font, which read as several fonts
+pasted together.
+
+**The Displays page is now clear**
+
+It used to have "Apply" and "Stop" with no explanation. Now: choose a wallpaper
+for this display, pause just this display (the others keep running), tune colour
+and framing, and detach with a confirmation. Each button explains itself.
+
+**Other fixes**
+
+Accumulated page files (1099 of them) are now cleaned up automatically, and
+leftover WebView2 processes from old restarts (761 MB) are no longer left behind.
+
+---
+
 ## 4.5.11.0
 
 ### Bahasa Indonesia
