@@ -248,3 +248,58 @@ def pulihkan(daftar):
     for hwnd in daftar:
         if user32.IsWindow(hwnd):
             user32.ShowWindow(hwnd, SW_RESTORE)
+
+def jendela_uji(penanda):
+    """Jendela Chrome yang prosesnya memakai profil uji `penanda`.
+
+    Dilacak lewat PROFIL, bukan lewat PID proses yang kita luncurkan, dan
+    alasannya penting: Chrome dengan profil baru sering me-restart dirinya
+    sendiri. Proses yang kita luncurkan mati, jendelanya milik proses baru, dan
+    pelacakan lewat PID tidak menemukan apa pun.
+
+    Akibatnya pernah sangat menyesatkan: minimize tidak pernah dikirim, jadi
+    jendela uji tetap menutupi layar, aplikasi tetap menjeda wallpaper (itu
+    perilaku yang BENAR), dan pemeriksaan melaporkan "tidak dilanjutkan" -
+    menyalahkan aplikasi atas jendela yang tidak pernah dipindahkan.
+    """
+    # Satu panggilan PowerShell untuk semua Chrome: PID + baris perintahnya.
+    r = subprocess.run(
+        ['powershell', '-NoProfile', '-Command',
+         "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+         "ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }"],
+        capture_output=True, text=True, timeout=90)
+    keluarga = set()
+    for baris in r.stdout.splitlines():
+        if '\t' not in baris:
+            continue
+        pid_teks, cmd = baris.split('\t', 1)
+        if penanda in cmd and pid_teks.strip().isdigit():
+            keluarga.add(int(pid_teks.strip()))
+
+    if not keluarga:
+        return []
+
+    hasil = []
+
+    @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
+    def cb(hwnd, _):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        cls = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, cls, 256)
+        if not cls.value.startswith('Chrome_WidgetWin_1'):
+            return True
+        r2 = RECT()
+        if not user32.GetWindowRect(hwnd, ctypes.byref(r2)):
+            return True
+        if (r2.right - r2.left) < 400 or (r2.bottom - r2.top) < 300:
+            return True
+        hpid = wt.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(hpid))
+        if hpid.value not in keluarga:
+            return True
+        hasil.append(int(hwnd))
+        return True
+
+    user32.EnumWindows(cb, 0)
+    return hasil

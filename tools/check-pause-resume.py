@@ -41,6 +41,13 @@ from pathlib import Path
 
 user32 = ctypes.WinDLL('user32', use_last_error=True)
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ukur_layar  # noqa: E402
+from chrome_uji import (  # noqa: E402
+    bersihkan_sisa, jendela_chrome, jendela_uji, kumpulan_pid,
+)
+
+CONFIG = Path('C:/Users/ariel/AppData/Local/LumaWall/config.json')
 LOG = Path('C:/Users/ariel/AppData/Local/LumaWall/Logs/lumawall.log')
 CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 
@@ -104,67 +111,6 @@ def monitor_list():
         return True
 
     user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(cb), 0)
-    return hasil
-
-
-def jendela_chrome(pid=None):
-    """Jendela Chrome yang terlihat.
-
-    Kalau `pid` diberi, hanya jendela milik proses itu dan anak-anaknya. Itu
-    yang dipakai uji ini: melacak berdasarkan proses yang diluncurkan sendiri
-    jauh lebih tepat daripada menebak dari jendela yang "baru muncul". Cara
-    menebak gagal persis pada kasus yang paling sering terjadi - ada Chrome sisa
-    dari run sebelumnya, yang sudah ada sebelum uji mulai, jadi dianggap milik
-    pengguna, tidak pernah ditutup, dan membuat run berikutnya gagal.
-    """
-    hasil = []
-    keluarga = kumpulan_pid(pid) if pid else None
-
-    @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
-    def cb(hwnd, _):
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        cls = ctypes.create_unicode_buffer(256)
-        user32.GetClassNameW(hwnd, cls, 256)
-        if not cls.value.startswith('Chrome_WidgetWin_1'):
-            return True
-        r = RECT()
-        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
-            return True
-        if (r.right - r.left) < 400 or (r.bottom - r.top) < 300:
-            return True
-        if keluarga is not None:
-            hpid = wt.DWORD()
-            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(hpid))
-            if hpid.value not in keluarga:
-                return True
-        hasil.append(int(hwnd))
-        return True
-
-    user32.EnumWindows(cb, 0)
-    return hasil
-
-
-def kumpulan_pid(akar):
-    """PID `akar` beserta seluruh keturunannya."""
-    r = subprocess.run(
-        ['powershell', '-NoProfile', '-Command',
-         'Get-CimInstance Win32_Process | '
-         'Select-Object ProcessId,ParentProcessId | '
-         'ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId)" }'],
-        capture_output=True, text=True, timeout=60)
-    anak = {}
-    for baris in r.stdout.splitlines():
-        bagian = baris.split()
-        if len(bagian) == 2 and bagian[0].isdigit() and bagian[1].isdigit():
-            anak.setdefault(int(bagian[1]), []).append(int(bagian[0]))
-    hasil, tumpukan = set(), [akar]
-    while tumpukan:
-        p = tumpukan.pop()
-        if p in hasil:
-            continue
-        hasil.add(p)
-        tumpukan.extend(anak.get(p, []))
     return hasil
 
 
@@ -290,6 +236,54 @@ def main():
         print('  layar sudah bebas')
     print()
 
+    # Aplikasinya dijalankan lebih dulu, dan ditunggu sampai wallpapernya
+    # benar-benar tergambar.
+    #
+    # Tanpa langkah ini, tidak ada proses yang menulis log, dan seluruh
+    # pemeriksaan membaca baris-baris lama dari sesi sebelumnya - yang muncul
+    # sebagai "tidak dijeda, tidak dilanjutkan, video tidak berjalan" untuk
+    # aplikasi yang bahkan tidak sedang berjalan.
+    ukur_layar.jalankan_app()
+    if ukur_layar.tunggu_tergambar(mon) is None:
+        print('  ! wallpaper tidak pernah tergambar')
+        pulihkan(disingkirkan)
+        return 1
+    time.sleep(3)
+
+    print('  wallpaper tergambar')
+
+    # Keadaan awal dibaca dari baris TERAKHIR yang menyebut layar ini - bukan
+    # dengan menunggu baris baru.
+    #
+    # Bedanya penting. Menunggu baris "resumed" baru akan menggantung 25+15
+    # detik untuk wallpaper yang memang sudah berjalan, karena tidak ada
+    # perubahan keadaan yang perlu dicatat. Yang benar adalah MEMBACA keadaan
+    # terakhir, lalu memutuskan.
+    #
+    # Kenapa ini perlu sama sekali: kalau wallpaper sudah dalam keadaan dijeda
+    # (sisa run sebelumnya, atau jendela lain yang menutupi layar uji), aplikasi
+    # tidak akan mencatat jeda BARU saat jendela uji muncul - ia sudah dijeda.
+    # Uji yang mengharapkan "jeda baru" akan melaporkan "tidak dijeda" untuk
+    # aplikasi yang tidak melakukan kesalahan apa pun.
+    keadaan = keadaan_terakhir(nama)
+    if keadaan == 'paused':
+        print('  keadaan awal: wallpaper sedang DIJEDA')
+        print('  menunggu sampai berjalan dulu supaya perubahannya bisa diukur...')
+        waktu_bersih = datetime.now()
+        if not tunggu(lambda: cari_lanjut(waktu_awal, nama), 40):
+            print('  ! wallpaper tidak juga berjalan - uji tidak dijalankan')
+            print('    (kemungkinan ada jendela lain yang menutupi layar uji)')
+            pulihkan(disingkirkan)
+            return 2
+        print('  keadaan awal: wallpaper sedang berjalan')
+    elif keadaan == 'running':
+        print('  keadaan awal: wallpaper sedang berjalan')
+    else:
+        print('  ! tidak ada catatan keadaan untuk %s - uji tidak dijalankan' % nama)
+        pulihkan(disingkirkan)
+        return 2
+    print()
+
     # Sisa Chrome uji dari run sebelumnya dibersihkan lebih dulu.
     #
     # Dikenali dari baris perintahnya: proses Chrome yang memakai profil uji
@@ -297,9 +291,12 @@ def main():
     # menebak dari judul jendela bisa mengenai Chrome milik pengguna. Sisa yang
     # tidak dibersihkan akan menetap di layar uji dan membuat run berikutnya
     # gagal karena layarnya "terhalang", padahal itu jendela kita sendiri.
-    bersihkan_sisa()
+    bersihkan_sisa('pause')
 
-    t0 = datetime.now()
+    # Penanda waktu, diambil SEBELUM apa pun dijalankan - termasuk sebelum
+    # Chrome diluncurkan. Jeda dan lanjut pasti terjadi setelah titik ini.
+    waktu_awal = datetime.now()
+
     gagal = []
     proc = None
 
@@ -311,10 +308,11 @@ def main():
     if profil.exists():
         shutil.rmtree(profil, ignore_errors=True)
     proc = subprocess.Popen([
-        CHROME, '--kiosk',
+        CHROME,
         '--window-position=%d,%d' % (mon['x'], mon['y']),
         '--window-size=%d,%d' % (mon['width'], mon['height']),
         '--no-first-run', '--no-default-browser-check',
+        '--disable-session-crashed-bubble',
         '--user-data-dir=%s' % str(profil),
         'about:blank',
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -323,7 +321,7 @@ def main():
     # Chrome milik uji ini, supaya jendela lain yang muncul bersamaan tidak
     # membuat uji mengira aplikasinya sudah terbuka.
     def chrome_baru_di_layar():
-        return jendela_chrome(proc.pid)
+        return jendela_uji('chrome-pause')
 
     for _ in range(60):
         if chrome_baru_di_layar():
@@ -357,14 +355,15 @@ def main():
 
     if not chrome_baru_di_layar():
         print('     ! jendela fullscreen tidak pernah muncul')
-        bersihkan(proc.pid)
+        bersihkan('chrome-pause')
         pulihkan(disingkirkan)
         return 1
 
     print('     aplikasi fullscreen berdiri')
 
-    # Tunggu aplikasi mencatat jeda.
-    t_jeda = tunggu(lambda: cari_jeda(t0, nama), 20)
+    # Tunggu aplikasi mencatat jeda, dihitung dari penanda posisi log - bukan
+    # dari cap waktu. Lihat catatan di cari_jeda().
+    t_jeda = tunggu(lambda: cari_jeda(waktu_awal, nama), 30)
     if t_jeda:
         print('     ✓ wallpaper DIJEDA saat fullscreen')
         print('       %s' % t_jeda[1].split('] ', 1)[-1][-104:])
@@ -374,7 +373,11 @@ def main():
 
     # Video yang dijeda tidak menyelesaikan putaran. Ini bukti bebas bahwa
     # pemutaran benar-benar berhenti, bukan sekadar dilaporkan berhenti.
-    putaran_jeda = cari_putaran(t_jeda[0] if t_jeda else t0, nama)
+    #
+    # Diukur dari posisi jeda sampai posisi keluar: rentang itu persis selagi
+    # wallpapernya seharusnya berhenti.
+    waktu_jeda = datetime.now()
+    putaran_jeda = cari_putaran(waktu_jeda, nama)
     if putaran_jeda:
         print('     ✗ video masih menyelesaikan putaran saat dijeda (%d kali)'
               % len(putaran_jeda))
@@ -385,12 +388,49 @@ def main():
 
     # ── 2. keluar dari fullscreen ───────────────────────────────────────────
     print('  ── 2. keluar dari fullscreen ──')
-    t_keluar = datetime.now()
-    for hwnd in jendela_chrome(proc.pid):
-        user32.ShowWindow(hwnd, 6)   # SW_MINIMIZE
-    print('     aplikasi diminimalkan (bukan ditutup)')
+    waktu_keluar = datetime.now()
+    # Jendela uji dikeluarkan dari fullscreen dengan mengubah ukurannya menjadi
+    # jendela biasa, bukan dengan minimize.
+    #
+    # Minimize tidak bisa dipakai di sini: Chrome mode kiosk tidak punya tombol
+    # minimize, dan ShowWindow(SW_MINIMIZE) ditolak - terbukti dari percobaan
+    # yang melaporkan "1 jendela - 1 GAGAL". Karena minimize tidak pernah
+    # terjadi, jendelanya tetap fullscreen, aplikasi tetap menjeda wallpaper
+    # (perilaku yang BENAR), dan pemeriksaan melaporkan "tidak dilanjutkan".
+    #
+    # Mengecilkan jendelanya menghasilkan keadaan yang memang sedang diuji:
+    # aplikasinya tidak lagi fullscreen, tetapi jendelanya masih ada. Itu persis
+    # yang terjadi saat orang keluar dari game dengan Alt+Tab.
+    #
+    # Dilacak lewat profil, bukan PID: Chrome dengan profil baru me-restart
+    # dirinya sendiri, jadi PID yang kita luncurkan sudah mati sementara
+    # jendelanya masih berdiri.
+    dilempar = jendela_uji('chrome-pause')
+    for hwnd in dilempar:
+        r = RECT()
+        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
+            continue
+        # Seperempat ukuran layar, di sudut kanan atas layar uji.
+        w2, h2 = mon['width'] // 2, mon['height'] // 2
+        user32.SetWindowPos(hwnd, 0, mon['x'] + mon['width'] - w2, mon['y'],
+                            w2, h2, 0x0004 | 0x0010)
+    time.sleep(1.5)
 
-    t_lanjut = tunggu(lambda: cari_lanjut(t_keluar, nama), 20)
+    # Pastikan jendelanya benar-benar tidak lagi fullscreen sebelum menunggu
+    # apa pun. Kalau tidak, yang diukur bukan aplikasinya.
+    sisa_fullscreen = []
+    for hwnd in jendela_uji('chrome-pause'):
+        r = RECT()
+        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
+            continue
+        if ((r.right - r.left) >= mon['width'] - 8
+                and (r.bottom - r.top) >= mon['height'] - 8):
+            sisa_fullscreen.append(hwnd)
+    print('     aplikasi tidak lagi fullscreen: %d jendela%s'
+          % (len(dilempar), '' if not sisa_fullscreen
+             else ' - %d MASIH PENUH' % len(sisa_fullscreen)))
+
+    t_lanjut = tunggu(lambda: cari_lanjut(waktu_keluar, nama), 30)
     if t_lanjut:
         print('     ✓ wallpaper DILANJUTKAN')
         print('       %s' % t_lanjut[1].split('] ', 1)[-1][-104:])
@@ -399,7 +439,7 @@ def main():
         gagal.append('tidak dilanjutkan')
 
     # Berapa lama dari perintah sampai frame pertama.
-    frame = tunggu(lambda: cari_frame(t_keluar, nama), 20)
+    frame = tunggu(lambda: cari_frame(waktu_keluar, nama), 30)
     if frame:
         m = re.search(r'resume-frame:(\d+)', frame[1])
         ms = int(m.group(1)) if m else None
@@ -420,9 +460,13 @@ def main():
     # kelonggaran, selalu cukup.
     durasi = durasi_video(nama)
     batas_putaran = max(30, durasi * 2 + 10)
-    putaran_lanjut = tunggu(lambda: cari_putaran(t_keluar, nama), batas_putaran)
+    putaran_lanjut = tunggu(lambda: cari_putaran(waktu_keluar, nama), batas_putaran)
     if putaran_lanjut:
-        detik = (putaran_lanjut[0][0] - t_keluar).total_seconds()
+        # Waktu putaran dihitung dari baris log 'resumed', bukan dari cap
+        # waktu lokal: keduanya beda jam dan itu pernah menghasilkan angka
+        # negatif.
+        detik = ((putaran_lanjut[0][0] - t_lanjut[0]).total_seconds()
+                 if t_lanjut else 0)
         print('     ✓ video berjalan lagi (putaran selesai setelah %.1f detik,'
               ' bukti nyata)' % detik)
     else:
@@ -431,7 +475,7 @@ def main():
         gagal.append('video tidak berjalan')
     print()
 
-    bersihkan(proc.pid)
+    bersihkan('chrome-pause')
     pulihkan(disingkirkan)
 
     print('  ══ kesimpulan ══')
@@ -527,58 +571,109 @@ def di_dalam(b, kunci, nama):
     return bool(m) and nama in m.group(1)
 
 
-def cari_jeda(sejak, nama):
+def ukuran_log():
+    """Jumlah baris log saat ini - penanda posisi."""
+    try:
+        return len(LOG.read_text(encoding='utf-8', errors='replace').splitlines())
+    except Exception:
+        return 0
+
+
+def sejak(waktu):
+    """Baris log yang cap waktunya >= `waktu`.
+
+    Cap waktu, bukan posisi baris dan bukan PID. Ketiganya pernah dicoba dan
+    hanya cap waktu yang bertahan:
+
+      * Posisi baris tidak tahan rotasi. Berkas log digeser ke
+        lumawall.previous.log setiap aplikasi dijalankan ulang dan yang baru
+        mulai dari nol, jadi penanda posisi menunjuk ke tempat yang salah.
+      * PID tidak tahan karena aplikasi menjalankan beberapa proses, dan proses
+        yang menulis baris pertama belum tentu yang menangani layar uji.
+
+    Cap waktu tidak punya masalah itu: log memakai waktu lokal yang sama dengan
+    datetime.now(), jadi satu cap waktu sebelum Chrome diluncurkan sudah cukup
+    untuk memisahkan baris baru dari baris lama.
+    """
+    return [(t, b) for t, b in baca_log() if t >= waktu]
+
+
+def keadaan_terakhir(nama):
+    """Keadaan pemutaran terakhir yang tercatat untuk layar itu.
+
+    'paused', 'running', atau None kalau tidak ada catatannya.
+    """
+    hasil = None
     for t, b in baca_log():
-        if t < sejak:
+        if 'Playback updated' not in b:
             continue
+        if di_dalam(b, 'paused', nama):
+            hasil = 'paused'
+        elif di_dalam(b, 'resumed', nama):
+            hasil = 'running'
+    return hasil
+
+
+def pid_sekarang():
+    """PID proses yang menulis baris log terakhir."""
+    for t, b in reversed(baca_log()):
+        m = re.search(r'\[(\d+)\]', b)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def tunggu_pid_layar(nama, detik=45):
+    """PID proses yang menangani `nama`, dibaca dari log terbaru.
+
+    Diambil dari baris yang MENYEBUT layar uji, bukan dari baris apa pun yang
+    baru. Bedanya menentukan: aplikasi ini menjalankan beberapa proses, dan
+    proses yang menulis baris pertama setelah start belum tentu proses yang
+    menangani layar itu. Menyaring dengan PID yang salah membuang setiap baris
+    yang relevan, dan uji melaporkan "tidak ada catatan keadaan" untuk aplikasi
+    yang berjalan normal.
+
+    Baris yang menyebut layar itu pasti ditulis oleh proses yang menanganinya.
+    """
+    batas = time.time() + detik
+    while time.time() < batas:
+        for t, b in reversed(baca_log()):
+            if nama not in b:
+                continue
+            m = re.search(r'\[(\d+)\]', b)
+            if m:
+                return int(m.group(1))
+        time.sleep(0.3)
+    return None
+
+
+def cari_jeda(waktu, nama):
+    for t, b in sejak(waktu):
         if 'Playback updated' in b and di_dalam(b, 'paused', nama):
             return (t, b)
     return None
 
 
-def cari_lanjut(sejak, nama):
-    for t, b in baca_log():
-        if t < sejak:
-            continue
+def cari_lanjut(waktu, nama):
+    for t, b in sejak(waktu):
         if 'Playback updated' in b and di_dalam(b, 'resumed', nama):
             return (t, b)
     return None
 
 
-def cari_frame(sejak, nama):
-    for t, b in baca_log():
-        if t < sejak:
-            continue
+def cari_frame(waktu, nama):
+    for t, b in sejak(waktu):
         if 'resume-frame:' in b and nama in b:
             return (t, b)
     return None
 
 
-def cari_putaran(sejak, nama):
+def cari_putaran(waktu, nama):
     hasil = []
-    for t, b in baca_log():
-        if t < sejak:
-            continue
+    for t, b in sejak(waktu):
         if 'Seamless loop handoff completed on' in b and nama in b:
             hasil.append((t, b))
     return hasil
-
-
-def bersihkan_sisa():
-    """Hentikan Chrome uji yang tertinggal dari run sebelumnya."""
-    profil = str(Path('build/chrome-pause').resolve())
-    r = subprocess.run(
-        ['powershell', '-NoProfile', '-Command',
-         'Get-CimInstance Win32_Process -Filter "Name=\'chrome.exe\'" | '
-         'Where-Object { $_.CommandLine -like "*chrome-pause*" } | '
-         'ForEach-Object { $_.ProcessId }'],
-        capture_output=True, text=True, timeout=60)
-    pids = [b.strip() for b in r.stdout.split() if b.strip().isdigit()]
-    for pid in pids:
-        subprocess.run(['taskkill', '/PID', pid, '/T', '/F'], capture_output=True)
-    if pids:
-        print('  membersihkan %d Chrome uji yang tertinggal' % len(pids))
-        time.sleep(1.5)
 
 
 def durasi_video(nama):
@@ -632,20 +727,27 @@ def pulihkan(daftar):
             user32.ShowWindow(hwnd, 9)   # SW_RESTORE
 
 
-def bersihkan(pid):
-    """Tutup HANYA jendela Chrome milik uji ini (proses yang kita luncurkan)."""
-    for hwnd in jendela_chrome(pid):
+def bersihkan(penanda='chrome-pause'):
+    """Tutup HANYA jendela Chrome milik uji ini.
+
+    Dikenali dari profilnya, bukan dari PID proses yang diluncurkan: Chrome
+    dengan profil baru me-restart dirinya sendiri, jadi PID yang kita pegang
+    sudah mati sementara jendelanya masih berdiri.
+    """
+    for hwnd in jendela_uji(penanda):
         user32.ShowWindow(hwnd, 6)   # SW_MINIMIZE
     time.sleep(1.0)
-    for hwnd in jendela_chrome(pid):
+    for hwnd in jendela_uji(penanda):
         user32.PostMessageW(hwnd, 0x0010, 0, 0)   # WM_CLOSE
     time.sleep(1.5)
-    # Kalau masih ada, hentikan prosesnya - ini proses yang kita buat sendiri.
-    for hwnd in jendela_chrome(pid):
-        hpid = wt.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(hpid))
-        subprocess.run(['taskkill', '/PID', str(hpid.value), '/T', '/F'],
-                       capture_output=True)
+    # Sisa prosesnya dihentikan - ini proses yang dibuat uji, bukan milik
+    # pengguna. Dikenali dari profil yang sama.
+    subprocess.run(
+        ['powershell', '-NoProfile', '-Command',
+         "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+         "Where-Object { $_.CommandLine -like '*%s*' } | "
+         "ForEach-Object { taskkill /PID $_.ProcessId /T /F }" % penanda],
+        capture_output=True, timeout=90)
 
 
 if __name__ == '__main__':

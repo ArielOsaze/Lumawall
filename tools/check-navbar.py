@@ -120,7 +120,7 @@ def main():
 
     httpd = jalankan_server()
     # Sisa run sebelumnya dibersihkan lebih dulu.
-    bersihkan_sisa('navbar')
+    bersihkan_sisa('nav')
     proc = chrome_buka(URL, 1440, 900)
 
     try:
