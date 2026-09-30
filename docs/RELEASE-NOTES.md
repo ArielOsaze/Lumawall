@@ -8,6 +8,65 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.11.0
+
+### Bahasa Indonesia
+
+**Wallpaper berhenti saat aplikasi fullscreen, dan lanjut seketika saat keluar**
+
+Pemutaran sekarang benar-benar berhenti saat ada aplikasi fullscreen, dan lanjut
+dalam hitungan milidetik begitu aplikasinya tidak fullscreen lagi. Diukur dari
+aplikasinya sendiri: perintah jeda tercatat, tidak ada putaran video yang selesai
+selama jeda, dan frame pertama muncul 3-29 milidetik setelah perintah lanjut.
+Sebelumnya jeda ini bisa tertunda sampai 40 detik.
+
+**Halaman Displays menunjukkan keadaan sebenarnya**
+
+Setiap monitor sekarang menampilkan status (Active/Empty) dan ringkasan
+pengaturannya sendiri - filter, kecerahan, saturasi, fit, kecepatan. Pengaturan
+itu sudah ada dan bisa diubah di Luma Studio, tetapi tidak terlihat di halaman
+yang memang tentang satu monitor. Nama wallpaper yang panjang kini punya
+tooltip, dan kartu monitor tidak lagi memotong baris statusnya.
+
+### English
+
+**The wallpaper stops when an app goes fullscreen, and resumes the moment it leaves**
+
+Playback now truly stops while an app is fullscreen, and resumes within
+milliseconds of it leaving. Measured from the app itself: the pause is recorded,
+no video loop completes during the pause, and the first frame arrives 3-29 ms
+after the resume. Previously this could be delayed by up to 40 seconds.
+
+**The Displays page shows what is actually happening**
+
+Each monitor now shows its state (Active/Empty) and a summary of its own
+settings - filter, brightness, saturation, fit, speed. Those settings existed and
+were editable in Luma Studio, but were invisible on the one page about a single
+monitor. Long wallpaper names now have a tooltip, and the monitor card no longer
+clips its status row.
+
+### 中文
+
+**应用全屏时壁纸停止，退出时立即恢复**
+
+应用全屏时播放会真正停止，退出后几毫秒内恢复。测量数据来自应用本身：暂停被记录，暂停期间没有任何视频循环完成，恢复后第一帧在 3-29 毫秒内出现。此前这一延迟最长可达 40 秒。
+
+**显示器页面显示真实状态**
+
+每个显示器现在都会显示状态（Active/Empty）及其自身设置的摘要——滤镜、亮度、饱和度、适配方式、速度。这些设置本就存在并可在 Luma Studio 中修改，却在这个专门针对单个显示器的页面上不可见。长壁纸名称现在有提示框，显示器卡片也不再裁切状态行。
+
+### 日本語
+
+**アプリが全画面のとき壁紙は停止し、解除した瞬間に再開します**
+
+全画面中は再生が本当に停止し、解除後は数ミリ秒で再開します。アプリ自身の記録による測定：一時停止が記録され、一時停止中に動画ループが一度も完了せず、再開後 3〜29 ミリ秒で最初のフレームが表示されます。以前は最大 40 秒遅れることがありました。
+
+**ディスプレイページが実際の状態を表示**
+
+各モニターに状態（Active/Empty）とその設定の要約（フィルター、明るさ、彩度、フィット、速度）が表示されるようになりました。これらの設定は以前から存在し Luma Studio で編集できましたが、モニター単体についてのこのページでは見えませんでした。長い壁紙名にはツールチップが付き、カードが状態行を切り取ることもなくなりました。
+
+---
+
 ## 4.5.10.0
 
 ### Bahasa Indonesia

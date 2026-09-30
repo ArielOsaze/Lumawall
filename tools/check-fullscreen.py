@@ -31,6 +31,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ukur_layar  # noqa: E402
+from chrome_uji import (  # noqa: E402
+    CHROME, WM_CLOSE, SW_MINIMIZE,
+    bersihkan_sisa, buka, jendela_chrome, jendela_asing, singkirkan, pulihkan,
+)
 
 user32 = ctypes.WinDLL('user32', use_last_error=True)
 gdi32 = ctypes.WinDLL('gdi32', use_last_error=True)
@@ -51,22 +55,11 @@ CONFIG = Path('C:/Users/ariel/AppData/Local/LumaWall/config.json')
 # terjadi. Chrome dengan --start-fullscreen memasuki mode fullscreen yang
 # sesungguhnya, yang memang menghentikan komposisi desktop - dan itulah yang
 # harus diuji.
-CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 # --kiosk, not --start-fullscreen: the latter opens a normal window that merely
 # fills the screen, and Windows does not treat it as a fullscreen app - so DWM
 # keeps compositing the desktop and the state being tested never happens.
 # --kiosk enters the real fullscreen mode. --window-position puts it on the
 # display under test, because a new window otherwise opens on the primary one.
-FULLSCREEN_ARGS = [
-    '--kiosk',
-    '--window-position={X},{Y}',
-    '--window-size={W},{H}',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-features=Translate,MediaRouter',
-    '--user-data-dir=%s',
-    'about:blank',
-]
 
 
 def tulis_wallpaper(device, berkas):
@@ -75,79 +68,6 @@ def tulis_wallpaper(device, berkas):
         if isinstance(item, dict) and item.get('Key') == device:
             item['Value'] = str(berkas)
     CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding='utf-8')
-
-
-def jendela_chrome():
-    """Jendela Chrome yang sedang terbuka, sebagai (hwnd, judul).
-
-    Dipakai untuk menutup Chrome milik uji ini saja, dan untuk memastikan ia
-    benar-benar sudah tertutup sebelum hasilnya dibaca.
-    """
-    hasil = []
-
-    @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
-    def cb(hwnd, _):
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        cls = ctypes.create_unicode_buffer(256)
-        user32.GetClassNameW(hwnd, cls, 256)
-        if not cls.value.startswith('Chrome_WidgetWin_1'):
-            return True
-        r = RECT()
-        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
-            return True
-        if (r.right - r.left) < 400 or (r.bottom - r.top) < 300:
-            return True
-        ti = ctypes.create_unicode_buffer(512)
-        user32.GetWindowTextW(hwnd, ti, 512)
-        hasil.append((int(hwnd), ti.value.strip() or '(tanpa judul)'))
-        return True
-
-    user32.EnumWindows(cb, 0)
-    return hasil
-
-
-def jendela_asing(monitor, min_lebar=400, min_tinggi=300):
-    """Jendela milik proses LAIN yang menutupi layar yang diukur.
-
-    Milik proses lain, bukan milik LumaWall: jendela wallpaper LumaWall memang
-    harus ada di sana. Yang dicari adalah hal yang akan terbaca sebagai
-    wallpaper padahal bukan.
-    """
-    pid_kita = ukur_layar.pid_aplikasi()
-    hasil = []
-
-    @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
-    def cb(hwnd, _):
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        p = wt.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(p))
-        if p.value == pid_kita:
-            return True
-        r = RECT()
-        if not user32.GetWindowRect(hwnd, ctypes.byref(r)):
-            return True
-        lebar, tinggi = r.right - r.left, r.bottom - r.top
-        if lebar < min_lebar or tinggi < min_tinggi:
-            return True
-        # Hanya yang benar-benar menutupi layar ini.
-        if not (r.left < monitor['x'] + monitor['width'] and r.right > monitor['x']
-                and r.top < monitor['y'] + monitor['height'] and r.bottom > monitor['y']):
-            return True
-        # Jendela desktop sendiri bukan penutup.
-        cls = ctypes.create_unicode_buffer(256)
-        user32.GetClassNameW(hwnd, cls, 256)
-        if cls.value in ('Progman', 'WorkerW', 'Shell_TrayWnd', 'SysListView32'):
-            return True
-        ti = ctypes.create_unicode_buffer(512)
-        user32.GetWindowTextW(hwnd, ti, 512)
-        nama = ti.value.strip() or cls.value
-        hasil.append((nama, int(hwnd), lebar, tinggi))
-        return True
-
-    user32.EnumWindows(cb, 0)
-    return hasil
 
 
 class Pengukur(threading.Thread):
@@ -243,27 +163,19 @@ def main():
     if profil.exists():
         shutil.rmtree(profil, ignore_errors=True)
 
-    # Catat Chrome yang sudah terbuka sebelum uji ini berjalan.
+    # Chrome uji dari run sebelumnya dibersihkan lebih dulu, dan yang dipakai
+    # dilacak lewat PID-nya sendiri.
     #
-    # Tanpa ini, penutupan di akhir akan menutup SEMUA Chrome di mesin -
-    # termasuk jendela kerja pengguna. Uji yang menghancurkan pekerjaan yang
-    # tidak ada hubungannya bukan uji yang boleh dijalankan siapa pun.
-    chrome_sebelum = set(h for h, _ in jendela_chrome())
-    print('  Chrome yang sudah terbuka: %d jendela (tidak akan diganggu)' % len(chrome_sebelum))
+    # Menebak dari "jendela yang baru muncul" tidak cukup: Chrome sisa dari run
+    # sebelumnya sudah ada sebelum uji mulai, jadi dianggap milik pengguna, tidak
+    # pernah dibersihkan, dan menetap di layar uji sampai run berikutnya gagal
+    # karena layarnya "terhalang". PID tidak bisa salah seperti itu.
+    bersihkan_sisa('fullscreen')
     print()
 
     print('  ── membuka Chrome fullscreen ──')
-    args = []
-    for a in FULLSCREEN_ARGS:
-        if '%s' in a:
-            args.append(a % str(profil))
-        else:
-            args.append(a.replace('{X}', str(monitor['x']))
-                         .replace('{Y}', str(monitor['y']))
-                         .replace('{W}', str(monitor['width']))
-                         .replace('{H}', str(monitor['height'])))
-    proc = subprocess.Popen([CHROME] + args,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = buka('fullscreen', monitor['x'], monitor['y'],
+                monitor['width'], monitor['height'])
 
     # Beri waktu Chrome benar-benar masuk mode fullscreen. Kalau jendelanya
     # belum fullscreen saat diukur, yang diuji bukan apa-apa.
@@ -281,35 +193,46 @@ def main():
     tanda = time.time()
 
     print('  ── keluar dari fullscreen ──')
-    # Minimised, never closed.
+    # Minimised first, because minimising IS the event being tested: a fullscreen
+    # window that is minimised takes Windows out of fullscreen-app mode exactly as
+    # closing it does, so the desktop composition comes back.
     #
-    # Two reasons, and the second is the important one:
+    # Then closed, but ONLY the window this check opened. Leaving it behind is not
+    # harmless: a leftover Chrome stays on the display and every later measurement
+    # reads it instead of the wallpaper. That happened - the check ran, left an
+    # about:blank window behind, and the next run measured 31.6 instead of the
+    # wallpaper's 106 and reported a failure that did not exist.
     #
-    #   1. Minimising IS the event being tested. A fullscreen window that is
-    #      minimised takes Windows out of fullscreen-app mode exactly as closing
-    #      it does, so the desktop composition comes back - which is what this
-    #      whole check is about.
-    #   2. Nothing on this machine is closed by a test. Earlier versions of this
-    #      script closed windows to clear the screen, and that is not acceptable:
-    #      a check that destroys the user's open work is not one that can be run.
+    # The window is matched by handle, against the set captured before this run, so
+    # a browser the user has open is never touched.
     SW_MINIMIZE = 6
+    WM_CLOSE = 0x0010
 
-    def chrome_baru():
-        """Jendela Chrome yang muncul setelah uji ini mulai - milik uji ini saja."""
-        return [(h, j) for h, j in jendela_chrome() if h not in chrome_sebelum]
-
-    dilempar = []
-    for hwnd, judul in chrome_baru():
+    # Minimalkan dulu - itu peristiwanya. Jendela fullscreen yang diminimalkan
+    # membawa Windows keluar dari mode aplikasi fullscreen persis seperti
+    # ditutup, dan itulah yang diukur di sini. Setelah itu barulah ditutup,
+    # tetapi hanya jendela milik proses ini.
+    dilempar = jendela_chrome(proc.pid)
+    for hwnd in dilempar:
         user32.ShowWindow(hwnd, SW_MINIMIZE)
-        dilempar.append(judul)
     print('     %d jendela Chrome uji diminimalkan' % len(dilempar))
+
+    # Beri jeda supaya pesan minimize benar-benar sampai sebelum ditutup; kalau
+    # tidak, DWM bisa belum keluar dari mode fullscreen dan yang diukur adalah
+    # keadaan yang salah.
+    time.sleep(1.5)
+
+    for hwnd in dilempar:
+        if user32.IsWindow(hwnd):
+            user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
+    print('     %d jendela Chrome uji ditutup' % len(dilempar))
 
     # Tunggu sampai tidak ada lagi yang fullscreen. Yang diperiksa bukan
     # "jendelanya hilang" - jendelanya masih ada, hanya tidak lagi menutupi
     # layar - melainkan bahwa layarnya sudah bebas.
     batas = time.time() + 25
     while time.time() < batas:
-        if not jendela_asing(monitor):
+        if not jendela_chrome(proc.pid) and not jendela_asing(monitor):
             break
         time.sleep(0.3)
     sisa = jendela_asing(monitor)

@@ -26,6 +26,13 @@ import urllib.request
 from pathlib import Path
 
 CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
+
+# Chrome uji dibersihkan lewat modul bersama. Chrome yang tertinggal dari
+# run sebelumnya memegang port debug dan kunci profil, jadi run berikutnya
+# gagal terhubung - dan itu muncul sebagai "navbar tidak bisa diperiksa",
+# gejala yang menyesatkan karena navbar-nya sendiri tidak pernah dilihat.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from chrome_uji import bersihkan_sisa, kumpulan_pid  # noqa: E402
 PORT = 9458
 SITE = Path('site')
 URL = 'http://127.0.0.1:8971/'
@@ -112,6 +119,8 @@ def main():
     print()
 
     httpd = jalankan_server()
+    # Sisa run sebelumnya dibersihkan lebih dulu.
+    bersihkan_sisa('navbar')
     proc = chrome_buka(URL, 1440, 900)
 
     try:
@@ -384,7 +393,13 @@ def main():
         return 0
 
     finally:
-        proc.terminate()
+        # Seluruh pohon proses dimatikan, bukan hanya induknya. Chrome
+        # meninggalkan proses anak yang memegang port debug dan kunci
+        # profil; kalau dibiarkan, run berikutnya gagal terhubung dan
+        # hasilnya terbaca sebagai "navbar tidak bisa diperiksa".
+        for pid in kumpulan_pid(proc.pid):
+            subprocess.run(['taskkill', '/PID', str(pid), '/T', '/F'],
+                           capture_output=True)
         httpd.shutdown()
 
 
