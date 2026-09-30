@@ -51,6 +51,15 @@ def luma_pids():
     return [int(x) for x in out.stdout.split() if x.strip().isdigit()]
 
 
+def pids_sekarang():
+    """PID LumaWall yang sedang berjalan."""
+    keluaran = subprocess.run(
+        ['powershell', '-NoProfile', '-Command',
+         "(Get-Process LumaWall -ErrorAction SilentlyContinue).Id"],
+        capture_output=True, text=True, timeout=30).stdout
+    return [int(x) for x in keluaran.split() if x.strip().isdigit()]
+
+
 def cpu_seconds(pid):
     """Total CPU seconds this process has used, or None if it is gone."""
     out = subprocess.run(
