@@ -368,7 +368,7 @@ def main():
         print('     ✓ wallpaper DIJEDA saat fullscreen')
         print('       %s' % t_jeda[1].split('] ', 1)[-1][-104:])
     else:
-        print('     ✗ tidak ada catatan jeda dalam 20 detik')
+        print('     ✗ tidak ada catatan jeda dalam 30 detik')
         gagal.append('tidak dijeda')
 
     # Video yang dijeda tidak menyelesaikan putaran. Ini bukti bebas bahwa
@@ -435,7 +435,7 @@ def main():
         print('     ✓ wallpaper DILANJUTKAN')
         print('       %s' % t_lanjut[1].split('] ', 1)[-1][-104:])
     else:
-        print('     ✗ tidak ada catatan lanjut dalam 20 detik')
+        print('     ✗ tidak ada catatan lanjut dalam 30 detik')
         gagal.append('tidak dilanjutkan')
 
     # Berapa lama dari perintah sampai frame pertama.
@@ -447,7 +447,7 @@ def main():
         if ms is not None and ms > 2000:
             gagal.append('frame lambat')
     else:
-        print('     ✗ tidak ada frame baru setelah dilanjutkan')
+        print('     ✗ tidak ada frame baru dalam 30 detik setelah dilanjutkan')
         gagal.append('tidak ada frame')
 
     # Putaran harus mulai lagi: bukti videonya benar-benar berjalan.
