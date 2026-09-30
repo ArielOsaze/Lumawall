@@ -144,15 +144,54 @@ def main():
     # dikembalikan persis seperti semula: jendela kembali ke posisi dan
     # ukurannya sendiri saat dipulihkan, dan selama uji ia benar-benar tidak
     # menghalangi.
-    penutup = jendela_asing(monitor)
+    # Jendela LumaWall sendiri bukan penghalang: itu wallpapernya.
+    penutup = jendela_asing(monitor, ukur_layar.semua_pid_aplikasi())
     dipulihkan = []
+    ditolak = []
     if penutup:
         print('  menyingkirkan %d jendela dari layar uji (diminimalkan, bukan ditutup):' % len(penutup))
         for nama, hwnd, lebar, tinggi in penutup:
-            print('       %-32s %dx%d' % (nama[:32], lebar, tinggi))
+            ctypes.set_last_error(0)
             user32.ShowWindow(hwnd, 6)   # SW_MINIMIZE
-            dipulihkan.append(hwnd)
-        time.sleep(1.5)
+            time.sleep(0.3)
+            # ShowWindow sering mengembalikan 0 walau berhasil, jadi hasilnya
+            # dibaca dari keadaan jendelanya.
+            if user32.IsIconic(hwnd):
+                print('       %-32s %dx%d' % (nama[:32], lebar, tinggi))
+                dipulihkan.append(hwnd)
+            else:
+                ditolak.append(nama)
+        time.sleep(1.2)
+        print()
+
+    # Kalau ada yang menolak diminimalkan (biasanya berjalan dengan hak lebih
+    # tinggi, seperti Task Manager), pindah ke layar lain yang bebas.
+    #
+    # Tanpa ini, uji mengukur layar yang masih tertutup jendela lain - dan
+    # aplikasi ini memang MENJEDA wallpaper saat ada jendela menutupinya, jadi
+    # yang terbaca adalah wallpaper yang dijeda dengan benar dan dilaporkan
+    # sebagai kegagalan. Pindah layar jauh lebih berguna daripada menolak
+    # berjalan: perilaku yang diuji sama di semua layar.
+    if ditolak:
+        print('  jendela ini menolak diminimalkan: %s' % ', '.join(ditolak[:3]))
+        pulihkan(dipulihkan)
+        dipulihkan = []
+        for m in ukur_layar.monitors():
+            if m['device'] == monitor['device']:
+                continue
+            # Semua PID LumaWall, diambil saat itu juga: aplikasinya sudah
+            # berjalan sekarang, dan jendelanya sendiri bukan penghalang.
+            d, t = singkirkan(m, ukur_layar.semua_pid_aplikasi())
+            if not t:
+                monitor = m
+                dipulihkan = d
+                print('  pindah ke layar bebas: %s %dx%d di (%d,%d)'
+                      % (m['device'], m['width'], m['height'], m['x'], m['y']))
+                break
+            pulihkan(d)
+        else:
+            print('  tidak ada layar bebas - uji ini tidak dijalankan.')
+            return 2
         print()
 
     awal = ukur_layar.baca(monitor)
@@ -232,10 +271,11 @@ def main():
     # layar - melainkan bahwa layarnya sudah bebas.
     batas = time.time() + 25
     while time.time() < batas:
-        if not jendela_chrome(proc.pid) and not jendela_asing(monitor):
+        if (not jendela_chrome(proc.pid)
+                and not jendela_asing(monitor, ukur_layar.semua_pid_aplikasi())):
             break
         time.sleep(0.3)
-    sisa = jendela_asing(monitor)
+    sisa = jendela_asing(monitor, ukur_layar.semua_pid_aplikasi())
     if sisa:
         print('     ! masih ada %d jendela menutupi layar uji' % len(sisa))
         for nama, _h, l, t in sisa:

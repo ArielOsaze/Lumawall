@@ -76,6 +76,19 @@ def pid_aplikasi():
     return None
 
 
+def semua_pid_aplikasi():
+    """Semua PID proses LumaWall."""
+    keluaran = subprocess.run(
+        ['powershell', '-NoProfile', '-Command',
+         '(Get-Process LumaWall -ErrorAction SilentlyContinue).Id'],
+        capture_output=True, text=True, timeout=30).stdout
+    hasil = set()
+    for t in keluaran.split():
+        if t.strip().isdigit():
+            hasil.add(int(t.strip()))
+    return hasil
+
+
 def jendela_di(monitor, pid, min_lebar=200, min_tinggi=150):
     """Jendela besar milik pid yang menutupi layar ini."""
     hasil = []
