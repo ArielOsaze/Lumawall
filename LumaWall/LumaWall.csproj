@@ -38,6 +38,8 @@
     <Compile Include="MainWindow.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="MemoryTrim.cs" />
+    <Compile Include="VideoScale.cs" />
+    <Compile Include="FontLoader.cs" />
     <Compile Include="DesktopTimer.cs" />
     <Compile Include="TimerPreview.cs" />
     <Compile Include="FeaturesPage.cs" />
@@ -47,6 +49,11 @@
     <Content Include="assets\*.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="README.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="LICENSE.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <!-- Inter: satu font untuk seluruh antarmuka dan widget timer. Disalin ke
+         keluaran supaya bisa didaftarkan saat aplikasi mulai, tanpa perlu
+         dipasang di sistem pengguna. -->
+    <Content Include="fonts\*.ttf"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="fonts\LICENSE-Inter.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="app-logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="..\packages\Microsoft.Web.WebView2.1.0.2903.40\runtimes\win-x64\native\WebView2Loader.dll">
       <Link>WebView2Loader.dll</Link>

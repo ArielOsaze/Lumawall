@@ -53,6 +53,19 @@ namespace LumaWall
         // expects when comparing two.
         private string studioDevice;
 
+        /// <summary>
+        /// Pilih monitor yang akan diatur di Luma Studio, dari halaman lain.
+        ///
+        /// Dipakai tombol "Atur" di halaman Monitor: pengguna baru saja menunjuk
+        /// satu layar, jadi Studio harus terbuka pada layar itu - bukan pada
+        /// layar pertama, yang mengharuskan ia mencarinya lagi.
+        /// </summary>
+        public void PilihStudioDevice(string device)
+        {
+            if (string.IsNullOrEmpty(device)) return;
+            studioDevice = device;
+        }
+
         // The preview, held as fields so a slider move can repaint it. Rebuilding the
         // whole page on every slider tick would lose the drag, and a preview that only
         // updates when the mouse is released is not a preview.

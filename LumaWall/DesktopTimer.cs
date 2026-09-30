@@ -567,16 +567,30 @@ namespace LumaWall
             /// </summary>
             private static Font TimeFont(float size, string style)
             {
-                string[] faces = FacesFor(style);
-                foreach (string name in faces)
+                Face[] faces = FacesFor(style);
+
+                foreach (Face face in faces)
                 {
+                    // Lewat FontLoader, bukan `new FontFamily(nama)`.
+                    //
+                    // `new FontFamily(nama)` hanya melihat font yang terpasang
+                    // di sistem dan TIDAK melihat koleksi font yang dibundel.
+                    // Memakai bentuk itu di sini berarti setiap nama Inter
+                    // melempar, setiap percobaan jatuh ke cadangan, dan timer
+                    // selalu menggambar dengan Segoe - sementara log melaporkan
+                    // font berhasil dimuat. Itu penyebab "fontnya masih basic".
+                    var family = FontLoader.AmbilDariKoleksi(face.Family);
+                    if (family != null)
+                    {
+                        try { return new Font(family, size, face.Style, GraphicsUnit.Pixel); }
+                        catch { }
+                    }
+
+                    // Cadangan ke font sistem, untuk nama yang memang bukan milik
+                    // koleksi (Segoe) atau kalau Inter tidak ada.
                     try
                     {
-                        var family = new FontFamily(name);
-                        FontStyle weight = style == "bold" || style == "card"
-                            ? FontStyle.Bold
-                            : FontStyle.Regular;
-                        return new Font(family, size, weight, GraphicsUnit.Pixel);
+                        return new Font(new FontFamily(face.Family), size, face.Style, GraphicsUnit.Pixel);
                     }
                     catch { }
                 }
@@ -584,46 +598,119 @@ namespace LumaWall
             }
 
             /// <summary>
+            /// Pasangan (nama family, gaya) untuk satu gaya timer.
+            ///
+            /// Dipisah dari FacesFor karena keduanya harus cocok. Meminta
+            /// FontStyle.Bold pada family yang sudah SemiBold membuat GDI+
+            /// menyintesis bold di atas semibold - hurufnya jadi kabur dan
+            /// gemuk di ukuran besar, dan itu terlihat jelas pada jam 62px.
+            /// Yang benar adalah memilih face asli yang memang setebal itu.
+            /// </summary>
+            private struct Face
+            {
+                public string Family;
+                public FontStyle Style;
+                public Face(string family, FontStyle style) { Family = family; Style = style; }
+            }
+
+            /// <summary>
             /// The faces a style will accept, best first.
             ///
-            /// The first entry is the intent; the rest are fallbacks for a machine that does
-            /// not have it. "Segoe UI Variable Display Light" ships with Windows 11 and is the
-            /// thinnest face available - it is what makes a 62px clock read as an iOS lock
-            /// screen rather than a scoreboard.
+            /// Semua gaya memakai SATU keluarga font yang sama - Inter - dengan
+            /// berat yang berbeda. Sebelumnya setiap gaya menamai face Segoe
+            /// yang berbeda, sehingga hasilnya terlihat seperti beberapa font
+            /// berbeda yang ditempel menjadi satu, bukan satu widget dengan satu
+            /// suara.
+            ///
+            /// Inter dipilih karena bentuknya paling dekat dengan SF Pro milik
+            /// iOS di antara font yang boleh dibundel: geometris, x-height
+            /// tinggi, angka tabular yang lebarnya sama sehingga digit jam tidak
+            /// bergeser saat menit berubah. Lisensinya (SIL OFL) mengizinkan
+            /// dibundel bersama aplikasi komersial.
+            ///
+            /// Nama-nama Segoe tetap ada sebagai cadangan terakhir: kalau
+            /// pemuatan font gagal karena sebab apa pun, timer harus tetap
+            /// tampil dengan font sistem, bukan gagal.
             /// </summary>
-            private static string[] FacesFor(string style)
+            private static Face[] FacesFor(string style)
             {
                 switch (style)
                 {
-                    // The iOS 15 lock screen: very large and very thin. This is the thinnest
-                    // face on Windows and the one the styles were meant to use all along.
+                    // iOS 15 lock screen: sangat besar dan sangat tipis.
                     case "ioslarge":
-                        return new[] { "Segoe UI Variable Display Light", "Segoe UI Light", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter ExtraLight", FontStyle.Regular),
+                            new Face("Inter Light", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display Light", FontStyle.Regular),
+                            new Face("Segoe UI Light", FontStyle.Regular),
+                            new Face("Segoe UI", FontStyle.Regular),
+                        };
 
-                    // A step heavier, so the two are visibly different side by side.
+                    // Satu langkah lebih tebal, supaya keduanya terlihat berbeda.
                     case "ioslight":
-                        return new[] { "Segoe UI Light", "Segoe UI Variable Display Light", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter Light", FontStyle.Regular),
+                            new Face("Inter", FontStyle.Regular),
+                            new Face("Segoe UI Light", FontStyle.Regular),
+                            new Face("Segoe UI", FontStyle.Regular),
+                        };
 
-                    // The stacked widget: thin, but the date does the work.
+                    // Widget bertumpuk: tipis, tetapi tanggal yang bekerja.
                     case "iosstack":
-                        return new[] { "Segoe UI Variable Display Light", "Segoe UI Light", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter Light", FontStyle.Regular),
+                            new Face("Inter", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display Light", FontStyle.Regular),
+                            new Face("Segoe UI", FontStyle.Regular),
+                        };
 
-                    // The date-forward face. It used to draw in the same font as minimal.
+                    // Gaya yang mengutamakan tanggal.
                     case "iosdate":
-                        return new[] { "Segoe UI Variable Display Semil", "Segoe UI Semilight", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter Medium", FontStyle.Regular),
+                            new Face("Inter", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display Semil", FontStyle.Regular),
+                            new Face("Segoe UI", FontStyle.Regular),
+                        };
 
-                    // A scoreboard: heavy on purpose. The family's own Bold face, not a
-                    // semibold family asked for Bold - that pairing makes GDI+ synthesise a
-                    // slant-on-bold, which smears at 38px.
+                    // Papan skor: tebal dengan sengaja.
+                    //
+                    // "Inter" dengan FontStyle.Bold, bukan "Inter SemiBold"
+                    // dengan Bold: yang kedua menyintesis bold di atas semibold
+                    // dan hasilnya kabur. Family "Inter" sudah memuat face Bold
+                    // asli dari Inter-Bold.ttf.
                     case "bold":
-                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter", FontStyle.Bold),
+                            new Face("Inter SemiBold", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display", FontStyle.Bold),
+                            new Face("Segoe UI", FontStyle.Bold),
+                        };
 
-                    // A widget card: heavy, because the wash behind it eats contrast.
+                    // Kartu widget: semi tebal, karena lapisan di belakangnya
+                    // memakan kontras. Face SemiBold asli, bukan bold sintetis.
                     case "card":
-                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter SemiBold", FontStyle.Regular),
+                            new Face("Inter", FontStyle.Bold),
+                            new Face("Segoe UI Variable Display", FontStyle.Bold),
+                            new Face("Segoe UI", FontStyle.Bold),
+                        };
 
                     default:
-                        return new[] { "Segoe UI Variable Display", "Segoe UI" };
+                        return new[]
+                        {
+                            new Face("Inter", FontStyle.Regular),
+                            new Face("Inter Light", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display", FontStyle.Regular),
+                            new Face("Segoe UI", FontStyle.Regular),
+                        };
                 }
             }
 

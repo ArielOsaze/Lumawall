@@ -213,6 +213,18 @@ namespace LumaWall
             // so "is the clock large" and "is the background transparent" become questions
             // about the drawing rather than about what was behind it.
             string[] commandLine = Environment.GetCommandLineArgs();
+
+            // Font yang dibundel didaftarkan paling awal.
+            //
+            // Harus sebelum apa pun menggambar, karena GDI+ memutuskan font mana
+            // yang tersedia saat objek Font dibuat - bukan saat dipakai. Widget
+            // timer dibuat jauh sebelum wallpaper pertama tampil, jadi
+            // pendaftaran di sini adalah satu-satunya tempat yang pasti cukup
+            // awal. Tanpa ini, nama font yang dibundel gagal diselesaikan dan
+            // diam-diam jatuh ke font sistem, yang persis keluhan "fontnya masih
+            // basic".
+            FontLoader.Daftarkan();
+
             for (int i = 1; i < commandLine.Length; i++)
             {
                 if (commandLine[i] == "--render-timer" && i + 1 < commandLine.Length)
@@ -1854,6 +1866,29 @@ namespace LumaWall
                 webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
                 string pageFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LumaWall", "WebView2Pages");
                 Directory.CreateDirectory(pageFolder);
+
+                // Halaman lama dihapus lebih dulu.
+                //
+                // Setiap pembangunan ulang menulis berkas HTML baru, dan
+                // tidak ada yang pernah menghapusnya: di mesin ini sudah
+                // terkumpul 1099 berkas (374 + 377 + 348) dan terus
+                // bertambah setiap kali halaman dibangun ulang - yang
+                // terjadi setiap kali keluar dari aplikasi fullscreen.
+                // Berkasnya kecil, tetapi jumlahnya tidak terbatas, dan
+                // folder yang tumbuh tanpa batas adalah cacat tersendiri.
+                //
+                // Hanya berkas milik layar INI yang dihapus, dan hanya yang
+                // tidak sedang dipakai. Berkas layar lain tidak disentuh
+                // karena halaman mereka mungkin sedang berjalan.
+                try
+                {
+                    foreach (string lama in Directory.GetFiles(pageFolder, safeDevice + "-*.html"))
+                    {
+                        try { File.Delete(lama); } catch { }
+                    }
+                }
+                catch { }
+
                 pagePath = Path.Combine(pageFolder, safeDevice + "-" + Guid.NewGuid().ToString("N") + ".html");
                 File.WriteAllText(pagePath, BuildMediaHtml(), Encoding.UTF8);
                 webView.CoreWebView2.ProcessFailed += delegate(object sender, CoreWebView2ProcessFailedEventArgs e)
@@ -2378,10 +2413,64 @@ namespace LumaWall
             // window. It has to be woken before it can be asked to decode anything, or
             // the request is delivered to a renderer that is not running scripts.
             PrepareForMediaChange();
-            string source = new Uri(path, UriKind.Absolute).AbsoluteUri;
+            string source = new Uri(PilihUntukMonitor(path), UriKind.Absolute).AbsoluteUri;
             RunScript("window.luma.prepare(" + JavaScriptString(source) + ",false," + (muted ? "true" : "false") + "," + request + "," + targetFps + ")");
             AppLog.Write("Media prepared in permanent host " + screen.DeviceName + " -> " + path);
         }
+
+        /// <summary>
+        /// Berkas video yang sebaiknya benar-benar di-decode monitor ini.
+        ///
+        /// Mengembalikan salinan yang sudah diperkecil kalau video aslinya jauh
+        /// lebih besar daripada layarnya, dan berkas aslinya kalau tidak.
+        ///
+        /// Kenapa ada: video 4K di layar 1080p memaksa GPU men-decode empat kali
+        /// piksel yang bisa ditampilkan, lalu membuang tiga perempatnya saat
+        /// menskalakan ke ukuran layar. Terukur di mesin ini: decoder naik ke
+        /// 22% untuk 4K di layar 1080p, sementara 1080p di layar 1080p tetap di
+        /// bawah 5%. Kelebihannya dibayar penuh dan tidak ada pikselnya yang
+        /// terlihat.
+        ///
+        /// Sengaja dipisah dari `mediaPath`: jalur itu tetap berkas asli yang
+        /// dipilih pengguna, karena ia dipakai untuk mencocokkan permintaan
+        /// dengan jendela yang sudah ada dan untuk menyimpan config. Kalau
+        /// salinan turunan disimpan di sana, setiap pemasangan akan terlihat
+        /// seperti pergantian wallpaper dan memicu pembangunan ulang halaman.
+        /// </summary>
+        private string PilihUntukMonitor(string path)
+        {
+            try
+            {
+                if (IsImagePath(path)) return path;
+                var pilihan = VideoScale.Pilih(path, screen.Bounds.Width, screen.Bounds.Height);
+                if (pilihan.Diskalakan && !string.IsNullOrEmpty(pilihan.Path)
+                    && File.Exists(pilihan.Path))
+                {
+                    // Dicatat sekali per keputusan, bukan per frame: ini yang
+                    // membuat penghematannya bisa diperiksa dari log.
+                    if (!string.Equals(dicatatSkala, path + "|" + pilihan.Path, StringComparison.Ordinal))
+                    {
+                        dicatatSkala = path + "|" + pilihan.Path;
+                        AppLog.Write("Video disesuaikan dengan " + screen.DeviceName
+                            + " (" + screen.Bounds.Width + "x" + screen.Bounds.Height + "): "
+                            + pilihan.LebarAsli + "x" + pilihan.TinggiAsli + " -> "
+                            + pilihan.LebarPakai + "p");
+                    }
+                    return pilihan.Path;
+                }
+                return pilihan.Path ?? path;
+            }
+            catch
+            {
+                // Penskalaan adalah penghematan, bukan syarat tampil. Apa pun
+                // yang gagal di sini harus berakhir dengan wallpaper yang tetap
+                // tampil memakai berkas aslinya.
+                return path;
+            }
+        }
+
+        /// <summary>Keputusan penskalaan terakhir yang sudah dicatat, supaya log tidak dibanjiri.</summary>
+        private string dicatatSkala;
 
         /// <summary>
         /// Sends the media that was queued while the page was still loading.
@@ -3039,7 +3128,7 @@ namespace LumaWall
             // "nothing happened" into a diagnosable fact.
             RequestPageState("unconfirmed attempt " + mediaRetryCount);
             int request = ++mediaRequest;
-            string source = new Uri(mediaPath, UriKind.Absolute).AbsoluteUri;
+            string source = new Uri(PilihUntukMonitor(mediaPath), UriKind.Absolute).AbsoluteUri;
             RunScript("window.luma.prepare(" + JavaScriptString(source) + ",false,"
                 + (muted ? "true" : "false") + "," + request + "," + targetFps + ")");
         }

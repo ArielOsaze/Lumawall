@@ -71,6 +71,19 @@ namespace LumaWall
             { "display.state.on", new[] { "Aktif", "Active", "已启用", "有効" } },
             { "display.state.off", new[] { "Kosong", "Empty", "未设置", "未設定" } },
             { "display.default", new[] { "Setelan bawaan", "Default settings", "默认设置", "既定の設定" } },
+            { "display.choose", new[] { "Pilih wallpaper", "Choose wallpaper", "选择壁纸", "壁紙を選ぶ" } },
+            { "display.chooseHint", new[] { "Pasang wallpaper hanya ke monitor ini.", "Set a wallpaper on this display only.", "仅为此显示器设置壁纸。", "このモニターだけに壁紙を設定します。" } },
+            { "display.pause", new[] { "Jeda", "Pause", "暂停", "一時停止" } },
+            { "display.resume", new[] { "Lanjutkan", "Resume", "继续", "再開" } },
+            { "display.pauseHint", new[] { "Bekukan monitor ini saja; layar lain tetap berjalan.", "Freeze this display only; the others keep running.", "仅冻结此显示器，其他显示器继续运行。", "このモニターだけ停止します。他のモニターは動き続けます。" } },
+            { "display.tune", new[] { "Atur warna & bentuk", "Tune colour & framing", "调整色彩与构图", "色と構図を調整" } },
+            { "display.tuneHint", new[] { "Buka Luma Studio untuk monitor ini.", "Open Luma Studio for this display.", "为此外示器打开 Luma Studio。", "このモニターの Luma Studio を開きます。" } },
+            { "display.detach", new[] { "Lepas", "Detach", "移除", "解除" } },
+            { "display.detachHint", new[] { "Hentikan wallpaper di monitor ini. Layar menjadi kosong.", "Stop the wallpaper on this display. The screen becomes empty.", "停止此显示器的壁纸，屏幕将变空。", "このモニターの壁紙を停止します。画面は空になります。" } },
+            { "display.detachTitle", new[] { "Lepas wallpaper?", "Detach wallpaper?", "移除此壁纸？", "壁紙を解除しますか？" } },
+            { "display.detachAsk", new[] { "Wallpaper di monitor ini akan dihentikan dan layar menjadi kosong. Lanjutkan?", "The wallpaper on this display will stop and the screen will be empty. Continue?", "此显示器的壁纸将停止，屏幕会变空。要继续吗？", "このモニターの壁紙を停止し、画面は空になります。続けますか？" } },
+            { "display.pausedOne", new[] { "Monitor ini dijeda", "This display is paused", "此显示器已暂停", "このモニターを一時停止しました" } },
+            { "display.resumedOne", new[] { "Monitor ini lanjut", "This display resumed", "此显示器已继续", "このモニターを再開しました" } },
             { "display.brightness.short", new[] { "Cerah", "Bright", "亮度", "明るさ" } },
             { "display.saturation.short", new[] { "Saturasi", "Saturation", "饱和度", "彩度" } },
             { "action.apply", new[] { "Terapkan", "Apply", "应用", "適用" } },
@@ -2200,15 +2213,65 @@ namespace LumaWall
             }
             copy.Children.Add(status);
             body.Children.Add(copy);
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-            var apply = CompactActionButton(Tr("action.apply"));
+
+            // Kontrol per monitor, dengan label yang menjelaskan dirinya sendiri.
+            //
+            // Halaman ini dulu hanya punya "Apply" dan "Stop", dan keduanya tidak
+            // menjelaskan apa pun: Apply apa? Stop apa? Setelah ditekan, apa yang
+            // berubah? Sekarang setiap tombol menyebut apa yang dilakukannya dan
+            // apa akibatnya, dan ada kontrol yang memang dibutuhkan di sini -
+            // memilih wallpaper untuk monitor INI, menjeda hanya monitor ini, dan
+            // mengatur seberapa keras ia bekerja.
+            var actions = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
             string device = screen.DeviceName;
-            apply.Click += delegate { ApplyToMonitor(device); };
-            actions.Children.Add(apply);
-            var stop = CompactActionButton(Tr("action.stop"));
+
+            // 1. Pilih wallpaper: membuka dialog berkas untuk monitor ini saja.
+            var pilih = CompactActionButton(Tr("display.choose"));
+            pilih.ToolTip = Tr("display.chooseHint");
+            pilih.Click += delegate { ChooseWallpaperFor(device); };
+            actions.Children.Add(pilih);
+
+            // 2. Jeda / lanjut monitor ini saja.
+            //
+            // Bukan "Stop": menghentikan satu monitor berarti layar itu menjadi
+            // hitam, dan tidak ada yang menginginkannya. Yang berguna adalah
+            // membekukan monitor ini sementara layar lain tetap berjalan -
+            // misalnya untuk menghemat GPU saat bermain game di satu layar saja.
+            bool sedangJeda = MonitorPaused(device);
+            var jeda = CompactActionButton(sedangJeda ? Tr("display.resume") : Tr("display.pause"));
+            jeda.Margin = new Thickness(6, 0, 0, 0);
+            jeda.ToolTip = Tr("display.pauseHint");
+            jeda.Click += delegate { ToggleMonitorPause(device); SwitchPage("displays"); };
+            actions.Children.Add(jeda);
+
+            // 3. Buka pengaturan lengkap monitor ini di Luma Studio.
+            var atur = CompactActionButton(Tr("display.tune"));
+            atur.Margin = new Thickness(6, 0, 0, 0);
+            atur.ToolTip = Tr("display.tuneHint");
+            atur.Click += delegate { BukaStudioUntuk(device); };
+            actions.Children.Add(atur);
+
+            // 4. Hentikan: benar-benar melepas wallpaper dari monitor ini.
+            //
+            // Diberi label yang menyebut akibatnya, dan warnanya dibedakan, supaya
+            // tidak ada yang menekannya karena mengira itu tombol jeda.
+            var stop = CompactActionButton(Tr("display.detach"));
             stop.Margin = new Thickness(6, 0, 0, 0);
-            stop.Click += delegate { StopMonitor(device); };
+            stop.ToolTip = Tr("display.detachHint");
+            stop.Foreground = new SolidColorBrush(CPrimaryHi);
+            stop.Click += delegate
+            {
+                var jawab = MessageBox.Show(
+                    Tr("display.detachAsk"), Tr("display.detachTitle"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (jawab == MessageBoxResult.Yes)
+                {
+                    StopMonitor(device);
+                    SwitchPage("displays");
+                }
+            };
             actions.Children.Add(stop);
+
             Grid.SetRow(actions, 1);
             body.Children.Add(actions);
             Grid.SetRow(body, 1);
@@ -2864,6 +2927,99 @@ namespace LumaWall
             ShowToast(Tr("toast.selected") + ": " + Path.GetFileNameWithoutExtension(path));
             if (activePage == "library") SwitchPage("library");
             UpdateStatusBar();
+        }
+
+        /// <summary>
+        /// Apakah monitor ini sedang dijeda sendiri oleh pengguna.
+        /// </summary>
+        private bool MonitorPaused(string device)
+        {
+            return pausedMonitors.Contains(device);
+        }
+
+        /// <summary>
+        /// Jeda atau lanjutkan SATU monitor, tanpa mengganggu yang lain.
+        ///
+        /// Kenapa ini ada padahal sudah ada tombol jeda global: tombol global
+        /// membekukan semua layar, dan itu bukan yang dibutuhkan saat bermain
+        /// game di satu layar sambil tetap ingin wallpaper berjalan di layar
+        /// lain. Yang dibutuhkan adalah memilih layar mana yang berhenti.
+        /// </summary>
+        private void ToggleMonitorPause(string device)
+        {
+            if (pausedMonitors.Contains(device))
+            {
+                pausedMonitors.Remove(device);
+                ShowToast(Tr("display.resumedOne"));
+            }
+            else
+            {
+                pausedMonitors.Add(device);
+                ShowToast(Tr("display.pausedOne"));
+            }
+            ApplyPauseState();
+            UpdateStatusBar();
+        }
+
+        /// <summary>
+        /// Monitor yang dijeda sendiri oleh pengguna, terpisah dari jeda
+        /// otomatis (fullscreen, baterai, layar terkunci).
+        ///
+        /// Dipisah supaya keduanya tidak saling menghapus: jeda otomatis
+        /// berubah-ubah sendiri setiap kali jendela muncul dan hilang, dan kalau
+        /// pilihan pengguna ikut tersimpan di daftar yang sama, ia akan hilang
+        /// pada perubahan berikutnya.
+        /// </summary>
+        private readonly HashSet<string> pausedMonitors =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Buka dialog berkas untuk memilih wallpaper bagi SATU monitor.
+        ///
+        /// Terpisah dari "Tambah" di halaman Koleksi, yang menambahkan berkas ke
+        /// library tanpa memilihkannya ke monitor mana pun. Di halaman ini
+        /// pertanyaannya berbeda - "layar ini mau dipasang apa" - jadi jawabannya
+        /// harus langsung memasangnya ke layar itu.
+        /// </summary>
+        private void ChooseWallpaperFor(string device)
+        {
+            var screen = Forms.Screen.AllScreens.FirstOrDefault(x => x.DeviceName == device);
+            if (screen == null) { ShowToast(Tr("toast.monitor")); return; }
+
+            var dialog = new OpenFileDialog
+            {
+                Title = Tr("display.choose") + " - " + device.DeviceName(),
+                Filter = "Wallpaper|*.mp4;*.m4v;*.wmv;*.avi;*.mov;*.webm;*.jpg;*.jpeg;*.png;*.bmp"
+                       + "|Video|*.mp4;*.m4v;*.wmv;*.avi;*.mov;*.webm"
+                       + "|Gambar|*.jpg;*.jpeg;*.png;*.bmp|Semua file|*.*",
+                Multiselect = false
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            string path = dialog.FileName;
+            manager.Apply(screen, path, config.Mute, config.TargetFps);
+            config.MonitorVideos[device] = path;
+            store.Save(config);
+            // Masuk ke library juga, supaya berkasnya bisa dipakai lagi di layar
+            // lain tanpa harus dicari dari awal.
+            if (config.Library == null) config.Library = new List<string>();
+            if (!config.Library.Contains(path)) config.Library.Add(path);
+            store.Save(config);
+            ShowToast(Tr("toast.applied"));
+            SwitchPage("displays");
+        }
+
+        /// <summary>
+        /// Buka Luma Studio dengan monitor ini sudah terpilih.
+        ///
+        /// Tanpa ini, menekan "Atur" akan membuka Studio pada monitor pertama,
+        /// dan pengguna harus mencari sendiri layar yang tadi ingin diatur -
+        /// padahal ia baru saja menunjuknya.
+        /// </summary>
+        private void BukaStudioUntuk(string device)
+        {
+            PilihStudioDevice(device);
+            SwitchPage("studio");
         }
 
         private void ApplyToMonitor(string device)
@@ -3688,6 +3844,7 @@ namespace LumaWall
             // One call, so a monitor that must resume and one that must pause are
             // updated together - no intermediate state where everything runs.
             var covered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Jeda otomatis: jendela yang menutupi layar.
             if (!globalPause)
             {
                 // Both lists come from ONE pass over the window list. Asking for them
@@ -3700,6 +3857,15 @@ namespace LumaWall
                 if (config.PauseMaximized)
                     foreach (string device in maximized) covered.Add(device);
             }
+            // Pilihan pengguna, ditambahkan di atas jeda otomatis.
+            //
+            // Ditambahkan, bukan menggantikan: sebuah monitor bisa dijeda karena
+            // pengguna memintanya DAN karena ada game di atasnya, dan kedua
+            // sebabnya harus bertahan sendiri-sendiri. Kalau yang satu menimpa
+            // yang lain, melepas game akan melanjutkan layar yang sengaja
+            // dijeda pengguna.
+            foreach (string device in pausedMonitors) covered.Add(device);
+
             manager.ApplyPauseState(covered, globalPause);
         }
 
@@ -3728,9 +3894,26 @@ namespace LumaWall
                 if (activePage == "displays") SwitchPage("displays");
             }
             if (activePage == "performance") UpdateTelemetry();
-        }
 
-        private static string GetMonitorSignature()
+            // Pembersihan cache video sesekali, bukan setiap tick.
+            //
+            // Salinan video yang sudah diperkecil tidak boleh menumpuk
+            // selamanya: pengguna yang sering berganti wallpaper akan
+            // meninggalkan salinan untuk setiap video yang pernah dipakai.
+            // Yang dihapus hanya salinan yang sudah lama tidak dipakai -
+            // berkas asli pengguna tidak pernah disentuh.
+            if ((DateTime.UtcNow - terakhirBersihkanCache).TotalHours >= 6)
+            {
+                terakhirBersihkanCache = DateTime.UtcNow;
+                var umur = TimeSpan.FromDays(14);
+                Task.Run(delegate { VideoScale.BersihkanCache(umur); });
+            }
+            }
+
+            /// <summary>Kapan cache video terakhir dibersihkan.</summary>
+            private DateTime terakhirBersihkanCache = DateTime.UtcNow;
+
+            private static string GetMonitorSignature()
         {
             return string.Join("|", Forms.Screen.AllScreens.OrderBy(s => s.DeviceName, StringComparer.OrdinalIgnoreCase).Select(s => s.DeviceName + ":" + s.Bounds.ToString()));
         }
