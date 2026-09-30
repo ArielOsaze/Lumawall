@@ -37,7 +37,7 @@
 <link rel="apple-touch-icon" href="assets/logo/logo-150.e23f998f8e.png">
 <link rel="preload" href="assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/fonts.ad37d8582b.css">
-<link rel="stylesheet" href="assets/css/style.00dd54fec4.css">
+<link rel="stylesheet" href="assets/css/style.aafd3c53a1.css">
 
 <!-- Structured data, so a search result can show the app rather than a plain
      link. Every field here is verifiable: the version and the file size come from
@@ -49,7 +49,7 @@
   "name": "LumaWall",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Windows 10, Windows 11",
-  "softwareVersion": "4.5.9.0",
+  "softwareVersion": "4.5.10.0",
   "fileSize": "15.2MB",
   "description": "Wallpaper hidup untuk Windows. Video diproses chip grafis, jadi CPU tetap di bawah 1%, dan wallpaper berhenti otomatis saat ada aplikasi fullscreen. Rp10.000 sekali bayar untuk lisensi lifetime (promo sampai 15 Oktober 2026).",
   "url": "https://lumawall.xinet.id/",
@@ -76,19 +76,46 @@
       <span class="brand-text">LumaWall</span>
     </a>
     <nav class="nav-links">
-      <a href="#features">Fitur</a>
-      <a href="#studio">Luma Studio</a>
-      <a href="#performance">Performa</a>
-      <a href="#video">Video</a>
-      <a href="#screens">Tampilan</a>
+      <div class="nav-drop">
+        <button type="button" aria-expanded="false" aria-haspopup="true">Fitur</button>
+        <div class="nav-drop-panel">
+          <a href="#features"><b>Fitur</b><span>Semua yang bisa dilakukan LumaWall</span></a>
+          <a href="#performance"><b>Performa</b><span>GPU, RAM, dan waktu muat</span></a>
+        </div>
+      </div>
+      <div class="nav-drop">
+        <button type="button" aria-expanded="false" aria-haspopup="true">Galeri</button>
+        <div class="nav-drop-panel">
+          <a href="#studio"><b>Luma Studio</b><span>Atur timer, filter, dan penempatan</span></a>
+          <a href="#video"><b>Video</b><span>Lihat LumaWall berjalan</span></a>
+          <a href="#screens"><b>Tampilan</b><span>Tangkapan layar asli</span></a>
+        </div>
+      </div>
       <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-cta">
       <a href="en/" class="lang" hreflang="en" lang="en" title="Read this page in English">EN</a>
       <a href="#download" class="btn btn-primary btn-sm">Unduh</a>
+      <button type="button" class="nav-burger" aria-label="Buka menu" aria-expanded="false" aria-controls="nav-mobile">
+        <span></span>
+      </button>
     </div>
   </div>
 </header>
+
+<!-- Menu untuk layar kecil. Tautannya sama persis dengan yang ada di bilah
+     atas, hanya tanpa tingkatan: di layar sempit menu bertingkat lebih
+     merepotkan daripada menolong. -->
+<nav class="nav-mobile" id="nav-mobile" aria-label="Menu utama">
+  <a href="#features">Fitur</a>
+  <a href="#performance">Performa</a>
+  <div class="nav-mobile-group">Galeri</div>
+  <a href="#studio">Luma Studio</a>
+  <a href="#video">Video</a>
+  <a href="#screens">Tampilan</a>
+  <a href="#faq">FAQ</a>
+  <a href="#download">Unduh</a>
+</nav>
 
 <!-- ═══════════════ HERO ═══════════════ -->
 <section class="hero" id="top">
@@ -732,7 +759,7 @@
       <a href="https://apps.microsoft.com/detail/9PN82QJLV05B" class="btn btn-ghost btn-lg" target="_blank" rel="noopener">
         Microsoft Store &middot; <span data-price-store>Rp18.000</span>
       </a>
-      <span class="cta-note">Versi 4.5.9.0 &middot; Windows 10 / 11 &middot; x64 &middot; 15,6 MB</span>
+      <span class="cta-note">Versi 4.5.10.0 &middot; Windows 10 / 11 &middot; x64 &middot; 15,6 MB</span>
     </div>
   </div>
 </section>
@@ -803,5 +830,6 @@
 
 <script src="assets/js/harga.js"></script>
 <script src="assets/js/main.9d1f69de0a.js"></script>
+<script src="assets/js/nav.19cc7fcfab.js" defer></script>
 </body>
 </html>

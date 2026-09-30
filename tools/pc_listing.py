@@ -96,6 +96,12 @@ EN = {
         "- English and Indonesian interface"
     ),
     "What's new in this version": (
+        "Version 4.5.10\n"
+        "- The wallpaper comes back in a fraction of a second after closing a "
+        "fullscreen app; it previously stayed black for up to 40 seconds\n"
+        "- The checkout and order pages have a navigation menu on phones\n"
+        "- The navigation bar is tidier, with the sections grouped into menus\n"
+        "\n"
         "Version 4.5.9\n"
         "- Stopping a wallpaper and applying one again no longer leaves the screen "
         "black; the last frame stays up until the next wallpaper is ready\n"

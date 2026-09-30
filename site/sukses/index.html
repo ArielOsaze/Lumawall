@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="../assets/logo/logo-150.e23f998f8e.png">
 <link rel="preload" href="../assets/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/css/fonts.ad37d8582b.css">
-<link rel="stylesheet" href="../assets/css/style.00dd54fec4.css">
+<link rel="stylesheet" href="../assets/css/style.aafd3c53a1.css">
 <link rel="stylesheet" href="../assets/css/buy.e72a9ae33f.css">
 </head>
 <body class="buy-page">
@@ -31,9 +31,20 @@
     <div class="nav-cta">
       <a href="../en/success/" class="lang">EN</a>
       <a href="../" class="btn btn-ghost btn-sm">Beranda</a>
+      <button type="button" class="nav-burger" aria-label="Buka menu" aria-expanded="false" aria-controls="nav-mobile">
+        <span></span>
+      </button>
     </div>
   </div>
 </header>
+
+<!-- Menu untuk layar kecil; tautannya hilang sama sekali di HP tanpa ini. -->
+<nav class="nav-mobile" id="nav-mobile" aria-label="Menu utama">
+  <a href="../#features">Fitur</a>
+  <a href="../#performance">Performa</a>
+  <a href="../#download">Unduh</a>
+  <a href="../">Beranda</a>
+</nav>
 
 <main id="main">
 <section class="buy-hero">
@@ -158,5 +169,6 @@
 
 <script src="../assets/js/harga.js"></script>
 <script src="../assets/js/success.7ce5ceef50.js"></script>
+<script src="../assets/js/nav.19cc7fcfab.js" defer></script>
 </body>
 </html>

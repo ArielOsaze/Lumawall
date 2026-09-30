@@ -8,6 +8,72 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.10.0
+
+### Bahasa Indonesia
+
+**Wallpaper kembali seketika setelah keluar dari aplikasi fullscreen**
+
+Setelah menutup game atau aplikasi fullscreen, desktop bisa tetap hitam sampai
+**40 detik**. Penyebabnya bukan lambatnya memuat ulang: saat wallpaper dijeda,
+Chromium diminta melepas memorinya, dan halaman videonya ikut kehilangan
+kemampuan menjalankan skrip. Perintah "lanjut" yang dikirim setelah itu tidak
+dijalankan oleh apa pun.
+
+Yang membuatnya lama adalah cara aplikasi mengetahuinya. Pemeriksaan kesehatan
+halaman berjalan setiap 20 detik dan baru membangun ulang halaman setelah **dua**
+kegagalan berturut-turut — jadi halaman yang mati saat fullscreen menunggu 40
+detik sebelum ada yang memperbaikinya.
+
+Sekarang:
+
+- memori dikembalikan **sebelum** perintah lanjut dikirim, bukan sesudahnya
+- halaman diperiksa **tepat pada saat lanjut**, bukan menunggu jadwal
+- satu kegagalan sudah cukup pada saat itu, karena tidak ada pergantian halaman
+  yang sedang berlangsung
+
+Hasilnya: wallpaper kembali dalam **0,2 detik**.
+
+**Perbaikan lain**
+
+- Halaman pembelian dan status pesanan punya menu navigasi di layar kecil.
+  Sebelumnya seluruh tautan hilang di HP, sehingga halaman pembayaran tidak punya
+  jalan kembali ke halaman utama.
+- Bilah navigasi dirapikan: enam tautan datar menjadi dua menu bertingkat dan
+  satu tautan, sehingga tidak lagi penuh.
+
+### English
+
+**The wallpaper comes back immediately after leaving a fullscreen app**
+
+After closing a game or a fullscreen app, the desktop could stay black for up to
+**40 seconds**. The cause was not slow loading: while the wallpaper is stopped,
+Chromium is asked to release memory, and the video page loses the ability to run
+its own script. The "resume" command sent afterwards is then carried out by
+nothing at all.
+
+What made it slow was how the app found out. The page's health check runs every
+20 seconds and only rebuilds the page after **two** consecutive failures — so a
+page that died during fullscreen waited 40 seconds before anything repaired it.
+
+Now:
+
+- memory is restored **before** the resume command is sent, not after
+- the page is checked **at the moment of resume**, not on the next scheduled pass
+- a single failure is enough at that moment, because no page change is in flight
+
+The result: the wallpaper returns in **0.2 seconds**.
+
+**Other fixes**
+
+- The checkout and order-status pages have a navigation menu on small screens.
+  Previously every link disappeared on a phone, leaving the payment page with no
+  way back to the main page.
+- The navigation bar was tidied: six flat links became two grouped menus and one
+  link, so it is no longer crowded.
+
+---
+
 ## 4.5.9.0
 
 ### Bahasa Indonesia

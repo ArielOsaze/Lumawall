@@ -68,6 +68,11 @@ namespace LumaWall
             { "display.selected", new[] { "Terpilih", "Selected", "已选择", "選択中" } },
             { "display.primary", new[] { "Utama", "Primary", "主显示器", "メイン" } },
             { "display.unset", new[] { "Belum diatur", "Not set", "未设置", "未設定" } },
+            { "display.state.on", new[] { "Aktif", "Active", "已启用", "有効" } },
+            { "display.state.off", new[] { "Kosong", "Empty", "未设置", "未設定" } },
+            { "display.default", new[] { "Setelan bawaan", "Default settings", "默认设置", "既定の設定" } },
+            { "display.brightness.short", new[] { "Cerah", "Bright", "亮度", "明るさ" } },
+            { "display.saturation.short", new[] { "Saturasi", "Saturation", "饱和度", "彩度" } },
             { "action.apply", new[] { "Terapkan", "Apply", "应用", "適用" } },
             { "action.stop", new[] { "Hentikan", "Stop", "停止", "停止" } },
             { "perf.title", new[] { "Performa", "Performance", "性能", "パフォーマンス" } },
@@ -2001,13 +2006,92 @@ namespace LumaWall
             return PageScroll(content);
         }
 
+        /// <summary>
+        /// A small labelled pill, for facts about one monitor.
+        ///
+        /// Used rather than plain text because these are states, not prose: "on",
+        /// "default", and the tuning summary are each one fact, and a bordered pill
+        /// separates them from the wallpaper's name above without adding a heading.
+        /// </summary>
+        private Border StatusChip(string text, Color tint)
+        {
+            var chip = new Border
+            {
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(7, 3, 7, 3),
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(28, tint.R, tint.G, tint.B)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(90, tint.R, tint.G, tint.B)),
+                BorderThickness = new Thickness(1)
+            };
+            chip.Child = new TextBlock
+            {
+                Text = text,
+                Foreground = new SolidColorBrush(tint),
+                FontFamily = FMono,
+                FontSize = 9,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 190
+            };
+            return chip;
+        }
+
+        /// <summary>
+        /// A short summary of how this monitor is tuned, or "" when it is untouched.
+        ///
+        /// Only the settings that change what the visitor actually sees are listed, and
+        /// only the ones that are not at their default: a card that says "brightness
+        /// 100% contrast 100% saturation 100%" is noise, and noise is what makes a
+        /// summary unreadable. An untouched monitor returns "" so the caller can say
+        /// "default" instead of printing an empty chip.
+        /// </summary>
+        private string DescribeDisplayOptions(string device)
+        {
+            DisplayOptions opt;
+            if (config.Displays == null || !config.Displays.TryGetValue(device, out opt) || opt == null) return "";
+            if (opt.IsNeutral()) return "";
+
+            var parts = new List<string>();
+
+            if (opt.Filter != null && opt.Filter != "none" && opt.Filter.Length > 0)
+                parts.Add(opt.Filter.ToUpperInvariant());
+            if (Math.Abs(opt.Brightness - 1.0) > 0.01)
+                parts.Add(Tr("display.brightness.short") + " " + (int)Math.Round(opt.Brightness * 100) + "%");
+            if (Math.Abs(opt.Saturation - 1.0) > 0.01)
+                parts.Add(Tr("display.saturation.short") + " " + (int)Math.Round(opt.Saturation * 100) + "%");
+            if (opt.HdrToneMap) parts.Add("HDR");
+            if (opt.Fit != null && opt.Fit != "cover" && opt.Fit.Length > 0)
+                parts.Add(opt.Fit.ToUpperInvariant());
+            if (Math.Abs(opt.Zoom - 1.0) > 0.01)
+                parts.Add((int)Math.Round(opt.Zoom * 100) + "%");
+            if (Math.Abs(opt.PlaybackRate - 1.0) > 0.01)
+                parts.Add(Math.Round(opt.PlaybackRate, 2) + "x");
+            if (opt.PingPong) parts.Add("PING-PONG");
+            if (opt.FlipHorizontal) parts.Add("FLIP H");
+            if (opt.FlipVertical) parts.Add("FLIP V");
+
+            // Three is the most that fits without crowding the card; the rest are in
+            // Luma Studio, which is where they are edited anyway.
+            if (parts.Count > 3)
+            {
+                return string.Join(" · ", parts.GetRange(0, 3).ToArray()) + " +" + (parts.Count - 3);
+            }
+            return string.Join(" · ", parts.ToArray());
+        }
+
         private Border MonitorCard(Forms.Screen screen, int index, string current)
         {
             bool hasWallpaper = File.Exists(current);
+            // Height has to fit four rows: the preview, the name, the device line, and
+            // the status chips. It was 262 and the chips were the row that fell outside
+            // the card - present in the tree, invisible on screen, which is worse than
+            // absent because nothing looks wrong until someone checks.
             var card = new Border
             {
                 Width = 306,
-                Height = 262,
+                Height = 296,
                 Margin = new Thickness(0, 0, 16, 16),
                 CornerRadius = new CornerRadius(11),
                 Background = new SolidColorBrush(CSurface),
@@ -2016,7 +2100,7 @@ namespace LumaWall
                 ClipToBounds = true
             };
             var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(150) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(146) });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)) };
             if (hasWallpaper)
@@ -2068,14 +2152,21 @@ namespace LumaWall
             body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var copy = new StackPanel();
-            copy.Children.Add(new TextBlock
+            // The name is trimmed to fit the card, so the full name is on the tooltip.
+            // A wallpaper called "moonlit-reverie-raiden-shogun-genshin-impact" is
+            // unreadable at card width, and without this there is no way to tell two
+            // similarly-named files apart.
+            string namaLengkap = hasWallpaper ? Path.GetFileNameWithoutExtension(current) : Tr("display.unset");
+            var nama = new TextBlock
             {
-                Text = hasWallpaper ? Path.GetFileNameWithoutExtension(current) : Tr("display.unset"),
+                Text = namaLengkap,
                 Foreground = new SolidColorBrush(hasWallpaper ? CText : CMuted),
                 FontSize = 12.5,
                 FontWeight = FontWeights.SemiBold,
                 TextTrimming = TextTrimming.CharacterEllipsis
-            });
+            };
+            if (hasWallpaper) nama.ToolTip = namaLengkap;
+            copy.Children.Add(nama);
             copy.Children.Add(new TextBlock
             {
                 Text = screen.DeviceName + (hasWallpaper ? "   ·   " + (IsImageFile(current) ? "STATIC" : "LOOP") : ""),
@@ -2084,6 +2175,30 @@ namespace LumaWall
                 Margin = new Thickness(0, 3, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
+
+            // What this monitor is actually doing, and how it is tuned.
+            //
+            // The page used to show a name and two buttons and nothing else, so a
+            // monitor's own settings - brightness, filter, fit, speed, all of them
+            // real and all of them adjustable - were invisible here. The card is the
+            // only place that is about one monitor, so it is where they belong.
+            var status = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 7, 0, 0) };
+            status.Children.Add(StatusChip(
+                hasWallpaper ? Tr("display.state.on") : Tr("display.state.off"),
+                hasWallpaper ? CAccent : CDim));
+            if (hasWallpaper)
+            {
+                string tuning = DescribeDisplayOptions(screen.DeviceName);
+                if (tuning.Length > 0)
+                {
+                    status.Children.Add(StatusChip(tuning, CPrimaryHi));
+                }
+                else
+                {
+                    status.Children.Add(StatusChip(Tr("display.default"), CDim));
+                }
+            }
+            copy.Children.Add(status);
             body.Children.Add(copy);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
             var apply = CompactActionButton(Tr("action.apply"));

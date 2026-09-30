@@ -55,6 +55,10 @@ PAGES = [
     os.path.join(SITE, 'en', 'buy', 'index.html'),
     os.path.join(SITE, 'sukses', 'index.html'),
     os.path.join(SITE, 'en', 'success', 'index.html'),
+    # Halaman privasi memuat CSS yang sama, jadi tanpa didaftarkan di sini
+    # berkas yang di-cache di sana tertinggal di versi lama.
+    os.path.join(SITE, 'privacy', 'index.html'),
+    os.path.join(SITE, 'en', 'privacy', 'index.html'),
     # Halaman privasi juga memuat CSS dan logo yang sama. Sebelum ini
     # didaftarkan, halaman itu tertinggal menunjuk nama berkas yang sudah
     # diganti - dan karena cache-bust hanya memproses halaman yang terdaftar,
@@ -72,6 +76,10 @@ WATCHED = [
     'assets/css/style.css',
     'assets/css/fonts.css',
     'assets/js/main.js',
+    # nav.js dimuat setiap halaman, jadi tanpa entri ini versi cache-nya tidak
+    # pernah berubah dan perubahan navbar tidak akan terlihat oleh pengunjung
+    # yang sudah pernah membuka situs.
+    'assets/js/nav.js',
     'assets/shots/poster-promo.png',
     'assets/shots/poster-promo-en.png',
     # The share cards are fetched by crawlers rather than browsers, and a crawler that

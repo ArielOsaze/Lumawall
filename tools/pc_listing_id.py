@@ -68,6 +68,12 @@ ID = {
         "- Antarmuka bahasa Indonesia dan Inggris"
     ),
     "What's new in this version": (
+        "Versi 4.5.10\n"
+        "- Wallpaper kembali dalam sepersekian detik setelah keluar dari aplikasi "
+        "fullscreen; sebelumnya bisa hitam sampai 40 detik\n"
+        "- Halaman pembelian dan status pesanan punya menu navigasi di HP\n"
+        "- Bilah navigasi lebih rapi, bagian-bagiannya dikelompokkan\n"
+        "\n"
         "Versi 4.5.9\n"
         "- Hentikan wallpaper lalu pasang lagi tidak lagi menyisakan layar hitam; "
         "frame terakhir tetap terlihat sampai wallpaper berikutnya siap\n"

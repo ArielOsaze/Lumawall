@@ -2696,6 +2696,54 @@ namespace LumaWall
         /// because the probe is a single trivial expression, and a wallpaper that has been
         /// still for a minute is a bug report.
         /// </summary>
+        /// <summary>
+        /// Ask the page about itself now, instead of waiting for the liveness interval.
+        ///
+        /// Used on the resume edge, where the answer is known to have just changed. The
+        /// rules are the same as the periodic check's - the probe is identical - but the
+        /// two waits that make the periodic check patient are removed, because patience
+        /// is exactly the wrong quality here: the desktop is black for as long as it lasts.
+        ///
+        ///   - the 20-second interval is skipped: this is the moment to ask.
+        ///   - the settle delay is skipped: the page was just told to resume, and a page
+        ///     that cannot answer at all is the case being looked for.
+        ///   - one strike is enough rather than two. Two strikes exist to protect a page
+        ///     that merely blinked while its document was being replaced; on this edge
+        ///     there is no replacement in flight, so a page that does not answer is a page
+        ///     that is not there.
+        /// </summary>
+        private void RequestLivenessCheckNow()
+        {
+            if (IsDisposed || staticMode || !pageReady) return;
+            if (webView == null || webView.IsDisposed || webView.CoreWebView2 == null) return;
+            if (livenessCheckInFlight) return;
+
+            livenessCheckInFlight = true;
+            lastLivenessCheck = DateTime.UtcNow;
+
+            string probe = "String((window.luma&&window.luma.state)?window.luma.state():'no-state')";
+            try
+            {
+                webView.CoreWebView2.ExecuteScriptAsync(probe).ContinueWith(delegate(Task<string> task)
+                {
+                    livenessCheckInFlight = false;
+                    if (IsDisposed) return;
+                    if (InvokeRequired)
+                    {
+                        try { BeginInvoke(new Action(delegate { ReconcileBody(task, !playbackPaused); })); }
+                        catch { }
+                        return;
+                    }
+                    ReconcileBody(task, !playbackPaused);
+                });
+            }
+            catch (Exception ex)
+            {
+                livenessCheckInFlight = false;
+                AppLog.Write("Resume liveness check skipped on " + screen.DeviceName + ": " + ex.Message);
+            }
+        }
+
         private void ReconcilePlayback()
         {
             if (IsDisposed || staticMode || !pageReady) return;
@@ -2795,7 +2843,13 @@ namespace LumaWall
                         AppLog.Write("Wallpaper page did not answer on " + screen.DeviceName
                             + " (strike " + deadPageStrikes + " of " + DeadPageStrikes
                             + ", result " + (task.IsFaulted ? "faulted" : (task.Result ?? "null")) + ")");
-                        if (deadPageStrikes < DeadPageStrikes) return;
+
+                        // A page that was just resumed and cannot answer at all is not
+                        // blinking - nothing is replacing its document. Rebuilding it
+                        // straight away is what keeps the desktop from staying black for
+                        // another 20 seconds while a second strike accumulates.
+                        bool justResumed = !playbackPaused && mediaConfirmed;
+                        if (!justResumed && deadPageStrikes < DeadPageStrikes) return;
 
                         deadPageStrikes = 0;
                         mediaConfirmed = false;
@@ -3074,12 +3128,48 @@ namespace LumaWall
             // of step; this is only here so a missed command cannot persist.
             DateTime now = DateTime.UtcNow;
             bool due = changed || (now - lastPlaybackCommand).TotalSeconds >= ReassertSeconds;
+
+            // Resources FIRST when resuming, command second.
+            //
+            // While the wallpaper is stopped it is held at MemoryUsageTargetLevel.Low,
+            // and that is not just a hint: Chromium releases the renderer's resources,
+            // and a page held there for a while can lose its script context entirely.
+            // Sending play() to a page in that state does nothing, because there is
+            // nothing left to run it.
+            //
+            // This is the same lesson PrepareForMediaChange already learned and applied
+            // for changing wallpaper while the desktop is covered ("Restoring Normal
+            // first is what makes a wallpaper change work"). It simply had not been
+            // applied to the pause-to-resume path, which is the one a fullscreen app
+            // exercises every single time.
+            if (!value) ApplyMemoryTargetLevel();
+
             if (due)
             {
                 lastPlaybackCommand = now;
                 ApplyPlaybackState();
             }
-            ApplyMemoryTargetLevel();
+
+            // Pausing still settles the level afterwards: there is no work to lose by
+            // releasing resources once the page has been told to stop.
+            if (value) ApplyMemoryTargetLevel();
+
+            // On resume, find out straight away whether the page survived the pause.
+            //
+            // This is what turns a 40-second black screen into an immediate one. The
+            // reconcile that notices a dead page runs on the liveness interval - 20
+            // seconds - and requires two consecutive failures, so a page that died while
+            // the wallpaper was stopped stayed black for 40 seconds before anything
+            // rebuilt it. That was the reported "delay yg bikin jdi item lama bgt".
+            //
+            // Checking on the resume edge does not make the check less careful: it is
+            // the same probe with the same rules, only asked at the one moment where the
+            // answer is known to have just changed. A page that is fine answers
+            // immediately and nothing happens.
+            if (!value && changed && !staticMode)
+            {
+                try { RequestLivenessCheckNow(); } catch { }
+            }
             return changed;
         }
 
@@ -3123,6 +3213,20 @@ namespace LumaWall
                 webView.CoreWebView2.MemoryUsageTargetLevel = idle
                     ? CoreWebView2MemoryUsageTargetLevel.Low
                     : CoreWebView2MemoryUsageTargetLevel.Normal;
+
+                // There is deliberately NO "undo the pressure notice" call here.
+                //
+                // Memory.simulatePressureNotification accepts only "moderate" and
+                // "critical"; "none" is not a value it knows, and passing it throws
+                // ArgumentException ("Value does not fall within the expected range").
+                // That was tried, and the throw landed inside the resume path and stopped
+                // the wallpaper from coming back at all - a worse fault than the delay it
+                // was meant to fix, introduced by a plausible-sounding guess.
+                //
+                // Setting MemoryUsageTargetLevel back to Normal is the whole restore:
+                // it is the documented control for how much the engine may hold, and the
+                // pressure notice is a one-shot instruction to shed, not a mode that
+                // persists.
             }
             catch (Exception ex)
             {
@@ -3194,8 +3298,19 @@ namespace LumaWall
                 // changes wallpaper and nothing happens. Moderate still runs the purge
                 // machinery (caches trimmed, discardable memory dropped, an extra GC)
                 // without authorising the one action that leaves a page unable to work.
+                // The task is observed on purpose. An unawaited CallDevToolsProtocol
+                // failure surfaces later as an UNOBSERVED TASK EXCEPTION on the
+                // finalizer thread, which cannot be caught where it happens and
+                // cannot be attributed to the call that caused it.
                 webView.CoreWebView2.CallDevToolsProtocolMethodAsync("Memory.simulatePressureNotification",
-                    "{\"level\":\"moderate\"}");
+                    "{\"level\":\"moderate\"}").ContinueWith(delegate(Task t)
+                {
+                    if (t.IsFaulted)
+                    {
+                        AppLog.Write("Memory pressure request failed on " + screen.DeviceName
+                                     + ": " + (t.Exception == null ? "?" : t.Exception.GetBaseException().Message));
+                    }
+                });
             }
             catch (Exception ex)
             {
