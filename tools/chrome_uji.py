@@ -46,7 +46,10 @@ class RECT(ctypes.Structure):
 
 def profil_uji(nama):
     """Folder profil Chrome untuk uji bernama `nama`."""
-    return (Path('build') / ('chrome-' + nama)).resolve()
+    # Relatif terhadap berkas ini, bukan direktori kerja: profil uji harus
+    # selalu di tempat yang sama, supaya pembersihan sisa (yang mencari
+    # 'build/chrome-*' di baris perintah) menemukannya.
+    return Path(__file__).resolve().parent.parent / 'build' / ('chrome-' + nama)
 
 
 def bersihkan_sisa(nama):

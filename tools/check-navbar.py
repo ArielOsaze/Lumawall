@@ -22,6 +22,7 @@ import json
 import subprocess
 import sys
 import time
+import socketserver
 import urllib.request
 from pathlib import Path
 
@@ -34,8 +35,33 @@ CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chrome_uji import bersihkan_sisa, kumpulan_pid  # noqa: E402
 PORT = 9458
-SITE = Path('site')
+# Path absolut, dihitung dari letak berkas ini - bukan path relatif.
+# Path relatif bergantung pada direktori kerja: dijalankan dari tempat lain,
+# folder 'site' tidak ditemukan, server gagal, dan checker keluar sebelum
+# memeriksa apa pun - yang terbaca sebagai 'semua rusak' atau 'tidak ada
+# yang terdeteksi', dua-duanya menyesatkan.
+SITE = Path(__file__).resolve().parent.parent / 'site'
 URL = 'http://127.0.0.1:8971/'
+
+
+class ServerDiam(socketserver.TCPServer):
+    """Server yang tidak berteriak saat klien membatalkan unduhan.
+
+    Chrome membatalkan unduhan berkas besar (video promo) begitu halaman selesai
+    dimuat. http.server bawaan mencetak traceback penuh ke stderr untuk itu, dan
+    traceback-nya menenggelamkan hasil pemeriksaan yang sebenarnya - sampai
+    pernah terbaca sebagai kegagalan, padahal semua pemeriksaan lulus.
+
+    Yang ditangani hanya pemutusan koneksi, yang memang kejadian normal. Kesalahan
+    lain tetap dilewatkan.
+    """
+
+    def handle_error(self, request, client_address):
+        import sys as _sys
+        jenis = _sys.exc_info()[0]
+        if jenis in (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            return
+        super().handle_error(request, client_address)
 
 
 def jalankan_server():
@@ -47,7 +73,7 @@ def jalankan_server():
 
     handler = functools.partial(http.server.SimpleHTTPRequestHandler,
                                 directory=str(SITE.resolve()))
-    httpd = socketserver.TCPServer(('127.0.0.1', 8971), handler)
+    httpd = ServerDiam(('127.0.0.1', 8971), handler)
     httpd.allow_reuse_address = True
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()

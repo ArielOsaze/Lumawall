@@ -21,7 +21,8 @@ from pathlib import Path
 
 CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 PORT = 9460
-SITE = Path('site')
+# Path absolut, dihitung dari letak berkas ini - bukan path relatif.
+SITE = Path(__file__).resolve().parent.parent / 'site'
 URL = 'http://127.0.0.1:8973/'
 KELUARAN = Path('build/navbar')
 
