@@ -88,6 +88,14 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 16 | Sakelar **tidak membangun ulang halaman** | ✅ hanya sakelar yang mengubah susunan (jam on/off) yang memicu muat ulang | baca `StudioToggle` di `FeaturesPage.cs` |
 | 17 | Installer terpasang = versi yang dibuild | ✅ 4.5.13.0 terpasang, situs juga menyajikan 4.5.13.0 | `python tools/release.py --verify-only` |
 | 18 | Jalankan/pause saat fullscreen | ✅ jeda terdeteksi, tidak ada putaran selesai selama jeda, frame pertama setelah 25 ms, video benar berjalan (putaran selesai 11.4 s) | `python tools/check-pause-resume.py` |
+| 19 | Jam memakai **Inter Display**, bukan Inter teks | ✅ `ioslarge/ioslight/iosstack/iosdate -> Inter Display Light`. Inter Display dirancang untuk ukuran besar, seperti SF Pro Display milik Apple | `LumaWall.exe --render-timer` |
+| 20 | Tanggal di **atas** jam, untuk semua gaya iOS | ✅ susunan yang Apple pakai; sebelumnya tiga gaya menaruhnya di bawah | `LumaWall.exe --render-timer` + lihat gambar |
+| 21 | Jam dan tanggal **satu keluarga font** | ✅ jam Inter Display Light, tanggal Inter Light - sebelumnya tanggal memakai Segoe | `LumaWall.exe --render-timer` |
+| 22 | Pemilih gaya menggambar susunan yang sebenarnya | ✅ keempat gaya iOS menggambar tanggal kecil di atas jam besar | buka Luma Studio → Jam desktop |
+| 23 | Halaman Monitor tidak menampilkan nama perangkat internal | ✅ `\\.\DISPLAY2 · LOOP` diganti jenis wallpaper + ukuran berkas | buka halaman Monitor |
+| 24 | Katalog: kategori mature **sesuai**, tidak nyasar | ✅ 82 entri dipindahkan ke Mature, 25 entri tidak layak dikeluarkan | `python tools/check-catalog.py` |
+| 25 | Katalog: tidak ada entri tanpa berkas video | ✅ 2.305 entri tanpa `videoUrl` dibuang - tidak bisa dipasang sama sekali | `python tools/check-catalog.py` |
+| 26 | Katalog: 25.560 entri, semua HD, 0 duplikat, 0 AI | ✅ 100% dinamis, 100% resolusi terukur, 56,8% 2K+ | `python tools/check-catalog.py` |
 
 ---
 
