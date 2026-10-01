@@ -1082,13 +1082,48 @@ namespace LumaWall
                 canvas.Children.Add(minute);
             }
 
+            // Glyph untuk gaya iOS: tanggal kecil di ATAS, jam besar di bawah.
+            //
+            // Sebelumnya keempat gaya iOS menggambar hal yang sama - satu baris
+            // "9:41" di tengah kotak - sehingga di layar pemilih gaya keempatnya
+            // terlihat identik. Padahal yang membedakan mereka adalah SUSUNANNYA,
+            // dan itu justru hal yang ingin dilihat orang saat memilih.
+            //
+            // Di iOS, tanggal selalu di atas jam: itu susunan yang Apple pakai dan
+            // tidak bisa diubah pemakai. Menggambarnya di sini membuat pemilih
+            // gaya menunjukkan hal yang sebenarnya akan muncul di layar.
+            bool gayaIos = key == "ioslarge" || key == "ioslight"
+                || key == "iosstack" || key == "iosdate";
+
+            if (gayaIos)
+            {
+                var tanggal = new TextBlock
+                {
+                    Text = "SUN 27",
+                    FontSize = 5.5,
+                    FontFamily = FDisplay,
+                    FontWeight = FontWeights.Normal,
+                    Foreground = new SolidColorBrush(Color.FromArgb(170, ink.R, ink.G, ink.B)),
+                };
+                tanggal.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(tanggal, (66 - tanggal.DesiredSize.Width) / 2);
+                Canvas.SetTop(tanggal, 11);
+                canvas.Children.Add(tanggal);
+            }
+
             // The time, with the halo that keeps it readable over anything.
             var time = new TextBlock
             {
                 Text = key == "ring" ? "5:00" : "9:41",
-                FontSize = key == "ring" ? 9.5 : 13,
+                // Jam gaya iOS digambar lebih besar daripada gaya lain, karena
+                // ukurannya itulah yang membuatnya terbaca sebagai jam iOS.
+                FontSize = key == "ring" ? 9.5
+                    : key == "ioslarge" ? 22
+                    : gayaIos ? 17
+                    : 13,
                 FontFamily = FDisplay,
-                FontWeight = FontWeights.SemiBold,
+                // Gaya iOS memakai huruf tipis; gaya lain semi tebal.
+                FontWeight = gayaIos ? FontWeights.Light : FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(ink),
                 // The dial has no text at all, so the glyph is left out rather than drawn
                 // over the hands.
@@ -1096,7 +1131,8 @@ namespace LumaWall
             };
             time.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(time, (66 - time.DesiredSize.Width) / 2);
-            Canvas.SetTop(time, (48 - time.DesiredSize.Height) / 2);
+            // Gaya iOS: jam duduk di bawah tanggalnya, bukan di tengah kotak.
+            Canvas.SetTop(time, gayaIos ? 21 : (48 - time.DesiredSize.Height) / 2);
             canvas.Children.Add(time);
 
             return canvas;

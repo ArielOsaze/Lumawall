@@ -59,9 +59,34 @@ MATURE_WORDS = {
     "nsfw", "ecchi", "lewd", "sexy", "seductive", "sensual", "sultry", "provocative",
     "lingerie", "bikini", "swimsuit", "cleavage", "boudoir", "gravure", "pin-up", "pinup",
     "bath", "shower", "hot", "girl", "girls", "waifu", "maid", "idol", "model",
+
+    # Kata yang juga membenarkan, dan harus sama dengan daftar di
+    # tools/tegakkan-mature.py. Kalau keduanya berbeda, alat itu akan
+    # mengeluarkan entri yang oleh pemeriksa ini dianggap benar - dan
+    # keduanya akan bertengkar tanpa akhir.
+    "alluring", "sunbathing", "bathing", "swimwear", "beachwear", "flirty",
+    "voluptuous", "curvy", "busty", "thigh", "thighs", "stockings",
+    "heels", "sundress", "onsen", "poolside", "topless", "nude", "naked",
+    "undress", "panties", "leotard", "bodysuit", "catsuit", "garter",
+    "corset", "negligee", "nightgown", "cheerleader", "nurse", "bunny",
+    "gym", "yoga", "massage", "bedroom", "beach",
 }
 
 GENERATED_TAGS = {"ai", "ai-art", "ai-generated", "midjourney", "stable-diffusion", "sdxl"}
+
+# AI-generated: HANYA kalau pembuatnya disebut.
+#
+# Pemeriksa versi lama menandai setiap judul yang memuat kata "ai", dan itu
+# melaporkan 30 entri palsu: "Ai Hoshino" adalah tokoh Oshi no Ko, "Kizuna AI"
+# adalah vtuber, dan "AI LIMIT" adalah judul game. Tidak satu pun gambar buatan
+# mesin. Yang dicari adalah PENYEBUTNYA - nama alat atau frasa "AI generated" -
+# bukan dua huruf yang kebetulan berdiri sendiri.
+GENERATED_TITLE = re.compile(
+    r"(midjourney|stable\s+diffusion|dall[- ]?e|"
+    r"\bai[-\s]generated\b|\bai[-\s]art\b|\bgenerated\s+by\s+ai\b|"
+    r"\bmade\s+with\s+ai\b)",
+    re.I,
+)
 
 UNSAFE_TITLE = re.compile(
     r"\b(loli|lolita|child|kid|little girl|baby|daughter|schoolgirl|school girl|student"
@@ -185,9 +210,8 @@ def main():
 
     # 6. generated images
     generated = [e for e in entries
-                 if "(ai)" in e.get("title", "").lower()
-                 or "ai generated" in e.get("title", "").lower()
-                 or "midjourney" in e.get("title", "").lower()]
+                 if GENERATED_TITLE.search(e.get("title", "") or "")
+                 or GENERATED_TITLE.search(e.get("videoUrl", "") or "")]
     print("  entries titled as AI: %d" % len(generated))
     if generated:
         failures.append("%d entries are titled as AI-generated, e.g. %s"

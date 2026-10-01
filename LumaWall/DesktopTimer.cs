@@ -516,10 +516,36 @@ namespace LumaWall
                 timeSize = 30f * scale;
                 labelSize = 11f * scale;
                 if (style == "bold") { timeSize = 38f * scale; labelSize = 12.5f * scale; }
-                if (style == "ioslarge") { timeSize = 62f * scale; labelSize = 14f * scale; }
-                if (style == "ioslight") { timeSize = 44f * scale; labelSize = 12f * scale; }
-                if (style == "iosstack") { timeSize = 40f * scale; labelSize = 13f * scale; }
-                if (style == "iosdate") { timeSize = 34f * scale; labelSize = 15f * scale; }
+
+                // Gaya iOS: ukurannya yang membuatnya terbaca sebagai iOS.
+                //
+                // Jam lock screen iPhone tingginya sekitar 11% dari tinggi layar,
+                // dan itu membuatnya jadi unsur paling besar di layar - bukan
+                // hiasan kecil di sudut. Angka-angka di bawah disetel dari
+                // perbandingan itu: pada monitor 1080p, ioslarge tergambar
+                // sekitar 120px, dan seluruh blok tanggal+jam mengisi sekitar
+                // seperlima tinggi layar.
+                //
+                // Yang membuatnya terlihat seperti iOS bukan hanya ukurannya,
+                // tetapi PERBANDINGANNYA: jam yang sangat besar dengan tanggal
+                // kecil di atasnya. Jam besar dengan tanggal yang ikut membesar
+                // akan terbaca sebagai dua teks biasa, bukan sebagai jam.
+                if (style == "ioslarge") { timeSize = 80f * scale; labelSize = 15f * scale; }
+
+                // ioslight, iosstack, iosdate: jam harus tetap DOMINAN.
+                //
+                // Di lock screen iPhone, jam selalu jauh lebih besar daripada
+                // tanggalnya - itulah yang membuatnya terbaca sebagai jam, bukan
+                // sebagai dua baris teks. Ukuran 58/52/46 hanya dua sampai tiga
+                // kali ukuran tanggalnya, dan pada perbandingan itu jamnya
+                // terbaca sebagai teks biasa yang kebetulan lebih besar.
+                //
+                // Yang juga penting adalah BERAT hurufnya: iOS memakai berat
+                // paling tipis untuk jamnya. Huruf yang lebih tebal pada ukuran
+                // besar terlihat berat, dan itu bagian dari "kayak bukan iOS".
+                if (style == "ioslight") { timeSize = 68f * scale; labelSize = 13f * scale; }
+                if (style == "iosstack") { timeSize = 64f * scale; labelSize = 13f * scale; }
+                if (style == "iosdate") { timeSize = 60f * scale; labelSize = 13f * scale; }
             }
 
             private static string Style(TimerConfig config)
@@ -667,32 +693,51 @@ namespace LumaWall
                 switch (style)
                 {
                     // iOS 15 lock screen: sangat besar dan sangat tipis.
+                    //
+                    // Memakai Inter DISPLAY, bukan Inter biasa.
+                    //
+                    // Inter punya dua varian dengan tujuan yang berbeda: "Inter"
+                    // dirancang untuk teks kecil (hurufnya lebih lebar dan
+                    // jaraknya lebih longgar supaya terbaca di badan paragraf),
+                    // sedangkan "Inter Display" dirancang untuk ukuran BESAR
+                    // (hurufnya lebih rapat dan proporsinya lebih halus). Itu
+                    // pembagian yang sama dengan SF Pro Text dan SF Pro Display
+                    // milik Apple - dan jam lock screen iPhone memakai yang
+                    // Display.
+                    //
+                    // Memakai varian teks untuk jam 120px adalah salah satu
+                    // sebab jamnya terlihat "seperti font biasa": hurufnya
+                    // terlalu lebar dan jaraknya terlalu longgar untuk ukuran
+                    // sebesar itu.
                     case "ioslarge":
                         return new[]
                         {
-                            new Face("Inter ExtraLight", FontStyle.Regular),
+                            new Face("Inter Display Light", FontStyle.Regular),
+                            new Face("Inter Display ExtraLight", FontStyle.Regular),
+                            new Face("Inter Display", FontStyle.Regular),
                             new Face("Inter Light", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI Light", FontStyle.Regular),
-                            new Face("Segoe UI", FontStyle.Regular),
                         };
 
                     // Satu langkah lebih tebal, supaya keduanya terlihat berbeda.
                     case "ioslight":
                         return new[]
                         {
+                            new Face("Inter Display Light", FontStyle.Regular),
+                            new Face("Inter Display ExtraLight", FontStyle.Regular),
                             new Face("Inter Light", FontStyle.Regular),
-                            new Face("Inter", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI Light", FontStyle.Regular),
-                            new Face("Segoe UI", FontStyle.Regular),
                         };
 
                     // Widget bertumpuk: tipis, tetapi tanggal yang bekerja.
                     case "iosstack":
                         return new[]
                         {
-                            new Face("Inter Light", FontStyle.Regular),
-                            new Face("Inter", FontStyle.Regular),
+                            new Face("Inter Display Light", FontStyle.Regular),
+                            new Face("Inter Display ExtraLight", FontStyle.Regular),
+                            new Face("Inter ExtraLight", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI", FontStyle.Regular),
                         };
@@ -701,9 +746,10 @@ namespace LumaWall
                     case "iosdate":
                         return new[]
                         {
-                            new Face("Inter Medium", FontStyle.Regular),
-                            new Face("Inter", FontStyle.Regular),
-                            new Face("Segoe UI Variable Display Semil", FontStyle.Regular),
+                            new Face("Inter Display Light", FontStyle.Regular),
+                            new Face("Inter Display ExtraLight", FontStyle.Regular),
+                            new Face("Inter Light", FontStyle.Regular),
+                            new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI", FontStyle.Regular),
                         };
 
@@ -769,8 +815,49 @@ namespace LumaWall
                 return list.ToArray();
             }
 
+            /// <summary>
+            /// Font tanggal - Inter, sama dengan jamnya.
+            ///
+            /// Sebelumnya fungsi ini memakai PickFont(), yang mencari font
+            /// SISTEM (Segoe UI Variable Display, lalu Segoe UI). Akibatnya
+            /// tanggal dan jam memakai dua font berbeda: jamnya Inter yang
+            /// tipis dan geometris, tanggalnya Segoe yang lebih lebar dan
+            /// bulat - dan mata langsung melihat keduanya tidak sekeluarga.
+            ///
+            /// Di lock screen iPhone, tanggal dan jam memang berbeda UKURAN dan
+            /// KETEBALAN, tetapi keduanya font yang sama. Itu yang membuat
+            /// keduanya terbaca sebagai satu blok, bukan sebagai dua teks yang
+            /// kebetulan bertumpuk.
+            ///
+            /// Tanggal memakai Light, bukan Regular: pada ukuran kecil, Regular
+            /// terlihat berat di sebelah jam yang tipis, dan iOS memakai berat
+            /// yang lebih ringan untuk tanggalnya.
+            /// </summary>
             private static Font LabelFont(float size)
             {
+                foreach (string nama in new[] { "Inter Light", "Inter", "Segoe UI Variable Display Light", "Segoe UI" })
+                {
+                    var family = FontLoader.AmbilDariKoleksi(nama);
+                    if (family != null)
+                    {
+                        try { return new Font(family, size, FontStyle.Regular, GraphicsUnit.Pixel); }
+                        catch { }
+                    }
+
+                    // Font sistem dicoba di blok terpisah.
+                    //
+                    // Kalau `new FontFamily(nama)` gagal untuk nama pertama, ia
+                    // melempar dan loop harus LANJUT ke nama berikutnya - bukan
+                    // keluar. Melemparnya di dalam try yang sama dengan return
+                    // membuat setiap kegagalan mengakhiri pencarian, sehingga
+                    // satu nama yang tidak ada berarti tanggal selalu jatuh ke
+                    // PickFont() dan kembali memakai Segoe.
+                    try
+                    {
+                        return new Font(new FontFamily(nama), size, FontStyle.Regular, GraphicsUnit.Pixel);
+                    }
+                    catch { }
+                }
                 return new Font(PickFont(), size, FontStyle.Regular, GraphicsUnit.Pixel);
             }
 
@@ -975,15 +1062,38 @@ namespace LumaWall
                             bool hasLabel = !string.IsNullOrEmpty(lastSubtitle) && style != "analog";
                             float timeH = timeFont.GetHeight(g);
                             float labelH = hasLabel ? labelFont.GetHeight(g) : 0f;
-                            float gap = hasLabel ? 2f * scale : 0f;
+
+                            // Jarak antara tanggal dan jam di lock screen iOS.
+                            //
+                            // Di iOS, tanggal duduk RAPAT di atas jam - bukan
+                            // terpisah jauh. Jarak 2px yang lama membuat keduanya
+                            // terbaca sebagai dua elemen terpisah, bukan sebagai
+                            // satu blok tanggal-dan-jam seperti di iPhone.
+                            float gap = hasLabel ? 4f * scale : 0f;
                             float blockH = timeH + gap + labelH;
 
                             float cx = content.Left + content.Width / 2f;
                             float timeCy, labelY;
-                            if (style == "iosstack" && hasLabel)
+
+                            // Tanggal SELALU di atas jam, untuk semua gaya iOS.
+                            //
+                            // Ini bukan pilihan gaya - ini susunan yang Apple
+                            // pakai dan tidak bisa diubah pemakai: "The date
+                            // always sits above the clock; nothing else on the
+                            // lock screen is repositionable - Apple fixes the
+                            // layout."
+                            //
+                            // Sebelumnya hanya iosstack yang menaruh tanggal di
+                            // atas; ioslarge, ioslight, dan iosdate menaruhnya di
+                            // BAWAH. Itu susunan yang tidak pernah ada di iPhone,
+                            // dan itulah kenapa jamnya "ga kayak bener yg ios" -
+                            // bukan karena fontnya, melainkan karena susunannya
+                            // bukan susunan iOS.
+                            bool tanggalDiAtas = style == "ioslarge" || style == "ioslight"
+                                || style == "iosstack" || style == "iosdate";
+
+                            if (tanggalDiAtas && hasLabel)
                             {
-                                // Date first, then the time under it - the iOS lock screen
-                                // widget stack. The block is centred as a whole.
                                 labelY = content.Top + (content.Height - blockH) / 2f;
                                 timeCy = labelY + labelH + gap + timeH / 2f;
                             }

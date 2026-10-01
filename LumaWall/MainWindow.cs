@@ -85,6 +85,9 @@ namespace LumaWall
             { "display.pausedOne", new[] { "Monitor ini dijeda", "This display is paused", "此显示器已暂停", "このモニターを一時停止しました" } },
             { "display.resumedOne", new[] { "Monitor ini lanjut", "This display resumed", "此显示器已继续", "このモニターを再開しました" } },
             { "display.brightness.short", new[] { "Cerah", "Bright", "亮度", "明るさ" } },
+            { "display.kind.video", new[] { "Video dinamis", "Animated video", "动态视频", "動画" } },
+            { "display.kind.static", new[] { "Gambar diam", "Still image", "静态图片", "静止画" } },
+            { "display.noWallpaper", new[] { "Belum ada wallpaper", "No wallpaper yet", "尚无壁纸", "壁紙がありません" } },
             { "display.saturation.short", new[] { "Saturasi", "Saturation", "饱和度", "彩度" } },
             { "action.apply", new[] { "Terapkan", "Apply", "应用", "適用" } },
             { "action.stop", new[] { "Hentikan", "Stop", "停止", "停止" } },
@@ -2426,9 +2429,34 @@ namespace LumaWall
             };
             if (hasWallpaper) nama.ToolTip = namaLengkap;
             copy.Children.Add(nama);
+
+            // Baris keterangan: jenis wallpaper, ukuran, dan nomor konektor -
+            // bukan nama perangkat internal Windows.
+            //
+            // Sebelumnya baris ini menampilkan "\\.\DISPLAY2 · LOOP", dan itu
+            // nama yang tidak berarti apa-apa bagi pemakai: ia tidak menyebut
+            // monitor mana, tidak menyebut ukuran berkas, dan "LOOP" hanya satu
+            // kata tanpa keterangan. Yang dicari orang di sini adalah "video ini
+            // berapa besar" dan "ini layar yang mana".
+            //
+            // Nomor konektor dipakai untuk mengenali layar secara fisik - itu
+            // yang tertulis di kabel dan di Windows Settings. Nomor urut kartu
+            // (MONITOR 1, 2, 3) hanya berlaku di dalam aplikasi ini dan berubah
+            // kalau urutan layar berubah, jadi ia tidak bisa dipakai untuk
+            // mencocokkan dengan apa pun di luar aplikasi.
+            string keterangan = "";
+            if (hasWallpaper)
+            {
+                string jenis = IsImageFile(current) ? Tr("display.kind.static") : Tr("display.kind.video");
+                keterangan = jenis + "   ·   " + FormatBytes(new FileInfo(current).Length);
+            }
+            else
+            {
+                keterangan = Tr("display.noWallpaper");
+            }
             copy.Children.Add(new TextBlock
             {
-                Text = screen.DeviceName + (hasWallpaper ? "   ·   " + (IsImageFile(current) ? "STATIC" : "LOOP") : ""),
+                Text = keterangan,
                 Foreground = new SolidColorBrush(CDim),
                 FontSize = 9.5,
                 Margin = new Thickness(0, 3, 0, 0),

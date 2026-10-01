@@ -139,17 +139,36 @@ namespace LumaWall
                         // them silently shared one because a condition could not match. A
                         // filename is not evidence; the resolved family name is.
                         string face = "?";
+                        string faceTanggal = "?";
                         try
                         {
                             MethodInfo timeFont = windowType.GetMethod("TimeFont",
                                 BindingFlags.NonPublic | BindingFlags.Static);
+                            MethodInfo labelFont = windowType.GetMethod("LabelFont",
+                                BindingFlags.NonPublic | BindingFlags.Static);
                             var config2 = new TimerConfig { Style = style };
                             using (var f = (Font)timeFont.Invoke(null, new object[] { 62f, style }))
                                 face = f.FontFamily.Name + (f.Bold ? " Bold" : "");
+
+                            // Font tanggal dilaporkan terpisah.
+                            //
+                            // Tanggal dan jam HARUS memakai keluarga font yang
+                            // sama - di iPhone keduanya SF Pro, hanya beda ukuran
+                            // dan berat. Kalau salah satunya diam-diam jatuh ke
+                            // font sistem, hasilnya terlihat seperti dua teks
+                            // yang kebetulan bertumpuk, bukan satu blok jam.
+                            // Melaporkannya di sini membuat perbedaan itu
+                            // terlihat tanpa perlu memeriksa pikselnya.
+                            if (labelFont != null)
+                            {
+                                using (var f = (Font)labelFont.Invoke(null, new object[] { 12f }))
+                                    faceTanggal = f.FontFamily.Name;
+                            }
                         }
                         catch (Exception e) { face = "(" + Describe(e) + ")"; }
 
-                        Console.WriteLine("  {0,-10} {1}x{2}  {3}", style, captured.Width, captured.Height, face);
+                        Console.WriteLine("  {0,-10} {1}x{2}  {3,-22} tanggal: {4}",
+                            style, captured.Width, captured.Height, face, faceTanggal);
                         captured.Dispose();
                     }
                     finally
