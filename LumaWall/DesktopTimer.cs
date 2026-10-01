@@ -519,33 +519,48 @@ namespace LumaWall
 
                 // Gaya iOS: ukurannya yang membuatnya terbaca sebagai iOS.
                 //
-                // Jam lock screen iPhone tingginya sekitar 11% dari tinggi layar,
-                // dan itu membuatnya jadi unsur paling besar di layar - bukan
-                // hiasan kecil di sudut. Angka-angka di bawah disetel dari
-                // perbandingan itu: pada monitor 1080p, ioslarge tergambar
-                // sekitar 120px, dan seluruh blok tanggal+jam mengisi sekitar
-                // seperlima tinggi layar.
+                // Angka-angka ini disetel dari UKURAN SEBENARNYA jam lock screen
+                // iPhone, bukan dari selera.
                 //
-                // Yang membuatnya terlihat seperti iOS bukan hanya ukurannya,
-                // tetapi PERBANDINGANNYA: jam yang sangat besar dengan tanggal
-                // kecil di atasnya. Jam besar dengan tanggal yang ikut membesar
-                // akan terbaca sebagai dua teks biasa, bukan sebagai jam.
+                // iPhone 15 Pro: layar 393x852 pt, jam setinggi ~90pt. Terhadap
+                // TINGGI layar itu 10,6% - dan itu perbandingan yang benar untuk
+                // dipakai di sini, karena mata membandingkan jam dengan tinggi
+                // layar yang dilihatnya.
+                //
+                // (Terhadap LEBAR, jam itu 23% - dan memakai angka itu di monitor
+                // 1920px akan menghasilkan jam 442px, hampir setengah tinggi
+                // layar. Terlalu besar, dan itu sebabnya yang dipakai adalah
+                // perbandingan terhadap tinggi.)
+                //
+                // 80px di sini BUKAN angka yang kebetulan: pada Skala bawaan 150
+                // ia menghasilkan 120px, yaitu 11,1% dari monitor 1080p - sama
+                // dengan iPhone.
+                //
+                // Kenapa Skala bawaannya 150 dan bukan 100: dengan 100, jamnya
+                // hanya 7,4% tinggi layar, dan itu terlalu kecil untuk terbaca
+                // sebagai jam iOS. Siapa pun yang tidak pernah menyentuh slider
+                // ukuran akan mendapat jam yang salah - cacat yang tidak terlihat
+                // dari kode, dan hanya ketahuan dengan menghitungnya.
                 if (style == "ioslarge") { timeSize = 80f * scale; labelSize = 15f * scale; }
 
                 // ioslight, iosstack, iosdate: jam harus tetap DOMINAN.
                 //
                 // Di lock screen iPhone, jam selalu jauh lebih besar daripada
                 // tanggalnya - itulah yang membuatnya terbaca sebagai jam, bukan
-                // sebagai dua baris teks. Ukuran 58/52/46 hanya dua sampai tiga
-                // kali ukuran tanggalnya, dan pada perbandingan itu jamnya
-                // terbaca sebagai teks biasa yang kebetulan lebih besar.
+                // sebagai dua baris teks.
                 //
                 // Yang juga penting adalah BERAT hurufnya: iOS memakai berat
                 // paling tipis untuk jamnya. Huruf yang lebih tebal pada ukuran
                 // besar terlihat berat, dan itu bagian dari "kayak bukan iOS".
-                if (style == "ioslight") { timeSize = 68f * scale; labelSize = 13f * scale; }
-                if (style == "iosstack") { timeSize = 64f * scale; labelSize = 13f * scale; }
-                if (style == "iosdate") { timeSize = 60f * scale; labelSize = 13f * scale; }
+                //
+                // Ketiganya sengaja didekatkan ke ioslarge, bukan dibuat jauh
+                // lebih kecil: yang membedakan gaya-gaya ini adalah SUSUNAN dan
+                // penekanannya, bukan tingkat kekecilan jamnya. Jam 60px pada
+                // tanggal 13px hanya empat kali lebih besar, dan pada perbandingan
+                // itu jamnya terbaca sebagai teks biasa.
+                if (style == "ioslight") { timeSize = 72f * scale; labelSize = 14f * scale; }
+                if (style == "iosstack") { timeSize = 70f * scale; labelSize = 14f * scale; }
+                if (style == "iosdate") { timeSize = 66f * scale; labelSize = 14f * scale; }
             }
 
             private static string Style(TimerConfig config)
@@ -1065,11 +1080,15 @@ namespace LumaWall
 
                             // Jarak antara tanggal dan jam di lock screen iOS.
                             //
-                            // Di iOS, tanggal duduk RAPAT di atas jam - bukan
-                            // terpisah jauh. Jarak 2px yang lama membuat keduanya
-                            // terbaca sebagai dua elemen terpisah, bukan sebagai
-                            // satu blok tanggal-dan-jam seperti di iPhone.
-                            float gap = hasLabel ? 4f * scale : 0f;
+                            // Di iOS, tanggal duduk dekat di atas jam, tetapi
+                            // TIDAK menempel: ada jeda yang membuat keduanya
+                            // terbaca sebagai dua baris yang sengaja disusun,
+                            // bukan sebagai satu blok teks yang tumpang tindih.
+                            //
+                            // Jarak ini ikut membesar bersama skala, karena pada
+                            // jam 120px, jeda 4px terlihat seperti tidak ada jeda
+                            // sama sekali.
+                            float gap = hasLabel ? 4.5f * scale : 0f;
                             float blockH = timeH + gap + labelH;
 
                             float cx = content.Left + content.Width / 2f;

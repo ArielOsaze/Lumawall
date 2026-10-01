@@ -640,7 +640,19 @@ namespace LumaWall
         [DataMember] public string Shape = "";
 
         [DataMember] public int Seconds = 300;           // countdown length
-        [DataMember] public int Scale = 100;             // 50 .. 250 percent
+
+        // Ukuran bawaan 150, bukan 100.
+        //
+        // Ukuran ini dipilih dari proporsi jam lock screen iPhone: pada 150,
+        // jam gaya ioslarge tergambar 120px di monitor 1080p, yaitu 11,1% dari
+        // tinggi layar - dan iPhone 15 Pro 10,6%. Pada 100 ia hanya 7,4%, dan
+        // jam sekecil itu tidak terbaca sebagai jam iOS.
+        //
+        // Yang membuat angka ini penting: kebanyakan orang tidak pernah
+        // menyentuh slider ukuran. Nilai bawaannya yang menentukan apa yang
+        // mereka lihat, jadi nilai itu harus benar dengan sendirinya - bukan
+        // benar hanya setelah disetel.
+        [DataMember] public int Scale = 150;             // 50 .. 250 percent
         [DataMember] public string Position = "top-right"; // 9 named positions
         [DataMember] public int OffsetX = 28;
         [DataMember] public int OffsetY = 28;

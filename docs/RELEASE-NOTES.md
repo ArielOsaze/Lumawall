@@ -33,11 +33,17 @@ tidak bisa diubah pemakai. Sebelumnya hanya satu gaya yang begitu; tiga lainnya
 menaruh tanggal di bawah, dan susunan itu tidak pernah ada di iPhone. Sekarang
 keempatnya sama, seperti aslinya.
 
-**Jamnya diperbesar**
+**Jamnya diperbesar, dan ukuran bawaannya diperbaiki**
 
 Jam lock screen iPhone adalah unsur paling besar di layarnya - ukurannya yang
-membuatnya terbaca sebagai jam iOS. Sekarang `ioslarge` 80px, `ioslight` 68px,
-`iosstack` 64px, `iosdate` 60px, dengan tanggal tetap kecil di atasnya.
+membuatnya terbaca sebagai jam iOS. Ukurannya sekarang dihitung dari jam iPhone
+yang sebenarnya: pada iPhone 15 Pro jam itu setinggi 10,6% dari tinggi layar,
+dan pada Skala bawaan jam di sini mencapai 11,1% - sama.
+
+Skala bawaannya juga diubah dari 100 menjadi 150. Pada 100, jamnya hanya 7,4%
+tinggi layar - terlalu kecil untuk terbaca sebagai jam iOS, dan itu yang akan
+didapat siapa pun yang tidak pernah menyentuh slider ukuran. Nilai bawaan harus
+benar dengan sendirinya, bukan benar hanya setelah disetel.
 
 **Tanggal memakai font yang sama dengan jamnya**
 
