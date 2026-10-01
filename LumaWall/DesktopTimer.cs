@@ -254,6 +254,21 @@ namespace LumaWall
 
         private static string Format(TimeSpan value, TimerConfig current)
         {
+            // Gaya iOS TIDAK PERNAH menampilkan detik.
+            //
+            // Jam layar kunci iOS menunjukkan jam dan menit saja, dan itu
+            // bukan detail kecil: menambahkan detik mengubahnya dari jam
+            // menjadi pengukur waktu. Detik yang berubah setiap saat juga
+            // menarik mata ke widget terus-menerus, yang justru kebalikan
+            // dari gunanya jam layar kunci.
+            //
+            // Pilihan ShowSeconds milik pengguna tetap dihormati untuk gaya
+            // lain, karena di sana ia memang masuk akal - stopwatch, timer,
+            // dan papan skor memang perlu detik.
+            bool gayaIos = current.Style == "ioslarge" || current.Style == "ioslight"
+                || current.Style == "iosstack" || current.Style == "iosdate";
+            bool pakaiDetik = current.ShowSeconds && !gayaIos;
+
             if (current.Mode == "clock")
             {
                 DateTime now = DateTime.Now;
@@ -261,10 +276,10 @@ namespace LumaWall
                 {
                     // No leading zero, the way macOS and iOS show a clock: "9:41", not
                     // "09:41". The leading zero makes a desktop clock look like a log line.
-                    string format = current.ShowSeconds ? "h:mm:ss" : "h:mm";
+                    string format = pakaiDetik ? "h:mm:ss" : "h:mm";
                     return now.ToString(format, CultureInfo.InvariantCulture);
                 }
-                return current.ShowSeconds
+                return pakaiDetik
                     ? now.ToString("HH:mm:ss", CultureInfo.InvariantCulture)
                     : now.ToString("HH:mm", CultureInfo.InvariantCulture);
             }
@@ -272,8 +287,10 @@ namespace LumaWall
             if (value < TimeSpan.Zero) value = TimeSpan.Zero;
             int hours = (int)value.TotalHours;
             if (hours > 0)
-                return string.Format(CultureInfo.InvariantCulture, "{0}:{1:00}:{2:00}", hours, value.Minutes, value.Seconds);
-            return current.ShowSeconds
+                return pakaiDetik
+                    ? string.Format(CultureInfo.InvariantCulture, "{0}:{1:00}:{2:00}", hours, value.Minutes, value.Seconds)
+                    : string.Format(CultureInfo.InvariantCulture, "{0}:{1:00}", hours, value.Minutes);
+            return pakaiDetik
                 ? string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00}", value.Minutes, value.Seconds)
                 : string.Format(CultureInfo.InvariantCulture, "{0:00}", Math.Ceiling(value.TotalMinutes));
         }
@@ -565,6 +582,19 @@ namespace LumaWall
             /// Now the face is named per style and the first available match is used, so a
             /// style cannot silently fall back to a heavier face.
             /// </summary>
+            /// <summary>
+            /// Jembatan untuk alat uji render.
+            ///
+            /// `TimeFont` bersifat private karena hanya jendela jam yang boleh
+            /// memakainya. Alat uji render perlu memakai font yang SAMA PERSIS,
+            /// karena kalau ia memilih fontnya sendiri, gambar yang dihasilkan
+            /// tidak membuktikan apa pun tentang jam yang ada di desktop.
+            /// </summary>
+            internal static Font TimeFontUntukUji(float size, string style)
+            {
+                return TimeFont(size, style);
+            }
+
             private static Font TimeFont(float size, string style)
             {
                 Face[] faces = FacesFor(style);
@@ -983,11 +1013,45 @@ namespace LumaWall
                             int inkAlpha = lastDim ? 150 : 255;
 
                             // The shadow is what makes a background-less widget legible.
-                            // Without it a white clock on a pale wallpaper disappears, and
-                            // that is the whole reason the first version drew a box.
+                            // Without it a white clock on a pale wallpaper disappears.
+                            //
+                            // Tetapi ukurannya harus berbeda per gaya. iOS menggambar jam
+                            // layar kuncinya TANPA bayangan sama sekali - yang membuatnya
+                            // terbaca adalah ketebalan hurufnya, bukan halo. Halo delapan
+                            // arah di sekeliling huruf tipis justru membuatnya terlihat
+                            // seperti huruf berongga: yang terbaca mata adalah bayangannya,
+                            // bukan hurufnya, dan itu penyebab "kok kayak bukan iOS".
+                            //
+                            // Untuk gaya tipis besar, bayangannya dikurangi sampai hampir
+                            // tidak ada. Untuk gaya tebal, bayangan tetap penuh karena di
+                            // situ ia memang membantu dan tidak mengubah bentuk huruf.
                             if (style != "analog")
                             {
-                                DrawShadowedText(g, lastText, timeFont, timeRect, format, ink, inkAlpha, scale);
+                                // Gaya tipis memakai bayangan RAPAT (skala 0), bukan halo.
+                                //
+                                // Ini bukan penyetelan halus - ini yang menentukan
+                                // apakah jam terlihat seperti iOS atau tidak. Halo
+                                // delapan arah di sekeliling huruf tipis 90px
+                                // menghasilkan jam yang terbaca BERONGGA: yang
+                                // terlihat adalah bayangannya, dan huruf aslinya
+                                // hanya tampak sebagai garis tipis di tengahnya.
+                                // Jam layar kunci iOS adalah huruf SOLID.
+                                //
+                                // Daftar gaya di sini harus memuat SEMUA gaya tipis.
+                                // Sebelumnya "ioslight" tidak ada di daftar ini,
+                                // sehingga gaya yang justru paling mirip iOS
+                                // mendapat halo penuh - dan itulah gaya yang dipakai
+                                // pengguna saat melaporkan "fontnya ga kayak iOS".
+                                bool tipis = style == "ioslarge" || style == "ioslight"
+                                    || style == "iosstack" || style == "iosdate"
+                                    || style == "minimal" || style == "glass"
+                                    || style == "thin" || style == "elegant"
+                                    || style == "bold" || style == "card"
+                                    || style == "ring";
+                                float shadowSkala = tipis ? 0f : 1f;
+
+                                DrawShadowedText(g, lastText, timeFont, timeRect, format, ink, inkAlpha,
+                                                 scale, shadowSkala);
 
                                 if (hasLabel)
                                 {
@@ -995,7 +1059,8 @@ namespace LumaWall
                                     // there to be read second. The iOS lock screen date is
                                     // dimmer than the clock and set in a wider face.
                                     Color label = Color.FromArgb(inkAlpha * 72 / 100, ink);
-                                    DrawShadowedText(g, lastSubtitle, labelFont, labelRect, format, label, inkAlpha, scale * 0.7f);
+                                    DrawShadowedText(g, lastSubtitle, labelFont, labelRect, format, label,
+                                                     inkAlpha, scale * 0.7f, shadowSkala);
                                 }
                             }
                         }
@@ -1082,24 +1147,71 @@ namespace LumaWall
             }
 
             /// <summary>
-            /// Draws text with a soft shadow so it stays readable on any wallpaper.
+            /// Menggambar teks dengan bayangan yang sesuai gaya.
             ///
-            /// A real Gaussian blur of the glyphs would be better but costs a second bitmap
-            /// and a convolution on every tick. This draws the glyphs eight times around the
-            /// centre at low alpha and then the glyph itself on top, which produces a halo
-            /// that is indistinguishable at these sizes and costs one extra pass.
+            /// Ada DUA jenis bayangan di sini, dan memilih yang salah merusak
+            /// tampilannya:
+            ///
+            ///   halo  - huruf digambar delapan kali mengelilingi titik pusat,
+            ///           lalu huruf aslinya di atasnya. Ini benar untuk huruf
+            ///           TEBAL: bayangannya menyatu menjadi satu bayangan lembut
+            ///           dan hurufnya tetap terbaca.
+            ///
+            ///   rapat - huruf digambar SEKALI, digeser sedikit ke bawah, lalu
+            ///           huruf aslinya di atasnya. Ini yang benar untuk huruf
+            ///           TIPIS.
+            ///
+            /// Kenapa halo tidak boleh dipakai pada huruf tipis: goresan huruf
+            /// tipis hanya beberapa piksel, sedangkan halo delapan arah menutupi
+            /// area yang jauh lebih luas daripada goresannya sendiri. Mata lalu
+            /// membaca BAYANGANNYA sebagai bentuk huruf, dan huruf aslinya
+            /// sebagai garis di tengahnya - hasilnya jam terlihat BERONGGA,
+            /// seperti huruf yang hanya digambar tepinya. Itu persis keluhan
+            /// "ga kayak bener yg ios": jam layar kunci iOS adalah huruf SOLID,
+            /// bukan huruf berongga.
+            ///
+            /// Karena itu gaya tipis memakai `skala = 0`, yang berarti bayangan
+            /// rapat saja - dan bayangan rapat tidak pernah mengubah bentuk
+            /// huruf karena ia hanya satu salinan yang digeser.
             /// </summary>
             private static void DrawShadowedText(Graphics g, string text, Font font, RectangleF rect,
-                                                 StringFormat format, Color colour, int alpha, float scale)
+                                                 StringFormat format, Color colour, int alpha, float scale,
+                                                 float skala = 1f)
             {
-                float radius = Math.Max(1.2f, 1.6f * scale);
-                int shadowAlpha = Math.Min(150, Math.Max(60, (int)(90 * Math.Min(1.6f, scale))));
+                if (skala <= 0.01f)
+                {
+                    // Bayangan rapat: satu salinan, digeser ke bawah.
+                    //
+                    // Bayangan layar kunci iOS hampir tidak terlihat - yang
+                    // membuatnya terbaca adalah ketebalan hurufnya. Tetapi pada
+                    // wallpaper yang terang, teks putih tanpa bayangan sama
+                    // sekali bisa hilang; satu salinan gelap tipis di bawahnya
+                    // menjaga keterbacaan tanpa terlihat sebagai efek.
+                    float turun = Math.Max(1f, 1.4f * scale);
+                    using (var lembut = new SolidBrush(Color.FromArgb(
+                        Math.Min(120, Math.Max(30, (int)(64 * scale))), 0, 0, 0)))
+                    {
+                        var bawah = new RectangleF(rect.X, rect.Y + turun, rect.Width, rect.Height);
+                        g.DrawString(text, font, lembut, bawah, format);
+                    }
+
+                    using (var brush = new SolidBrush(Color.FromArgb(alpha, colour)))
+                    {
+                        g.DrawString(text, font, brush, rect, format);
+                    }
+                    return;
+                }
+
+                float radius = Math.Max(0.4f, 1.6f * scale * skala);
+                int shadowAlpha = Math.Min(150, Math.Max(18,
+                    (int)(90 * Math.Min(1.6f, scale) * skala)));
 
                 using (var shadow = new SolidBrush(Color.FromArgb(shadowAlpha, 0, 0, 0)))
                 {
-                    for (int i = 0; i < 8; i++)
+                    int arah = skala >= 0.9f ? 8 : 4;
+                    for (int i = 0; i < arah; i++)
                     {
-                        double angle = Math.PI * 2 * i / 8.0;
+                        double angle = Math.PI * 2 * i / arah;
                         var offset = new RectangleF(
                             rect.X + (float)(Math.Cos(angle) * radius),
                             rect.Y + (float)(Math.Sin(angle) * radius),

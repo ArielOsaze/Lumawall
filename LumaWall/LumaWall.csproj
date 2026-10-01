@@ -42,6 +42,7 @@
     <Compile Include="FontLoader.cs" />
     <Compile Include="DesktopTimer.cs" />
     <Compile Include="TimerPreview.cs" />
+    <Compile Include="PeriksaUi.cs" />
     <Compile Include="FeaturesPage.cs" />
     <Compile Include="AppVersion.cs" />
     <Content Include="catalog.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>

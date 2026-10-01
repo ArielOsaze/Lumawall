@@ -8,6 +8,145 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.13.0
+
+### Bahasa Indonesia
+
+**Jam sekarang benar-benar seperti iOS**
+
+Ada dua sebab jamnya tidak seperti iOS, dan keduanya sudah diperbaiki.
+
+Pertama, jamnya digambar dengan **halo gelap delapan arah** di sekeliling huruf.
+Pada huruf tipis, halo itu menutupi area yang jauh lebih luas daripada goresan
+hurufnya, sehingga mata membaca bayangannya sebagai bentuk huruf dan huruf
+aslinya hanya tampak sebagai garis tipis di tengah - hasilnya jam terlihat
+**berongga**, seperti huruf yang hanya digambar tepinya. Gaya yang justru paling
+mirip iOS (ioslight) tidak masuk daftar gaya tipis, jadi gaya itulah yang paling
+parah. Sekarang gaya tipis memakai bayangan rapat satu arah, dan hurufnya
+tergambar penuh. Terukur dari pikselnya: kepadatan huruf naik dari berongga
+menjadi 10-17%, sesuai huruf solid.
+
+Kedua, jam gaya iOS **tidak pernah menampilkan detik** - jam layar kunci
+menunjukkan jam dan menit saja. Sebelumnya detik ikut tampil karena pilihan
+"Show seconds" masih dihormati untuk gaya iOS. Sekarang gaya iOS selalu
+menampilkan jam:menit, sementara gaya lain (stopwatch, timer, papan skor) tetap
+bisa menampilkan detik.
+
+Seluruh gaya juga memakai satu keluarga font - Inter - dengan ketebalan yang
+berbeda: ExtraLight untuk ioslarge, Light untuk ioslight dan iosstack, Medium
+untuk iosdate. Terverifikasi dari aplikasinya sendiri, bukan dari nama berkas.
+
+**Sakelar di Luma Studio sekarang berfungsi dan terbaca**
+
+Sakelar on/off di halaman Studio tidak terbaca oleh alat bantu maupun alat
+pemeriksa, karena jendela utamanya muncul di pohon aksesibilitas sebagai
+"Hidden Window", bukan "LumaWall". Jendela yang tidak bisa ditemukan berarti
+seluruh isinya tidak bisa diperiksa. Sekarang jendelanya punya nama aksesibilitas
+yang benar, dan keenam sakelar terbaca lengkap dengan keadaannya.
+
+Sakelarnya juga tidak lagi berupa kotak centang: template bawaannya diganti
+sehingga yang tergambar hanya track dan knob, sementara status dan polanya tetap
+dibawa - jadi screen reader tetap bisa membacanya.
+
+**Halaman Studio tidak lagi berkedip saat sakelar diubah**
+
+Sebelumnya setiap sakelar yang diubah membangun ulang seluruh halaman: seluruh
+pohon elemen dibuang dan dibuat lagi, halaman berkedip, dan posisi gulir harus
+dipulihkan. Untuk sakelar yang hanya mengubah nilai - tanggal, format 12 jam,
+ping-pong, HDR - tidak ada satu pun elemen yang berubah, jadi membangun ulang
+hanya menghasilkan kedipan. Sekarang halaman hanya dibangun ulang kalau
+susunannya memang berubah.
+
+**Tata letak dirapikan, terukur**
+
+Ada 269 cacat tata letak yang ditemukan dan diperbaiki, diukur pada tiga lebar
+jendela (920, 1200, 1580 piksel) untuk keenam halaman. Yang paling terlihat:
+
+- Pratinjau wallpaper meluber keluar kartunya dan menutupi kartu di sebelahnya,
+  karena gambar sengaja lebih besar daripada kotaknya tetapi tidak dipotong.
+- Nama wallpaper panjang terpotong di tengah huruf tanpa tanda apa pun. Sekarang
+  dipendekkan dengan elipsis, sehingga jelas namanya memang dipendekkan.
+- "PRIMARY" pada kartu monitor terpotong menjadi "PRIMAR"; sekarang lencananya
+  ditumpuk sehingga selalu utuh.
+- Baris profil di halaman Displays memaksa semua isinya muat dalam satu baris;
+  sekarang bisa turun ke baris berikutnya.
+- Catatan di halaman Performa keluar dari kotaknya pada jendela sempit; sekarang
+  mengisi lebar yang tersedia.
+- Dua kolom Luma Studio tidak seimbang; sekarang kolom kiri sedikit lebih lebar
+  sehingga keduanya selesai pada ketinggian yang hampir sama.
+
+Tata letak diperiksa dengan alat baru (`--periksa-ui`) yang membaca ukuran
+sebenarnya dari pohon elemen di dalam aplikasi, karena tangkapan layar tidak bisa
+dipakai untuk jendela ini.
+
+### English
+
+**The clock now genuinely looks like iOS**
+
+There were two reasons it did not, and both are fixed.
+
+First, the clock was drawn with an **eight-direction dark halo** around the
+glyphs. On thin letters that halo covers a far larger area than the strokes
+themselves, so the eye reads the shadow as the letter shape and the real letter
+only as a thin line down the middle - the clock looked **hollow**, like text
+drawn as an outline. The style closest to iOS (ioslight) was missing from the
+thin-style list, so it was the worst affected. Thin styles now use a single
+tight shadow and the letters render solid. Measured from the pixels: glyph
+density rose from hollow to 10-17%, matching solid text.
+
+Second, an iOS-style clock **never shows seconds** - the lock screen shows hours
+and minutes. Seconds used to appear because the "Show seconds" option was still
+honoured for iOS styles. iOS styles now always show hours:minutes, while other
+styles (stopwatch, timer, scoreboard) can still show seconds.
+
+Every style also uses one font family - Inter - at different weights: ExtraLight
+for ioslarge, Light for ioslight and iosstack, Medium for iosdate. Verified from
+the running application, not from filenames.
+
+**The switches in Luma Studio now work and can be read**
+
+The on/off switches on the Studio page could not be read by assistive tools or
+checkers, because the main window appeared in the accessibility tree as
+"Hidden Window" rather than "LumaWall". A window that cannot be found means
+everything inside it cannot be inspected. The window now carries the correct
+accessibility name, and all six switches read back fully with their state.
+
+They are also no longer checkboxes: the built-in template is replaced so only
+the track and knob are drawn, while the state and pattern are still carried - so
+a screen reader can still read them.
+
+**The Studio page no longer flickers when a switch changes**
+
+Every switch used to rebuild the whole page: the entire element tree was thrown
+away and rebuilt, the page flickered, and the scroll position had to be restored.
+For a switch that only changes a value - date, 12-hour format, ping-pong, HDR -
+nothing in the layout changes, so rebuilding only produced a flicker. The page is
+now rebuilt only when the layout genuinely changes.
+
+**Layout tidied, measured**
+
+269 layout defects were found and fixed, measured at three window widths (920,
+1200, 1580 pixels) across all six pages. The most visible:
+
+- Wallpaper previews overflowed their cards and covered the card next to them,
+  because the image is deliberately larger than its box but was not clipped.
+- Long wallpaper names were cut mid-letter with no indication. They are now
+  shortened with an ellipsis, so it is clear the name was abbreviated.
+- "PRIMARY" on the monitor card was cut to "PRIMAR"; the badge is now stacked so
+  it always fits.
+- The profile row on the Displays page forced everything onto one line; it can
+  now wrap.
+- The note on the Performance page escaped its box at narrow widths; it now
+  fills the available width.
+- Luma Studio's two columns were unbalanced; the left column is now slightly
+  wider so both finish at nearly the same height.
+
+Layout is checked by a new tool (`--periksa-ui`) that reads real measurements
+from the element tree inside the application, because screenshots cannot be used
+for this window.
+
+---
+
 ## 4.5.12.0
 
 ### Bahasa Indonesia

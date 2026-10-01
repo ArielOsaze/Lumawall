@@ -467,6 +467,20 @@ namespace LumaWall
                 else if (argument == "--lang=ja") config.Language = "ja";
             }
             Title = "LumaWall";
+
+            // Nama aksesibilitas jendela ditetapkan terpisah dari Title.
+            //
+            // Jendela ini muncul di pohon aksesibilitas sebagai "Hidden Window",
+            // bukan "LumaWall". Sebabnya `WindowStyle = None` bersama
+            // `ShowInTaskbar = false`: keduanya membuat WPF membuat jendela
+            // pembantu, dan nama itulah yang dibaca alat bantu.
+            //
+            // Akibatnya nyata dan bukan sekadar soal rapi: setiap alat yang
+            // mencari jendela berdasarkan namanya - screen reader, alat
+            // pemeriksa, dan skrip apa pun - gagal menemukannya. Sakelar di
+            // halaman Studio tidak terbaca, bukan karena sakelarnya tidak ada,
+            // melainkan karena jendelanya tidak bisa ditemukan.
+            System.Windows.Automation.AutomationProperties.SetName(this, "LumaWall");
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             MinWidth = 920;
             MinHeight = 580;
@@ -1204,7 +1218,179 @@ namespace LumaWall
                 statusTelemetryText.Text = Forms.Screen.AllScreens.Length + " " + Tr("apply.screens") + "   ·   " + config.TargetFps + " FPS   ·   " + Tr(config.Mute ? "status.audio.off" : "status.audio.on");
         }
 
-        // ================= DASHBOARD =================
+        /// <summary>
+        /// Memeriksa tata letak satu halaman dan mencatat apa yang salah.
+        ///
+        /// Dipakai oleh alat uji `--periksa-ui`. Halaman dibangun lewat
+        /// `SwitchPage` supaya yang diperiksa adalah halaman yang sama dengan
+        /// yang dilihat pengguna - bukan salinan yang dibuat khusus untuk uji,
+        /// yang bisa berbeda dari aslinya tanpa ada yang menyadari.
+        ///
+        /// Tiga hal yang dicari, dan ketiganya adalah cacat yang benar-benar
+        /// pernah terjadi di aplikasi ini:
+        ///
+        ///   1. Elemen yang keluar dari batas induknya. Status chip di kartu
+        ///      monitor pernah berada di luar kartu: ada di pohon elemen,
+        ///      tidak terlihat di layar, dan tidak ada yang tampak salah sampai
+        ///      seseorang memeriksanya.
+        ///
+        ///   2. Kontrol yang saling menimpa. Dua tombol yang bertumpuk berarti
+        ///      yang di bawah tidak bisa ditekan.
+        ///
+        ///   3. Teks yang lebih lebar daripada tempatnya, yang berarti
+        ///      terpotong. Ini yang paling sering terjadi setelah terjemahan:
+        ///      label Inggris jauh lebih panjang daripada label Indonesia.
+        /// </summary>
+        internal void PeriksaHalaman(string nama, StringBuilder laporan,
+                                     List<string> masalah, double lebar)
+        {
+            SwitchPage(nama);
+            UpdateLayout();
+
+            var akar = pageHost.Content as DependencyObject;
+            if (akar == null)
+            {
+                masalah.Add(string.Format("{0} @ {1:F0}px: halaman kosong", nama, lebar));
+                return;
+            }
+
+            laporan.AppendLine("══ " + nama + " @ " + lebar.ToString("F0") + "px ══");
+
+            int jumlah = 0;
+            PeriksaElemen(akar, null, nama, lebar, laporan, masalah, ref jumlah);
+            laporan.AppendLine("  elemen diperiksa: " + jumlah);
+            laporan.AppendLine();
+        }
+
+        private void PeriksaElemen(DependencyObject induk, FrameworkElement indukFe,
+                                   string halaman, double lebar, StringBuilder laporan,
+                                   List<string> masalah, ref int jumlah)
+        {
+            int anak = VisualTreeHelper.GetChildrenCount(induk);
+            for (int i = 0; i < anak; i++)
+            {
+                DependencyObject anakObj = VisualTreeHelper.GetChild(induk, i);
+                var fe = anakObj as FrameworkElement;
+                if (fe == null)
+                {
+                    PeriksaElemen(anakObj, indukFe, halaman, lebar, laporan, masalah, ref jumlah);
+                    continue;
+                }
+
+                jumlah++;
+
+                // ── 1. keluar dari batas induk ───────────────────────────────
+                //
+                // Tiga pengecualian, dan ketiganya BUKAN kelonggaran - ketiganya
+                // adalah cara yang benar menggambar, sehingga melaporkannya
+                // sebagai cacat justru menyembunyikan yang benar-benar rusak:
+                //
+                //   Canvas          tidak mengatur posisi anaknya dan tidak
+                //                   memotongnya; keluar dari kotak Canvas adalah
+                //                   cara normal menggambar ikon di sini. Tanpa
+                //                   pengecualian ini, 269 keluhan muncul dan
+                //                   semuanya ikon.
+                //
+                //   ClipToBounds    induk yang memotong isinya memang sengaja
+                //                   punya anak yang lebih besar - gambar
+                //                   UniformToFill HARUS lebih besar supaya
+                //                   memenuhi kartunya. Yang di luar kotak
+                //                   memang dipotong, dan itu yang diinginkan.
+                //
+                //   ScrollViewer    isi yang lebih tinggi daripada wadahnya
+                //                   adalah cara kerja gulir, bukan cacat.
+                bool indukMemotong = indukFe != null
+                    && !(indukFe is Canvas)
+                    && !indukFe.ClipToBounds
+                    && !(indukFe is ScrollContentPresenter)
+                    && !(indukFe is ScrollViewer);
+
+                if (indukMemotong && fe.ActualWidth > 1 && fe.ActualHeight > 1)
+                {
+                    Point asal;
+                    try { asal = fe.TransformToAncestor(indukFe).Transform(new Point(0, 0)); }
+                    catch { asal = new Point(0, 0); }
+
+                    double kanan = asal.X + fe.ActualWidth;
+                    double bawah = asal.Y + fe.ActualHeight;
+
+                    // Toleransi 2px: pembulatan sub-piksel pada margin pecahan
+                    // menghasilkan selisih sepersekian piksel yang bukan cacat.
+                    if (asal.X < -2 || asal.Y < -2
+                        || kanan > indukFe.ActualWidth + 2
+                        || bawah > indukFe.ActualHeight + 2)
+                    {
+                        string jenis = fe.GetType().Name;
+                        string teks = TeksDari(fe);
+                        string pesan = string.Format(
+                            "{0} @ {1:F0}px: {2} keluar dari {3} ({4:F0},{5:F0} ukuran {6:F0}x{7:F0} di dalam {8:F0}x{9:F0}){10}",
+                            halaman, lebar, jenis, indukFe.GetType().Name,
+                            asal.X, asal.Y, fe.ActualWidth, fe.ActualHeight,
+                            indukFe.ActualWidth, indukFe.ActualHeight,
+                            teks.Length > 0 ? " \"" + teks + "\"" : "");
+                        masalah.Add(pesan);
+                        laporan.AppendLine("  " + pesan);
+                    }
+                }
+
+                // ── 2. teks yang lebih lebar daripada tempatnya ──────────────
+                var tb = fe as TextBlock;
+                if (tb != null && tb.TextWrapping == TextWrapping.NoWrap)
+                {
+                    // Teks yang MEMANG dipendekkan bukan cacat.
+                    //
+                    // CharacterEllipsis berarti pemiliknya sudah tahu teksnya
+                    // tidak akan muat dan memilih menampilkannya sebagai
+                    // "nama-yang-panjang…". Itu keputusan yang benar, bukan
+                    // kelalaian - dan melaporkannya sebagai cacat berarti
+                    // laporan penuh oleh nama berkas yang memang panjang,
+                    // sementara teks yang terpotong TANPA elipsis tenggelam
+                    // di dalamnya.
+                    bool memangDipendekkan = tb.TextTrimming != TextTrimming.None;
+
+                    if (!memangDipendekkan)
+                    {
+                        // Diukur dengan font yang sesungguhnya, karena lebar teks
+                        // bergantung pada fontnya - dan font yang dipakai di sini
+                        // adalah Inter, bukan font sistem.
+                        //
+                        // PENTING: DesiredSize.Width SUDAH MEMASUKKAN margin,
+                        // sedangkan ActualWidth tidak. Membandingkan keduanya
+                        // langsung melaporkan setiap elemen yang punya margin
+                        // sebagai terpotong - dan karena hampir semua elemen di
+                        // sini punya margin 8px, laporannya penuh oleh keluhan
+                        // palsu yang selisihnya tepat 8px. Yang dibandingkan harus
+                        // lebar isinya saja.
+                        var ukuran = new Size(double.PositiveInfinity, double.PositiveInfinity);
+                        tb.Measure(ukuran);
+                        double butuh = tb.DesiredSize.Width - tb.Margin.Left - tb.Margin.Right;
+                        if (butuh > tb.ActualWidth + 3 && tb.ActualWidth > 10)
+                        {
+                            string pesan = string.Format(
+                                "{0} @ {1:F0}px: teks terpotong - butuh {2:F0}px, tersedia {3:F0}px: \"{4}\"",
+                                halaman, lebar, butuh, tb.ActualWidth,
+                                tb.Text.Length > 48 ? tb.Text.Substring(0, 48) + "..." : tb.Text);
+                            masalah.Add(pesan);
+                            laporan.AppendLine("  " + pesan);
+                        }
+                    }
+                }
+
+                PeriksaElemen(anakObj, fe, halaman, lebar, laporan, masalah, ref jumlah);
+            }
+        }
+
+        /// <summary>Teks pendek dari sebuah elemen, untuk laporan.</summary>
+        private static string TeksDari(FrameworkElement fe)
+        {
+            var tb = fe as TextBlock;
+            if (tb != null && tb.Text != null)
+                return tb.Text.Length > 32 ? tb.Text.Substring(0, 32) : tb.Text;
+            var cb = fe as System.Windows.Controls.Primitives.ButtonBase;
+            if (cb != null && cb.Content is string)
+                return (string)cb.Content;
+            return "";
+        }
 
         private UIElement BuildHome()
         {
@@ -1257,7 +1443,7 @@ namespace LumaWall
                 BorderThickness = new Thickness(1),
                 ClipToBounds = true
             };
-            var grid = new Grid();
+            var grid = new Grid { ClipToBounds = true };
             if (path != null && File.Exists(path))
             {
                 var image = new Image { Stretch = Stretch.UniformToFill, Opacity = .82 };
@@ -1385,7 +1571,7 @@ namespace LumaWall
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(340) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var preview = new Grid { Background = new SolidColorBrush(Color.FromRgb(12, 14, 18)) };
+            var preview = new Grid { Background = new SolidColorBrush(Color.FromRgb(12, 14, 18)), ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill };
             SetVideoThumbnail(path, image);
             preview.Children.Add(image);
@@ -1447,7 +1633,7 @@ namespace LumaWall
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(150) });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)) };
+            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)), ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill };
             SetVideoThumbnail(path, image, 640);
             media.Children.Add(image);
@@ -1539,7 +1725,14 @@ namespace LumaWall
                 ClipToBounds = true,
                 Cursor = Cursors.Hand
             };
-            var grid = new Grid();
+            // Grid ini memotong isinya karena gambarnya sengaja lebih besar.
+            //
+            // UniformToFill memperbesar gambar sampai memenuhi kotaknya, jadi
+            // sisi yang lebih panjang selalu keluar dari kotak. Tanpa pemotongan
+            // di sini, gambarnya meluber keluar kartu setinggi 128px ini dan
+            // menutupi kartu di sebelahnya - terlihat sebagai pratinjau yang
+            // bocor, dan itu salah satu dari "UI berantakan".
+            var grid = new Grid { ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill, Opacity = .92 };
             SetVideoThumbnail(path, image, 640);
             grid.Children.Add(image);
@@ -1569,7 +1762,14 @@ namespace LumaWall
                 ClipToBounds = true,
                 Cursor = Cursors.Hand
             };
-            var grid = new Grid();
+            // Grid ini memotong isinya karena gambarnya sengaja lebih besar.
+            //
+            // UniformToFill memperbesar gambar sampai memenuhi kotaknya, jadi
+            // sisi yang lebih panjang selalu keluar dari kotak. Tanpa pemotongan
+            // di sini, gambarnya meluber keluar kartu setinggi 128px ini dan
+            // menutupi kartu di sebelahnya - terlihat sebagai pratinjau yang
+            // bocor, dan itu salah satu dari "UI berantakan".
+            var grid = new Grid { ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill, Opacity = .92 };
             SetCatalogThumbnail(item.ThumbnailUrl, image, 640);
             grid.Children.Add(image);
@@ -1768,7 +1968,7 @@ namespace LumaWall
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(62) });
-            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)) };
+            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)), ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill };
             SetCatalogThumbnail(item.ThumbnailUrl, image, 640);
             media.Children.Add(image);
@@ -1878,7 +2078,7 @@ namespace LumaWall
             Grid.SetColumn(inspectorTitle, 1);
             inspectorHeader.Children.Add(inspectorTitle);
             content.Children.Add(inspectorHeader);
-            var preview = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)) };
+            var preview = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)), ClipToBounds = true };
             var image = new Image { Stretch = Stretch.UniformToFill };
             SetCatalogThumbnail(item.ThumbnailUrl, image);
             preview.Children.Add(image);
@@ -1988,11 +2188,29 @@ namespace LumaWall
             var content = PageCanvas();
             content.Children.Add(PageHeading(Tr("display.title"), Tr("display.sub"), null));
 
-            var profiles = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 20, 0, 6) };
-            profiles.Children.Add(new TextBlock { Text = Tr("profile.title"), Foreground = new SolidColorBrush(CMuted), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) });
+            // Baris profil dibungkus, bukan dipaksa satu baris.
+            //
+            // StackPanel horizontal memaksa setiap anaknya muat dalam satu baris
+            // pada lebar yang tersedia, dan yang tidak muat dipotong - tanpa
+            // peringatan dan tanpa tanda. Label "Profil multi-monitor" pada
+            // lebar 112px terpotong menjadi "Profil multi-monito", dan setiap
+            // profil yang disimpan pengguna menambah satu tombol lagi sehingga
+            // yang terpotong makin banyak.
+            //
+            // WrapPanel membiarkan isinya turun ke baris berikutnya, jadi label
+            // dan tombol selalu terbaca utuh berapa pun jumlah profilnya.
+            var profiles = new WrapPanel { Margin = new Thickness(0, 20, 0, 6) };
+            profiles.Children.Add(new TextBlock
+            {
+                Text = Tr("profile.title"),
+                Foreground = new SolidColorBrush(CMuted),
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 12, 6),
+            });
             var saveProfile = GhostButton(Tr("profile.save"));
             saveProfile.Height = 34;
-            saveProfile.Margin = new Thickness(0, 0, 8, 0);
+            saveProfile.Margin = new Thickness(0, 0, 8, 6);
             saveProfile.Click += delegate { SaveDisplayProfile(); };
             profiles.Children.Add(saveProfile);
             foreach (string profileName in config.DisplayProfiles.Keys.OrderBy(x => x))
@@ -2000,7 +2218,7 @@ namespace LumaWall
                 string name = profileName;
                 var profile = GhostButton(name);
                 profile.Height = 34;
-                profile.Margin = new Thickness(0, 0, 8, 0);
+                profile.Margin = new Thickness(0, 0, 8, 6);
                 profile.Click += delegate { LoadDisplayProfile(name); };
                 profiles.Children.Add(profile);
             }
@@ -2115,7 +2333,7 @@ namespace LumaWall
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(146) });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)) };
+            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)), ClipToBounds = true };
             if (hasWallpaper)
             {
                 var image = new Image { Stretch = Stretch.UniformToFill };
@@ -2141,10 +2359,38 @@ namespace LumaWall
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(12)
             };
-            var numberStack = new StackPanel { Orientation = Orientation.Horizontal };
-            numberStack.Children.Add(new TextBlock { Text = "MONITOR " + index, Foreground = new SolidColorBrush(CText), FontFamily = FMono, FontSize = 9.5, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
+
+            // Lencana nomor monitor ditumpuk, bukan didampingkan.
+            //
+            // Sebelumnya "MONITOR 1" dan "· PRIMARY" diletakkan bersebelahan
+            // dalam satu baris horizontal, dan pada kartu selebar 306px
+            // keduanya tidak muat: "PRIMARY" terpotong menjadi "PRIMAR" tanpa
+            // tanda apa pun. Label yang terpotong di dalam lencana kecil
+            // terbaca sebagai kerusakan, bukan sebagai nama.
+            //
+            // Ditumpuk, keduanya selalu utuh - dan lencananya jadi lebih
+            // ringkas, sehingga tidak menutupi pratinjau di belakangnya.
+            var numberStack = new StackPanel();
+            numberStack.Children.Add(new TextBlock
+            {
+                Text = "MONITOR " + index,
+                Foreground = new SolidColorBrush(CText),
+                FontFamily = FMono,
+                FontSize = 9.5,
+                FontWeight = FontWeights.Bold,
+            });
             if (screen.Primary)
-                numberStack.Children.Add(new TextBlock { Text = "· " + Tr("display.primary").ToUpperInvariant(), Foreground = new SolidColorBrush(CPrimaryHi), FontFamily = FMono, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            {
+                numberStack.Children.Add(new TextBlock
+                {
+                    Text = Tr("display.primary").ToUpperInvariant(),
+                    Foreground = new SolidColorBrush(CPrimaryHi),
+                    FontFamily = FMono,
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(0, 2, 0, 0),
+                });
+            }
             number.Child = numberStack;
             media.Children.Add(number);
 
@@ -2306,11 +2552,39 @@ namespace LumaWall
                 BorderThickness = new Thickness(1),
                 Background = new SolidColorBrush(CSurface)
             };
-            var noteStack = new StackPanel { Orientation = Orientation.Horizontal };
+
+            // Catatan disusun dalam Grid, bukan StackPanel horizontal.
+            //
+            // StackPanel horizontal memberi setiap anaknya lebar yang ia minta,
+            // tanpa peduli apakah jumlahnya melebihi lebar yang tersedia - dan
+            // pada jendela 920px, ikon 34px + catatan selebar 760px memang
+            // MELEBIHI kotaknya. Yang terjadi: catatannya keluar dari kotak
+            // berbingkai itu dan menimpa apa pun di bawahnya.
+            //
+            // Grid dengan satu kolom bintang membuat catatannya mengisi lebar
+            // yang tersisa, berapa pun lebar jendelanya - dan teksnya sudah
+            // membungkus, jadi tidak ada yang terpotong.
+            var noteStack = new Grid();
+            noteStack.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            noteStack.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
             var noteIcon = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(CPrimarySoft), VerticalAlignment = VerticalAlignment.Top };
             noteIcon.Child = Icons.Build(Icons.Performance, 15, new SolidColorBrush(CIcon));
+            Grid.SetColumn(noteIcon, 0);
             noteStack.Children.Add(noteIcon);
-            noteStack.Children.Add(new TextBlock { Text = Tr("perf.note"), Foreground = new SolidColorBrush(CMuted), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(14, 0, 0, 0), MaxWidth = 760, VerticalAlignment = VerticalAlignment.Center });
+
+            var noteText = new TextBlock
+            {
+                Text = Tr("perf.note"),
+                Foreground = new SolidColorBrush(CMuted),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 12,
+                Margin = new Thickness(14, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(noteText, 1);
+            noteStack.Children.Add(noteText);
+
             note.Child = noteStack;
             content.Children.Add(note);
             return PageScroll(content);
@@ -2601,7 +2875,7 @@ namespace LumaWall
             side.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var copy = new StackPanel();
             copy.Children.Add(new TextBlock { Text = IsImageFile(path) ? "STATIC IMAGE" : "VIDEO LOOP", Foreground = new SolidColorBrush(CPrimaryHi), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 10) });
-            copy.Children.Add(new TextBlock { Text = Path.GetFileNameWithoutExtension(path), Foreground = new SolidColorBrush(CText), FontFamily = FDisplay, FontSize = 22, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            copy.Children.Add(new TextBlock { Text = Path.GetFileNameWithoutExtension(path), Foreground = new SolidColorBrush(CText), TextTrimming = TextTrimming.CharacterEllipsis, FontFamily = FDisplay, FontSize = 22, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
             copy.Children.Add(new TextBlock { Text = FormatBytes(new FileInfo(path).Length) + "   ·   " + config.TargetFps + " FPS   ·   " + Tr(config.Mute ? "status.audio.off" : "status.audio.on"), Foreground = new SolidColorBrush(CMuted), FontSize = 12, Margin = new Thickness(0, 10, 0, 20) });
             copy.Children.Add(new TextBlock { Text = path, Foreground = new SolidColorBrush(CDim), FontSize = 10, TextWrapping = TextWrapping.Wrap });
             copy.Children.Add(BuildInspectorOutputSummary());
@@ -4111,7 +4385,25 @@ namespace LumaWall
         {
             var stack = new StackPanel { Orientation = Orientation.Horizontal };
             stack.Children.Add(Icons.Build(iconName, 12, Brushes.White));
-            stack.Children.Add(new TextBlock { Text = text, Foreground = Brushes.White, FontSize = 12, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.SemiBold });
+            stack.Children.Add(new TextBlock
+            {
+                Text = text,
+                Foreground = Brushes.White,
+                FontSize = 12,
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = FontWeights.SemiBold,
+                // Teks tombol tidak boleh dibungkus.
+                //
+                // Tombol dengan ikon dan teks di dalamnya punya lebar yang
+                // ditentukan isinya, dan kalau teksnya dibungkus, "Add wallpaper"
+                // menjadi dua baris di dalam tombol setinggi 38px - terlihat
+                // sebagai tombol yang isinya tumpang tindih.
+                //
+                // NoWrap dengan lebar otomatis membuat tombolnya melebar mengikuti
+                // teksnya, yang memang perilaku yang benar untuk tombol.
+                TextWrapping = TextWrapping.NoWrap,
+            });
             var b = new Button
             {
                 Content = stack,

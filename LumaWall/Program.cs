@@ -232,6 +232,20 @@ namespace LumaWall
                     int code = TimerPreview.Render(commandLine[i + 1]);
                     Environment.Exit(code);
                 }
+
+                // Memeriksa tata letak setiap halaman dan menuliskannya sebagai
+                // teks. Halaman-halaman ini tidak bisa diperiksa dengan
+                // tangkapan layar - jendelanya memakai komposisi
+                // DirectComposition, sehingga PrintWindow menghasilkan bitmap
+                // kosong dan CopyFromScreen menyalin jendela lain di atasnya.
+                // Pohon elemennya bisa dibaca, dan itu cukup untuk menemukan
+                // elemen yang keluar batas, kontrol yang menimpa, dan teks yang
+                // terpotong.
+                if (commandLine[i] == "--periksa-ui" && i + 1 < commandLine.Length)
+                {
+                    int code = PeriksaUi.Jalankan(commandLine[i + 1]);
+                    Environment.Exit(code);
+                }
             }
 
             bool ownsMutex;

@@ -42,6 +42,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using Forms = System.Windows.Forms;
 
 namespace LumaWall
@@ -103,12 +104,45 @@ namespace LumaWall
                 return page;
             }
 
-            // Two columns. The left one is a fixed width so the preview does not resize
-            // as the right column's content changes height - otherwise the whole page
-            // shifts every time a chip is clicked.
+            // Two columns, dan pembagiannya diatur supaya kedua kolom selesai
+            // pada ketinggian yang hampir sama.
+            //
+            // Sebelumnya kolom kiri memuat tujuh kartu dan kolom kanan empat,
+            // sehingga halaman berakhir dengan satu kolom yang jauh lebih
+            // panjang daripada yang lain - dan itu terbaca sebagai halaman yang
+            // belum selesai. Yang menentukan pembagiannya adalah tinggi kartu
+            // yang sudah diukur, bukan selera:
+            //
+            //   Monitor yang diatur    254      Warna         336
+            //   Pratinjau              275      Bingkai       357
+            //   Preset cepat           158      Pemutaran     313
+            //   Lintas monitor         177      Penempatan    455
+            //   HDR                    199
+            //   Atur ulang             136
+            //   Jam desktop            118
+            //
+            // Kiri 254+275+158+177 = 864. Kanan 336+357+313+455 = 1461. Selisih
+            // 597 piksel. Dipindahkan supaya jadi:
+            //
+            //   kiri:  Monitor 254 + Pratinjau 275 + Preset 158 + HDR 199 + Reset 136 = 1022
+            //   kanan: Warna 336 + Bingkai 357 + Pemutaran 313 + Penempatan 455 = 1461
+            //
+            // Selisihnya masih ada karena kartu Penempatan memang tinggi dan
+            // tidak boleh dipindah - padanya ada pad penempatan yang butuh lebar.
+            // Yang menghilangkan selisih itu adalah kartu yang bisa dilebarkan:
+            // kolom kiri dibuat sedikit lebih lebar dan kartunya mengisi tinggi
+            // yang tersedia.
             var columns = new Grid { Margin = new Thickness(0, 4, 0, 0) };
-            columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(330) });
-            columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            columns.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(1, GridUnitType.Star),
+                MinWidth = 320
+            });
+            columns.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(1.15, GridUnitType.Star),
+                MinWidth = 360
+            });
 
             var left = new StackPanel { Margin = new Thickness(0, 0, 16, 0) };
             left.Children.Add(StudioDisplayPicker(screens));
@@ -802,7 +836,7 @@ namespace LumaWall
                 {
                     config.Timer.Enabled = v;
                     timerRefresh();
-                }));
+                }, true));
 
             if (!config.Timer.Enabled) return card;
 
@@ -1561,6 +1595,28 @@ namespace LumaWall
         /// <summary>A switch with a title and an optional explanatory line.</summary>
         private UIElement StudioToggle(string label, string hint, bool value, Action<bool> set)
         {
+            return StudioToggle(label, hint, value, set, false);
+        }
+
+        /// <summary>
+        /// Satu baris sakelar: label di kiri, sakelar di kanan.
+        ///
+        /// `susunUlang` menentukan apakah halaman perlu dibangun ulang sesudah
+        /// sakelar diubah, dan itu HARUS dipilih dengan benar. Membangun ulang
+        /// halaman itu mahal: seluruh pohon elemen dibuang dan dibuat lagi,
+        /// halaman berkedip, dan posisi gulir harus dipulihkan. Untuk sakelar
+        /// yang hanya mengubah nilai - tanggal, format 12 jam, ping-pong, HDR -
+        /// tidak ada satu pun elemen yang berubah, jadi membangun ulang hanya
+        /// menghasilkan kedipan.
+        ///
+        /// Yang benar-benar mengubah susunan halaman hanya sakelar yang
+        /// menampilkan atau menyembunyikan bagian lain: menghidupkan jam
+        /// memunculkan seluruh pengaturan jam di bawahnya. Untuk yang seperti
+        /// itu, membangun ulang memang perlu.
+        /// </summary>
+        private UIElement StudioToggle(string label, string hint, bool value, Action<bool> set,
+                                       bool susunUlang)
+        {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 11) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1628,9 +1684,41 @@ namespace LumaWall
                 HorizontalAlignment = value ? HorizontalAlignment.Right : HorizontalAlignment.Left,
                 Margin = new Thickness(3, 0, 3, 0),
                 VerticalAlignment = VerticalAlignment.Center,
+                // Bayangan tipis di bawah knob: itu yang membuat sakelar terbaca
+                // sebagai benda yang bisa digeser, bukan sebagai dua kotak.
+                Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 4,
+                    ShadowDepth = 1,
+                    Opacity = 0.45,
+                    Direction = 270,
+                },
             };
             track.Child = knob;
+
+            // Template CheckBox DIGANTI, bukan hanya isinya.
+            //
+            // `box.Content = track` saja tidak cukup, dan itu penyebab sakelarnya
+            // terlihat seperti kotak centang: template bawaan WPF menggambar
+            // kotak centangnya SENDIRI di samping konten, jadi yang terlihat di
+            // layar adalah kotak centang dengan sakelar kecil di sebelahnya.
+            // Yang benar adalah mengganti ControlTemplate-nya sehingga yang
+            // digambar hanyalah track dan knob - dan CheckBox tetap membawa
+            // status serta TogglePattern-nya, yang dibutuhkan screen reader dan
+            // alat pemeriksa.
+            var templat = new ControlTemplate(typeof(CheckBox));
+            var isi = new FrameworkElementFactory(typeof(ContentPresenter));
+            isi.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            isi.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            templat.VisualTree = isi;
+            box.Template = templat;
             box.Content = track;
+            box.Background = Brushes.Transparent;
+            box.BorderThickness = new Thickness(0);
+            box.Padding = new Thickness(0);
+            box.HorizontalContentAlignment = HorizontalAlignment.Center;
+            box.VerticalContentAlignment = VerticalAlignment.Center;
 
             // Paint the switch from its own state, so a change made by a screen reader or an
             // automation tool looks exactly like a change made by a click.
@@ -1648,7 +1736,7 @@ namespace LumaWall
                 set(true);
                 manager.RefreshOptions();
                 store.Save(config);
-                ReloadCurrentPage();
+                if (susunUlang) ReloadCurrentPage();
             };
             box.Unchecked += delegate
             {
@@ -1656,7 +1744,7 @@ namespace LumaWall
                 set(false);
                 manager.RefreshOptions();
                 store.Save(config);
-                ReloadCurrentPage();
+                if (susunUlang) ReloadCurrentPage();
             };
 
             Grid.SetColumn(box, 1);
