@@ -56,20 +56,22 @@ KNOWN_CATEGORIES = {
 }
 
 MATURE_WORDS = {
-    "nsfw", "ecchi", "lewd", "sexy", "seductive", "sensual", "sultry", "provocative",
-    "lingerie", "bikini", "swimsuit", "cleavage", "boudoir", "gravure", "pin-up", "pinup",
-    "bath", "shower", "hot", "girl", "girls", "waifu", "maid", "idol", "model",
-
-    # Kata yang juga membenarkan, dan harus sama dengan daftar di
-    # tools/tegakkan-mature.py. Kalau keduanya berbeda, alat itu akan
-    # mengeluarkan entri yang oleh pemeriksa ini dianggap benar - dan
-    # keduanya akan bertengkar tanpa akhir.
-    "alluring", "sunbathing", "bathing", "swimwear", "beachwear", "flirty",
-    "voluptuous", "curvy", "busty", "thigh", "thighs", "stockings",
-    "heels", "sundress", "onsen", "poolside", "topless", "nude", "naked",
-    "undress", "panties", "leotard", "bodysuit", "catsuit", "garter",
-    "corset", "negligee", "nightgown", "cheerleader", "nurse", "bunny",
-    "gym", "yoga", "massage", "bedroom", "beach",
+    # Kata yang TIDAK punya arti lain di sebuah wallpaper.
+    #
+    # Daftar ini dulu memuat kata generik - "girl", "girls", "maid", "bunny",
+    # "idol", "waifu", "model", "hot", "bath", "shower", "gym", "yoga", "beach",
+    # "pool" - dan itulah yang merusak kategori Mature: "Miku Starlight Idol"
+    # masuk karena kata "idol", "Anime Girl Maid Dance" karena "girl" dan
+    # "maid", dan "Genshin Royal Gym Girls" karena "girl" dan "gym".
+    #
+    # Kata-kata itu dibuang. Yang tersisa hanya kata yang tidak bisa muncul di
+    # wallpaper biasa: bikini, lingerie, nsfw, dan sejenisnya.
+    "nsfw", "ecchi", "hentai", "lewd", "sexy", "seductive", "sensual", "sultry",
+    "provocative", "erotic", "lingerie", "bikini", "swimsuit", "swimwear",
+    "cleavage", "boudoir", "gravure", "pin-up", "pinup", "topless", "undress",
+    "busty", "voluptuous", "stripper", "nude", "naked", "milf", "panties",
+    "nightgown", "negligee", "corset", "garter", "thigh-high", "thigh-highs",
+    "hot",  # hanya sebagai bagian dari frasa "hot girl" / "cute hot"
 }
 
 GENERATED_TAGS = {"ai", "ai-art", "ai-generated", "midjourney", "stable-diffusion", "sdxl"}
