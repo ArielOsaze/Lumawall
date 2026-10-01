@@ -80,6 +80,14 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 8 | Timer benar-benar pindah layar | ✅ dibaca dari persegi jendela widget, bukan dari klaim app |
 | 9 | Hover tombol terlihat | ✅ 3/3 tombol, hover merah di close `(255, 46, 67)`, **tidak ada Aero blue** |
 | 10 | Semua checker | ✅ `tools/verify-all.py` |
+| 11 | Jam gaya iOS **solid**, bukan berongga | ✅ kepadatan piksel huruf 10-17% (huruf berongga 3-6%). Bayangan halo delapan arah diganti bayangan rapat untuk semua gaya tipis | `LumaWall.exe --render-timer` + hitung kepadatan |
+| 12 | Jam gaya iOS **memakai Inter**, bukan Segoe | ✅ render melaporkan `ioslarge -> Inter ExtraLight`, `ioslight -> Inter Light`, `iosdate -> Inter Medium` | `LumaWall.exe --render-timer` |
+| 13 | Jam gaya iOS **tidak menampilkan detik** | ✅ `ShowSeconds` diabaikan untuk ioslarge/ioslight/iosstack/iosdate | baca `Format()` di `DesktopTimer.cs` |
+| 14 | Sakelar Studio **bisa dibaca alat bantu** | ✅ 6/6 sakelar ditemukan, `toggle=True`, ukuran 42×23. Sebelumnya 0 ditemukan karena jendela bernama "Hidden Window" | `python tools/periksa-toggle.py` |
+| 15 | Tata letak **rapi di semua lebar** | ✅ 0 masalah pada 6 halaman × 3 lebar (920/1200/1580 px). Sebelumnya 269 masalah | `LumaWall.exe --periksa-ui <folder>` |
+| 16 | Sakelar **tidak membangun ulang halaman** | ✅ hanya sakelar yang mengubah susunan (jam on/off) yang memicu muat ulang | baca `StudioToggle` di `FeaturesPage.cs` |
+| 17 | Installer terpasang = versi yang dibuild | ✅ 4.5.13.0 terpasang, situs juga menyajikan 4.5.13.0 | `python tools/release.py --verify-only` |
+| 18 | Jalankan/pause saat fullscreen | ✅ jeda terdeteksi, tidak ada putaran selesai selama jeda, frame pertama setelah 25 ms, video benar berjalan (putaran selesai 11.4 s) | `python tools/check-pause-resume.py` |
 
 ---
 
