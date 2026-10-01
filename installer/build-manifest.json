@@ -1,13 +1,13 @@
 {
   "installer": {
-    "path": "C:/Users/ariel/Documents/Codex/2026-09-20/bik/outputs/LumaWall-Setup-4.5.13.0.exe",
-    "sha256": "3cd4e5b22eced0149b1609f5aac0430dd2fc693a729e73a57681d5ab760d9a2a",
-    "bytes": 16881874
+    "path": "C:/Users/ariel/Documents/Codex/2026-09-20/bik/outputs/LumaWall-Setup-4.5.14.0.exe",
+    "sha256": "4b8def905896c7b5c4313c0e57531428d319fdff9c5b10cc13f2902419da0779",
+    "bytes": 17244480
   },
   "built_from": {
     "LumaWall.exe": {
-      "sha256": "7ef5428095c67d20de8b6441b26c95db0246cef9285a9d4d87cc2c9df8b1d8cd",
-      "bytes": 406016
+      "sha256": "e3c05f6722420b90501eca0e241b3361defec4b655ec0b25bbe5b935941378b4",
+      "bytes": 407552
     }
   }
 }

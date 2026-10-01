@@ -8,6 +8,155 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.14.0
+
+### Bahasa Indonesia
+
+**Jam sekarang memakai font yang benar untuk ukuran besar**
+
+Inter ternyata punya dua varian, dan bedanya penting: **Inter** dirancang untuk
+teks kecil - hurufnya lebih lebar dan jaraknya lebih longgar supaya terbaca di
+badan paragraf - sedangkan **Inter Display** dirancang untuk ukuran besar,
+dengan huruf yang lebih rapat dan proporsi yang lebih halus.
+
+Itu pembagian yang sama dengan SF Pro Text dan SF Pro Display milik Apple, dan
+jam lock screen iPhone memakai yang **Display**. Selama ini jamnya memakai
+varian teks, dan itulah sebabnya ia terlihat seperti font biasa meski namanya
+sudah benar. Sekarang: `ioslarge -> Inter Display Light`,
+`ioslight -> Inter Display Light`, `iosstack -> Inter Display Light`,
+`iosdate -> Inter Display Light`.
+
+**Tanggal selalu di atas jam**
+
+Di iPhone, tanggal selalu duduk di atas jam - itu susunan yang Apple pakai dan
+tidak bisa diubah pemakai. Sebelumnya hanya satu gaya yang begitu; tiga lainnya
+menaruh tanggal di bawah, dan susunan itu tidak pernah ada di iPhone. Sekarang
+keempatnya sama, seperti aslinya.
+
+**Jamnya diperbesar**
+
+Jam lock screen iPhone adalah unsur paling besar di layarnya - ukurannya yang
+membuatnya terbaca sebagai jam iOS. Sekarang `ioslarge` 80px, `ioslight` 68px,
+`iosstack` 64px, `iosdate` 60px, dengan tanggal tetap kecil di atasnya.
+
+**Tanggal memakai font yang sama dengan jamnya**
+
+Sebelumnya jam memakai Inter dan tanggalnya memakai Segoe - dua keluarga font
+berbeda yang bertumpuk, dan mata langsung melihat keduanya tidak sekeluarga.
+Sekarang keduanya Inter, hanya beda ukuran dan berat.
+
+**Pemilih gaya menunjukkan hal yang sebenarnya**
+
+Empat pilihan gaya iOS dulu menggambar hal yang sama - satu baris "9:41" di
+tengah kotak - sehingga tidak ada bedanya di layar. Sekarang masing-masing
+menggambar susunan yang sebenarnya: tanggal kecil di atas, jam besar di bawah.
+
+**Halaman Monitor menampilkan keterangan yang berguna**
+
+Baris keterangan di kartu monitor dulu berbunyi `\\.\DISPLAY2 · LOOP` - nama
+perangkat internal Windows yang tidak berarti apa-apa bagi pemakai. Sekarang
+berbunyi jenis wallpaper dan ukuran berkasnya, misalnya
+"Video dinamis · 15,2 MB".
+
+**Katalog: 25.560 wallpaper, kategori mature jauh lebih lengkap**
+
+Katalog bertambah dari 22.879 menjadi **25.560** entri, semuanya dinamis, semua
+resolusinya terukur, semuanya HD atau lebih baik, dan 56,8% di antaranya 2K
+atau 4K.
+
+Kategori **Mature 18+** bertambah dari 249 menjadi **319** entri, dan yang lebih
+penting: isinya sekarang benar.
+
+- **82 entri bergaya dewasa yang nyasar** di Gaming dan Anime Girls dipindahkan
+  ke tempatnya. Judul seperti "Blue Archive Chiaki Swimsuit" dan "Kisaki Hot
+  Spring" sebelumnya ada di kategori game.
+- **25 entri yang tidak layak dikeluarkan** dari kategori dewasa - seri yang
+  tokohnya berseragam sekolah (Blue Archive, Pokemon, dan judul yang menyebut
+  "schoolgirl"). Kategori dewasa tidak boleh memuatnya.
+- **2.305 entri tanpa berkas video dibuang.** Entri seperti itu tidak bisa
+  dipasang sama sekali: tidak ada berkas yang bisa diunduh, dan kartunya hanya
+  menampilkan kotak abu-abu.
+- **Satu wallpaper potret (1080x1920) dibuang** - katalog ini untuk desktop.
+
+**4.965 wallpaper HD baru**
+
+Diambil dari API DesktopHut, bukan dengan mengurai halamannya. API itu
+mengembalikan data terstruktur lengkap dengan resolusinya, sehingga aturan
+"wajib HD dan tidak pecah" bisa ditegakkan tanpa mengunduh berkasnya satu per
+satu.
+
+### English
+
+**The clock now uses the right font for large sizes**
+
+Inter turns out to have two variants, and the difference matters: **Inter** is
+designed for small text - wider letters, looser spacing, so it reads in a
+paragraph - while **Inter Display** is designed for large sizes, with tighter
+letters and finer proportions.
+
+That is the same split as Apple's SF Pro Text and SF Pro Display, and the iPhone
+lock screen clock uses the **Display** one. The clock had been using the text
+variant, which is why it looked like an ordinary font even once the name was
+right. Now: `ioslarge -> Inter Display Light`, and the same for the other three
+iOS styles.
+
+**The date is always above the clock**
+
+On iPhone the date always sits above the clock - a layout Apple fixes and the
+user cannot change. Only one style did that before; the other three put the date
+below, a layout that never existed on an iPhone. All four now match.
+
+**The clock is larger**
+
+The iPhone lock screen clock is the largest element on the screen - its size is
+what makes it read as an iOS clock. Now `ioslarge` is 80px, `ioslight` 68px,
+`iosstack` 64px, `iosdate` 60px, with the date still small above it.
+
+**The date uses the same font as the clock**
+
+The clock used Inter and the date used Segoe - two different families stacked
+together, and the eye sees immediately that they do not belong together. Both
+are now Inter, differing only in size and weight.
+
+**The style picker shows what you actually get**
+
+The four iOS style tiles used to draw the same thing - one "9:41" line centred
+in the box - so they looked identical. Each now draws its real layout: a small
+date above, a large clock below.
+
+**The Displays page says something useful**
+
+The caption on each monitor card used to read `\\.\DISPLAY2 · LOOP` - an internal
+Windows device name that means nothing to anyone. It now reads the wallpaper
+type and its file size, e.g. "Animated video · 15.2 MB".
+
+**Catalogue: 25,560 wallpapers, and the mature category is far better stocked**
+
+The catalogue grew from 22,879 to **25,560** entries: all animated, every
+resolution measured, all HD or better, and 56.8% at 2K or 4K.
+
+The **Mature 18+** category grew from 249 to **319** entries, and more
+importantly its contents are now correct.
+
+- **82 mature-style entries that had wandered** into Gaming and Anime Girls were
+  moved where they belong. Titles like "Blue Archive Chiaki Swimsuit" and
+  "Kisaki Hot Spring" had been filed under games.
+- **25 entries that do not belong were removed** from the mature category -
+  series whose characters wear school uniforms (Blue Archive, Pokemon, and
+  titles naming "schoolgirl"). The mature category must not contain them.
+- **2,305 entries with no video file were dropped.** Such an entry cannot be
+  applied at all: there is no file to download, and its card shows a grey box.
+- **One portrait wallpaper (1080x1920) was removed** - this catalogue is for
+  desktops.
+
+**4,965 new HD wallpapers**
+
+Taken from DesktopHut's API rather than by parsing their pages. That API returns
+structured data including resolutions, so the "must be HD and must not be
+pixelated" rule can be enforced without downloading every file.
+
+---
+
 ## 4.5.13.0
 
 ### Bahasa Indonesia
