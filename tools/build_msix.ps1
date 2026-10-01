@@ -37,8 +37,23 @@ if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 
 # App binaries (exe, WebView2 dlls, catalog, README, LICENSE)
-Get-ChildItem $releaseDir -File | Where-Object { $_.Name -ne 'app-logo.png' } | ForEach-Object {
-    Copy-Item $_.FullName -Destination $stageDir -Force
+#
+# Recurse, bukan hanya berkas di tingkat atas.
+#
+# `-File` saja melewati setiap SUBFOLDER, dan folder `fonts` berisi berkas yang
+# dibutuhkan aplikasi: tanpa font itu, versi Store jatuh ke font sistem dan jam
+# kembali terlihat basic - persis keluhan yang baru saja diperbaiki. Kesalahan
+# ini tidak terlihat sama sekali dari luar: MSIX-nya tetap terbentuk, tetap
+# terpasang, tetap berjalan, dan hanya tampilannya yang salah.
+#
+# `assets` dan `TileAssets` ditangani terpisah di bawah, jadi keduanya
+# dikecualikan di sini supaya tidak disalin dua kali dengan tujuan berbeda.
+Get-ChildItem $releaseDir | Where-Object {
+    $_.Name -ne 'app-logo.png' -and
+    $_.Name -ne 'assets' -and
+    $_.Name -ne 'TileAssets'
+} | ForEach-Object {
+    Copy-Item $_.FullName -Destination $stageDir -Recurse -Force
 }
 
 # Wallpaper asset library ships inside the package

@@ -238,6 +238,46 @@ def main():
     print('  payload: %d files, %.2f MB' % (len(names), size_mb))
     print()
 
+    # ---- Berkas yang wajib ada di dalam paket -------------------------------------
+    #
+    # Pemeriksaan ini ada karena sebuah cacat nyata yang lolos ke paket rilis:
+    # tahap penyusunan memakai `Get-ChildItem -File`, yang melewati setiap
+    # SUBFOLDER, sehingga folder `fonts` tidak pernah ikut. Akibatnya versi
+    # Store memakai font sistem dan jam kembali terlihat basic - sementara
+    # paketnya sendiri tetap terbentuk, tetap terpasang, dan tetap berjalan.
+    #
+    # Cacat seperti itu tidak bisa ditemukan dari luar paket. Yang bisa
+    # ditemukan adalah ketiadaan berkasnya, dan itu yang diperiksa di sini.
+    #
+    # Daftar ini sengaja menyebut berkas yang kalau hilang membuat aplikasi
+    # BERPERILAKU BEDA, bukan yang membuatnya gagal start - kegagalan start
+    # sudah pasti ketahuan, sedangkan perubahan perilaku tidak.
+    wajib = {
+        'lumawall.exe': 'aplikasinya sendiri',
+        'fonts/inter-light.ttf': 'font jam (Inter Light)',
+        'fonts/inter-regular.ttf': 'font jam (Inter Regular)',
+        'fonts/inter-extralight.ttf': 'font jam (Inter ExtraLight)',
+        'fonts/inter-medium.ttf': 'font jam (Inter Medium)',
+        'fonts/inter-semibold.ttf': 'font jam (Inter SemiBold)',
+        'fonts/inter-bold.ttf': 'font jam (Inter Bold)',
+        'fonts/license-inter.txt': 'lisensi font (wajib untuk SIL OFL)',
+        'webview2loader.dll': 'pemuat WebView2',
+    }
+    ada = set(n.replace('\\', '/').lower() for n in names)
+    hilang = [k for k in wajib if k not in ada]
+
+    if hilang:
+        print('  berkas wajib yang HILANG:')
+        for jalur in hilang:
+            print('    %-34s %s' % (jalur, wajib[jalur]))
+        print()
+        for jalur in hilang:
+            failures.append('the package is missing %s (%s)' % (jalur, wajib[jalur]))
+    else:
+        print('  berkas wajib: %d dari %d ada (termasuk %d berkas font)'
+              % (len(wajib), len(wajib), len([k for k in wajib if k.startswith('fonts/')])))
+    print()
+
     # ---- Report ------------------------------------------------------------------
     for n in notes:
         print('  NOTE  %s' % n)
