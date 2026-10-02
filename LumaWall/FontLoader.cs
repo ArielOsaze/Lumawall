@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
+using System.Linq;
 
 namespace LumaWall
 {
@@ -68,10 +69,18 @@ namespace LumaWall
                     return;
                 }
 
-                string[] berkas = Directory.GetFiles(folder, "*.ttf");
+                // .ttf DAN .otf, karena SF Pro Display dari Apple berformat .otf.
+                //
+                // Versi sebelumnya hanya membaca *.ttf, sehingga font SF Pro
+                // ada di folder tetapi tidak pernah termuat - dan timer
+                // diam-diam memakai cadangannya. Itu sebabnya jamnya tidak
+                // berubah meski fontnya sudah diganti berkali-kali.
+                string[] berkas = Directory.GetFiles(folder, "*.ttf")
+                    .Concat(Directory.GetFiles(folder, "*.otf"))
+                    .ToArray();
                 if (berkas.Length == 0)
                 {
-                    Kesalahan = "tidak ada berkas .ttf";
+                    Kesalahan = "tidak ada berkas font";
                     AppLog.Write("Font: " + Kesalahan + " - memakai font sistem");
                     return;
                 }

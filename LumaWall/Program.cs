@@ -229,7 +229,15 @@ namespace LumaWall
             {
                 if (commandLine[i] == "--render-timer" && i + 1 < commandLine.Length)
                 {
-                    int code = TimerPreview.Render(commandLine[i + 1]);
+                    // --mode <countdown|clock|stopwatch> merender mode itu,
+                    // bukan selalu jam. Tanpa ini, pemeriksa stopwatch dan
+                    // countdown selalu mendapat gambar jam.
+                    string mode = "clock";
+                    for (int j = 0; j < commandLine.Length - 1; j++)
+                    {
+                        if (commandLine[j] == "--mode") mode = commandLine[j + 1];
+                    }
+                    int code = TimerPreview.Render(commandLine[i + 1], mode);
                     Environment.Exit(code);
                 }
 

@@ -8,6 +8,144 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.16.0
+
+### Bahasa Indonesia
+
+**Jam sekarang memakai font asli Apple: SF Pro Display**
+
+Selama ini jamnya memakai Inter - font yang mirip, tetapi bukan fontnya.
+Sekarang jamnya memakai **SF Pro Display**, font yang persis dipakai jam lock
+screen iPhone.
+
+Dua hal membuat font ini tidak pernah terpakai, dan keduanya diam-diam:
+
+1. **Berkas fontnya berformat `.otf`, dan aplikasinya hanya membaca `.ttf`.**
+   Proyeknya menyalin `fonts\*.ttf` dan pembaca fontnya membaca `*.ttf` - jadi
+   SF Pro ada di folder tetapi tidak pernah termuat, dan timer diam-diam
+   memakai cadangannya. Itu sebabnya jamnya tidak berubah meski fontnya sudah
+   diganti berkali-kali. Sekarang keduanya membaca `.ttf` DAN `.otf`.
+
+2. **Tanggal memakai font yang berbeda dari jamnya.** Jam memakai SF Pro,
+   tanggal masih Inter - dan di iPhone keduanya satu keluarga. Sekarang
+   tanggal juga SF Pro.
+
+**Jamnya sekarang benar-benar di tengah**
+
+Padding kotak teksnya tidak simetris: kiri 6px, kanan 12px. Padding yang tidak
+sama membuat titik tengahnya bergeser 3px ke kiri, dan karena jam digambar
+di tengah kotak itu, seluruh jam ikut bergeser. Sekarang jaraknya sama di
+keempat sisi.
+
+**Stopwatch dan countdown sekarang benar-benar berjalan**
+
+Dua sebab, keduanya membuat fiturnya tampak rusak:
+
+1. **Memilih mode hanya menyimpan nilainya.** Tombol mode menyimpan
+   `config.Timer.Mode` lalu berhenti - tidak menyimpan config dan tidak
+   menjalankan ulang widget. Jadi menekan "stopwatch" tidak mengubah apa pun.
+   Sekarang pilihannya disimpan dan widgetnya dijalankan ulang.
+
+2. **Aturan "gaya iOS tidak menampilkan detik" diterapkan ke semua mode.**
+   Aturan itu berasal dari jam layar kunci iPhone, dan di sana benar - tetapi
+   stopwatch yang dijalankan dengan gaya iOS menampilkan `00:00` dan tidak
+   pernah bergerak. Sebuah stopwatch tanpa detik bukan stopwatch. Sekarang
+   stopwatch dan countdown selalu menampilkan detik.
+
+**Sakelar di Luma Studio tidak lagi berdempetan**
+
+Jarak antar-sakelar 11px, dan dengan sakelar setinggi 23px itu membuat dua
+sakelar terbaca sebagai satu kelompok yang menempel. Sekarang 20px, dan baris
+yang punya keterangan mendapat 24px.
+
+### English
+
+**The clock now uses Apple's real font: SF Pro Display**
+
+It used Inter - a close relative, but not the font. It now uses **SF Pro
+Display**, the exact face of the iPhone lock screen clock.
+
+Two things kept it from ever being used, both silent:
+
+1. **The font files are `.otf`, and the app only read `.ttf`.** The project
+   copied `fonts\*.ttf` and the loader read `*.ttf`, so SF Pro sat in the
+   folder and was never loaded - the timer fell back without saying so. That
+   is why the clock did not change no matter how many times the font was
+   swapped. Both now read `.ttf` and `.otf`.
+
+2. **The date used a different family from the clock.** The clock was SF Pro
+   while the date stayed Inter; on iPhone both are one family. The date is SF
+   Pro now too.
+
+**The clock is genuinely centred now**
+
+The text box padding was asymmetric: 6px on the left, 12px on the right.
+Uneven padding moves its centre 3px left, and since the clock is drawn centred
+inside it, the whole clock moved. The padding is now equal on all four sides.
+
+**Stopwatch and countdown actually run now**
+
+Two causes, both making the feature look broken:
+
+1. **Choosing a mode only stored the value.** The mode button set
+   `config.Timer.Mode` and stopped - it did not save the config and did not
+   restart the widget, so pressing "stopwatch" changed nothing. The choice is
+   now saved and the widget restarted.
+
+2. **The "iOS styles never show seconds" rule was applied to every mode.** The
+   rule comes from the iPhone lock screen clock, where it is right - but a
+   stopwatch on an iOS style read `00:00` and never moved. A stopwatch without
+   seconds is not a stopwatch. Stopwatch and countdown now always show seconds.
+
+**The switches in Luma Studio are no longer cramped**
+
+The gap between switches was 11px, and with a 23px switch that read as one
+clump rather than separate settings. It is 20px now, and rows with a hint get
+24px.
+
+---
+
+## 4.5.15.0
+
+### Bahasa Indonesia
+
+**Kategori Mature 18+ sekarang jujur**
+
+Kategori itu berisi 319 entri, dan setelah diperiksa satu per satu hanya 21
+yang benar-benar layak. 271 entri tidak punya bukti apa pun, dan 80 entri hanya
+dibenarkan kata generik seperti "girl" dan "idol" - "Miku Starlight **Idol**"
+masuk kategori dewasa hanya karena kata "idol".
+
+299 entri dikembalikan ke kategori yang benar, dan kategorinya diisi ulang dari
+**tag asli moewalls** - penilaian situsnya sendiri, bukan tebakan atas judul.
+
+Penjaga keamanan katalog menangkap 12 entri Blue Archive yang lolos ke Mature
+(game tentang murid sekolah), dan penjaganya tidak dilonggarkan demi menambah
+jumlah.
+
+251 anime yang nyasar di Dynamic dan Gaming (Naruto, Blue Lock, Attack on Titan)
+dikembalikan ke Anime Loop.
+
+### English
+
+**The Mature 18+ category is honest now**
+
+It held 319 entries, and checked one by one only 21 were genuinely eligible.
+271 had no evidence at all, and 80 were justified only by generic words like
+"girl" and "idol" - "Miku Starlight **Idol**" was in the adult category because
+of the word "idol".
+
+299 entries went back to their correct categories, and the category was refilled
+from **moewalls' own tags** - the site's own judgement, not a guess at the title.
+
+The catalogue's safety guard caught 12 Blue Archive entries that reached Mature
+(a game about school students), and the guard was not loosened to add numbers.
+
+251 anime that had strayed into Dynamic and Gaming (Naruto, Blue Lock, Attack on
+Titan) went back to Anime Loop.
+
+---
+
 ## 4.5.14.0
 
 ### Bahasa Indonesia

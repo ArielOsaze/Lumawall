@@ -54,6 +54,13 @@
          keluaran supaya bisa didaftarkan saat aplikasi mulai, tanpa perlu
          dipasang di sistem pengguna. -->
     <Content Include="fonts\*.ttf"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <!-- .otf juga disalin.
+         Sebelumnya baris ini hanya menyebut *.ttf, dan SF Pro Display dari
+         Apple berformat .otf - sehingga fontnya ADA di repositori tetapi
+         TIDAK PERNAH masuk ke hasil build, dan timer diam-diam memakai
+         cadangannya. Itu sebabnya jamnya tidak berubah meski fontnya sudah
+         diganti berkali-kali. -->
+    <Content Include="fonts\*.otf"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="fonts\LICENSE-Inter.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="app-logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="..\packages\Microsoft.Web.WebView2.1.0.2903.40\runtimes\win-x64\native\WebView2Loader.dll">

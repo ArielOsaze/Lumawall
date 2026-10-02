@@ -55,6 +55,20 @@ namespace LumaWall
 
         public static int Render(string outputDirectory)
         {
+            return Render(outputDirectory, "clock");
+        }
+
+        /// <summary>
+        /// Renders every style with the given mode.
+        ///
+        /// `mode` matters because the styles do not all look the same in every
+        /// mode: a stopwatch must show seconds, a clock must not, and the
+        /// seconds rule is applied per-mode. Rendering only "clock" hid a real
+        /// defect - stopwatch and countdown both came out as a frozen clock
+        /// reading.
+        /// </summary>
+        public static int Render(string outputDirectory, string mode)
+        {
             try
             {
                 Directory.CreateDirectory(outputDirectory);
@@ -87,6 +101,7 @@ namespace LumaWall
                     return 1;
                 }
 
+                // Mode sudah diterima sebagai parameter.
                 foreach (string style in Styles)
                 {
                     object window = Activator.CreateInstance(windowType, true);
@@ -96,9 +111,11 @@ namespace LumaWall
                         {
                             Enabled = true,
                             Style = style,
-                            Mode = "clock",
+                            Mode = mode,
                             ShowDate = true,
                             TwelveHour = false,
+                            ShowSeconds = true,
+                            Seconds = 125,
                             Scale = 150,
                             Position = "middle-center",
                         };
@@ -117,7 +134,24 @@ namespace LumaWall
 
                         // Draw once with the reading, once more because the widget skips a
                         // repaint whose content has not changed.
-                        var args = new object[] { Time, Date, 0.65, config, false, false };
+                        //
+                        // Teksnya bergantung pada MODE, dan itu penting.
+                        //
+                        // Sebelumnya nilai ini selalu "9:41" untuk semua mode,
+                        // sehingga stopwatch dan countdown dirender sebagai jam -
+                        // dan pemeriksa yang membandingkan mode melaporkan
+                        // ketiganya sama persis. Yang salah bukan pemeriksanya,
+                        // melainkan preview yang tidak pernah merender mode lain.
+                        //
+                        // Sekarang tiap mode memakai teks yang bentuknya sama
+                        // dengan yang dihasilkan Format() pada mode itu: jam
+                        // tanpa detik, stopwatch dan countdown dengan detik.
+                        string teks = Time;
+                        double progress = 0.65;
+                        if (mode == "stopwatch") { teks = "12:34"; progress = 1.0; }
+                        else if (mode == "countdown") { teks = "02:05"; progress = 0.35; }
+
+                        var args = new object[] { teks, Date, progress, config, false, false };
                         try { drawFrame.Invoke(window, args); }
                         catch (Exception e) { Console.Error.WriteLine("  draw: " + Describe(e)); }
                         try { drawFrame.Invoke(window, args); }

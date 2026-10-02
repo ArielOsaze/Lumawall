@@ -267,7 +267,18 @@ namespace LumaWall
             // dan papan skor memang perlu detik.
             bool gayaIos = current.Style == "ioslarge" || current.Style == "ioslight"
                 || current.Style == "iosstack" || current.Style == "iosdate";
-            bool pakaiDetik = current.ShowSeconds && !gayaIos;
+
+            // Detik: gaya iOS tidak menampilkannya UNTUK JAM, tetapi stopwatch
+            // dan countdown harus selalu menampilkannya.
+            //
+            // Aturan "gaya iOS tidak menampilkan detik" berasal dari jam layar
+            // kunci iPhone, dan di sana aturan itu benar. Tetapi aturan itu
+            // diterapkan ke SEMUA mode, sehingga stopwatch yang dijalankan
+            // dengan gaya iOS menampilkan "00:00" dan tidak pernah bergerak -
+            // persis "stopwatch gabisa digunakan". Sebuah stopwatch tanpa detik
+            // bukan stopwatch.
+            bool modeWaktu = current.Mode == "stopwatch" || current.Mode == "countdown";
+            bool pakaiDetik = modeWaktu || (current.ShowSeconds && !gayaIos);
 
             if (current.Mode == "clock")
             {
@@ -727,10 +738,10 @@ namespace LumaWall
                     case "ioslarge":
                         return new[]
                         {
+                            new Face("SF Pro Display", FontStyle.Regular),
+                            new Face("SF Pro Display Light", FontStyle.Regular),
                             new Face("Inter Display Light", FontStyle.Regular),
                             new Face("Inter Display ExtraLight", FontStyle.Regular),
-                            new Face("Inter Display", FontStyle.Regular),
-                            new Face("Inter Light", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI Light", FontStyle.Regular),
                         };
@@ -739,9 +750,10 @@ namespace LumaWall
                     case "ioslight":
                         return new[]
                         {
+                            new Face("SF Pro Display", FontStyle.Regular),
+                            new Face("SF Pro Display Light", FontStyle.Regular),
                             new Face("Inter Display Light", FontStyle.Regular),
                             new Face("Inter Display ExtraLight", FontStyle.Regular),
-                            new Face("Inter Light", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI Light", FontStyle.Regular),
                         };
@@ -750,9 +762,10 @@ namespace LumaWall
                     case "iosstack":
                         return new[]
                         {
+                            new Face("SF Pro Display", FontStyle.Regular),
+                            new Face("SF Pro Display Light", FontStyle.Regular),
                             new Face("Inter Display Light", FontStyle.Regular),
                             new Face("Inter Display ExtraLight", FontStyle.Regular),
-                            new Face("Inter ExtraLight", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI", FontStyle.Regular),
                         };
@@ -761,9 +774,10 @@ namespace LumaWall
                     case "iosdate":
                         return new[]
                         {
+                            new Face("SF Pro Display", FontStyle.Regular),
+                            new Face("SF Pro Display Light", FontStyle.Regular),
                             new Face("Inter Display Light", FontStyle.Regular),
                             new Face("Inter Display ExtraLight", FontStyle.Regular),
-                            new Face("Inter Light", FontStyle.Regular),
                             new Face("Segoe UI Variable Display Light", FontStyle.Regular),
                             new Face("Segoe UI", FontStyle.Regular),
                         };
@@ -850,7 +864,15 @@ namespace LumaWall
             /// </summary>
             private static Font LabelFont(float size)
             {
-                foreach (string nama in new[] { "Inter Light", "Inter", "Segoe UI Variable Display Light", "Segoe UI" })
+                // Tanggal memakai font yang sama dengan jam.
+                //
+                // Di lock screen iPhone, tanggal dan jam memakai SATU keluarga
+                // font - SF Pro. Memakai Inter untuk tanggal sementara jamnya SF
+                // Pro membuat keduanya berasal dari dua keluarga berbeda, dan
+                // itu terlihat: bentuk hurufnya tidak sama.
+                foreach (string nama in new[] { "SF Pro Display", "SF Pro Display Light",
+                                                "Inter Light", "Inter",
+                                                "Segoe UI Variable Display Light", "Segoe UI" })
                 {
                     var family = FontLoader.AmbilDariKoleksi(nama);
                     if (family != null)
@@ -1000,11 +1022,25 @@ namespace LumaWall
                             ink = Color.FromArgb(ink.R, Math.Min((byte)255, (byte)(ink.G + 40)), ink.B);
 
                         var area = new Rectangle(0, 0, w, h);
+
+                        // Padding harus SIMETRIS, atau teks yang di-center akan
+                        // bergeser.
+                        //
+                        // Sebelumnya: kiri 6*scale, kanan 12*scale (lebar
+                        // dikurangi 12*scale). Padding yang tidak sama membuat
+                        // titik tengah `content` bergeser 3*scale ke kiri dari
+                        // titik tengah kanvas - dan karena jam digambar
+                        // di-center DI DALAM `content`, seluruh jam ikut
+                        // bergeser ke kiri. Itu sebabnya penempatannya tidak
+                        // pernah benar-benar di tengah.
+                        //
+                        // Sekarang jaraknya sama di keempat sisi: 6*scale.
+                        int padX = (int)(6 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0);
+                        int padY = (int)(6 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0);
                         var content = new Rectangle(
-                            (int)(6 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0),
-                            (int)(5 * scale) + (style == "card" ? (int)(20 * scale) : 0) + (style == "ring" ? (int)(20 * scale) : 0),
-                            w - (int)(12 * scale) - (style == "card" ? (int)(40 * scale) : 0) - (style == "ring" ? (int)(40 * scale) : 0),
-                            h - (int)(10 * scale) - (style == "card" ? (int)(40 * scale) : 0) - (style == "ring" ? (int)(40 * scale) : 0));
+                            padX, padY,
+                            w - padX * 2,
+                            h - padY * 2);
 
                         // ── the wash behind the text, for glass and card ────────────────
                         if (style == "glass" || style == "card")

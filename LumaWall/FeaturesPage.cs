@@ -846,7 +846,11 @@ namespace LumaWall
                 new string[] { "countdown", "clock", "stopwatch" },
                 new string[] { Tr("timer.countdown"), Tr("timer.clock"), Tr("timer.stopwatch") },
                 config.Timer.Mode,
-                delegate(string value) { config.Timer.Mode = value; }));
+                delegate(string value) { config.Timer.Mode = value; },
+                // Jalankan ulang timer setelah mode diganti, lalu bangun ulang
+                // halaman supaya pilihan yang bergantung pada mode (panjang
+                // countdown, opsi tanggal) ikut muncul.
+                delegate { timerReset(); ReloadCurrentPage(); }));
 
             host.Children.Add(StudioLabel(Tr("timer.style")));
             host.Children.Add(StudioStyleRow());
@@ -1457,8 +1461,17 @@ namespace LumaWall
             };
         }
 
-        /// <summary>A row of mutually exclusive chips that applies on click.</summary>
-        private UIElement StudioChipRow(string[] keys, string[] labels, string current, Action<string> set)
+        /// <summary>
+        /// A row of chips where one is chosen.
+        ///
+        /// `set` receives the new value. `sesudah` runs after it, and that is what
+        /// makes the row usable: the timer's mode chip row changed
+        /// config.Timer.Mode but nothing restarted the widget, so switching to
+        /// stopwatch or countdown appeared to do nothing at all - the value was
+        /// stored and never used.
+        /// </summary>
+        private UIElement StudioChipRow(string[] keys, string[] labels, string current,
+                                        Action<string> set, Action sesudah = null)
         {
             var row = new WrapPanel();
             for (int i = 0; i < keys.Length; i++)
@@ -1478,7 +1491,19 @@ namespace LumaWall
                     button.Foreground = Brushes.White;
                     button.BorderBrush = new SolidColorBrush(CPrimary);
                 }
-                button.Click += delegate { set(key); };
+                button.Click += delegate
+                {
+                    set(key);
+                    // Simpan dan terapkan, supaya pilihannya benar-benar berlaku.
+                    //
+                    // Sebelumnya baris ini hanya `set(key)`: nilai mode tersimpan
+                    // tetapi tidak disimpan ke config dan tidak menjalankan
+                    // ulang widget, sehingga memilih stopwatch atau countdown
+                    // tidak mengubah apa pun - persis "gabisa digunakan".
+                    store.Save(config);
+                    manager.RefreshOptions();
+                    if (sesudah != null) sesudah();
+                };
                 row.Children.Add(button);
             }
             return row;
@@ -1653,7 +1678,18 @@ namespace LumaWall
         private UIElement StudioToggle(string label, string hint, bool value, Action<bool> set,
                                        bool susunUlang)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 11) };
+            // Jarak antar-sakelar.
+            //
+            // Sebelumnya 11px, dan dengan sakelar setinggi 23px itu membuat dua
+            // sakelar berjarak hanya 11px - cukup untuk terbaca sebagai satu
+            // kelompok yang berdempetan, bukan sebagai dua pengaturan terpisah.
+            // Jarak 20px memberi pemisahan yang jelas tanpa memboroskan ruang.
+            //
+            // Baris yang punya keterangan (hint) mendapat jarak lebih besar
+            // lagi, karena teksnya butuh ruang napas supaya tidak menempel pada
+            // sakelar di bawahnya.
+            double jarak = string.IsNullOrEmpty(hint) ? 20 : 24;
+            var row = new Grid { Margin = new Thickness(0, 0, 0, jarak) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -1667,7 +1703,7 @@ namespace LumaWall
                     FontSize = 11,
                     Foreground = new SolidColorBrush(CDim),
                     TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 3, 12, 0),
+                    Margin = new Thickness(0, 4, 16, 0),
                 });
             }
             Grid.SetColumn(text, 0);
