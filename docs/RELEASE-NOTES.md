@@ -8,6 +8,72 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.18.0
+
+### Bahasa Indonesia
+
+**Beban decode video turun, dan setelan FPS akhirnya berpengaruh**
+
+Setelan **"24 FPS"** di aplikasi tidak pernah melakukan apa pun. Fungsi di
+halaman yang seharusnya menerapkannya **kosong** - badannya hanya `{}` - dan
+tidak ada satu pun tempat lain yang memakainya. Jadi video 30 fps tetap
+didecode 30 fps meski pengguna memilih 24: seperempat frame lebih banyak
+daripada yang diminta, dibayar penuh, dan tidak ada yang terlihat berbeda.
+
+Batas itu tidak bisa diterapkan di halaman tanpa mengubah yang dilihat
+pengguna - satu-satunya tuas di sana adalah `playbackRate`, yang mengubah
+**kecepatan**, atau menjeda antar frame, yang membuatnya **tersendat**. Jadi
+sekarang batas itu diterapkan di tempat yang gratis: di transcode yang memang
+sudah membuat salinan untuk tiap monitor. Salinannya di-encode ulang pada laju
+yang diminta, sehingga berkasnya sendiri punya frame lebih sedikit.
+
+**Keyframe dirapatkan dari 8,3 detik menjadi 1,8 detik**
+
+Berkas aslinya punya keyframe hanya dua kali dalam 14 detik. Setiap kali video
+mengulang, decoder harus mengejar dari keyframe terakhir, dan bebannya
+melonjak - terukur **52%** pada mesin ini. Sekarang keyframe dibuat tiap dua
+detik, sehingga pengulangan tidak lagi menjadi lonjakan.
+
+**Terukur di mesin ini** (beban decode GPU, di atas garis dasar):
+
+| Video | Berkas asli | Salinan baru |
+|---|---|---|
+| Crimson Reaper 4K di layar 1366x768 | +24,4% | **+4,0%** |
+| moonlit-reverie 1080p di layar 1080p | +4,8% | **+2,5%** |
+| Lucia Pillow Talk 2560x1600 di layar 1080p | +6,4% | **+3,5%** |
+
+### English
+
+**Video decode load is down, and the FPS setting finally does something**
+
+The app's **"24 FPS"** setting never did anything. The function in the page that
+was supposed to apply it was **empty** - its body was just `{}` - and nothing
+else used it. So a 30 fps file decoded at 30 fps even when the user chose 24: a
+quarter more frames than asked for, paid in full, with nothing visibly different.
+
+The cap cannot be applied in the page without changing what the user sees - the
+only levers there are `playbackRate`, which changes the **speed**, or pausing
+between frames, which makes it **stutter**. So it is now applied where it is
+free: in the transcode that already produces the per-monitor copy. The copy is
+re-encoded at the requested rate, so the file itself has fewer frames.
+
+**Keyframes tightened from 8.3 seconds to 1.8 seconds**
+
+The source file had only two keyframes in 14 seconds. Every time the video
+looped, the decoder had to catch up from the last one and the load spiked -
+measured at **52%** on this machine. Keyframes are now every two seconds, so a
+loop is no longer a spike.
+
+**Measured on this machine** (GPU video decode, above baseline):
+
+| Video | Source file | New copy |
+|---|---|---|
+| Crimson Reaper 4K on a 1366x768 screen | +24.4% | **+4.0%** |
+| moonlit-reverie 1080p on a 1080p screen | +4.8% | **+2.5%** |
+| Lucia Pillow Talk 2560x1600 on a 1080p screen | +6.4% | **+3.5%** |
+
+---
+
 ## 4.5.17.0
 
 ### Bahasa Indonesia

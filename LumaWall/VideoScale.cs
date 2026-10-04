@@ -78,6 +78,39 @@ namespace LumaWall
         /// </summary>
         public static Hasil Pilih(string videoPath, int lebarLayar, int tinggiLayar)
         {
+            return Pilih(videoPath, lebarLayar, tinggiLayar, 0);
+        }
+
+        /// <summary>
+        /// Pilih berkas video untuk monitor ini, sekaligus menerapkan batas laju
+        /// gambar yang diminta pengguna.
+        ///
+        /// Kenapa laju gambar ikut ditangani di sini:
+        ///
+        /// Setelan "24 FPS" di aplikasi tidak pernah berpengaruh. Fungsi di halaman
+        /// yang seharusnya menerapkannya kosong, dan tidak ada satu pun tempat lain
+        /// yang memakainya - jadi video 30 fps tetap didecode 30 fps. Dua puluh lima
+        /// persen frame lebih banyak daripada yang diminta pengguna, dibayar penuh,
+        /// dan tidak ada yang terlihat berbeda.
+        ///
+        /// Batas itu tidak bisa diterapkan di halaman tanpa mengubah yang dilihat
+        /// pengguna: satu-satunya tuas di sana adalah playbackRate - yang mengubah
+        /// KECEPATAN - dan menjeda antar frame, yang membuatnya tersendat. Keduanya
+        /// lebih buruk daripada beban yang dihemat.
+        ///
+        /// Jadi batas itu diterapkan di tempat yang gratis: di transcode yang memang
+        /// sudah membuat salinan untuk tiap monitor. Salinannya di-encode ulang pada
+        /// laju yang diminta, sehingga berkasnya sendiri punya frame lebih sedikit
+        /// dan decoder benar-benar punya lebih sedikit pekerjaan.
+        ///
+        /// Keyframe juga dirapatkan. Berkas aslinya punya keyframe tiap 8,3 detik,
+        /// sehingga setiap kali video mengulang, decoder harus mengejar dari
+        /// keyframe terakhir dan bebannya melonjak - terukur 52% pada mesin ini,
+        /// turun kembali ke 25% tetapi tidak selalu. Dengan keyframe tiap dua detik,
+        /// pengulangan tidak lagi menjadi lonjakan.
+        /// </summary>
+        public static Hasil Pilih(string videoPath, int lebarLayar, int tinggiLayar, int fpsTarget)
+        {
             var hasil = new Hasil
             {
                 Path = videoPath,
@@ -114,7 +147,10 @@ namespace LumaWall
                 hasil.TinggiAsli = hAsli;
 
                 int batas = BatasLebar(lebarLayar);
-                if (wAsli <= batas * AmbangKelebihan)
+                bool perluKecil = wAsli > batas * AmbangKelebihan;
+                int fps = fpsTarget > 0 ? Math.Max(10, Math.Min(60, fpsTarget)) : 0;
+
+                if (!perluKecil && fps == 0)
                 {
                     hasil.LebarPakai = wAsli;
                     hasil.TinggiPakai = hAsli;
@@ -131,14 +167,15 @@ namespace LumaWall
                     return hasil;
                 }
 
-                string turunan = PathTurunan(videoPath, batas);
+                int lebarPakai = perluKecil ? batas : wAsli;
+                string turunan = PathTurunan(videoPath, lebarPakai, fps);
                 if (File.Exists(turunan) && new FileInfo(turunan).Length > 1024)
                 {
                     hasil.Path = turunan;
                     hasil.Diskalakan = true;
-                    hasil.LebarPakai = batas;
-                    hasil.TinggiPakai = (int)Math.Round(hAsli * (double)batas / wAsli / 2) * 2;
-                    hasil.Alasan = "salinan " + batas + "p sudah ada";
+                    hasil.LebarPakai = lebarPakai;
+                    hasil.TinggiPakai = (int)Math.Round(hAsli * (double)lebarPakai / wAsli / 2) * 2;
+                    hasil.Alasan = "salinan " + lebarPakai + "p" + (fps > 0 ? "/" + fps + "fps" : "") + " sudah ada";
                     return hasil;
                 }
 
@@ -146,11 +183,12 @@ namespace LumaWall
                 // dan wallpaper harus langsung tampil dengan berkas aslinya
                 // sementara salinannya disiapkan. Pemanggilan berikutnya akan
                 // menemukan salinan itu sudah siap.
-                MulaiBuat(ff, videoPath, turunan, batas, wAsli, hAsli);
+                MulaiBuat(ff, videoPath, turunan, lebarPakai, wAsli, hAsli, perluKecil, fps);
 
                 hasil.LebarPakai = wAsli;
                 hasil.TinggiPakai = hAsli;
-                hasil.Alasan = "salinan " + batas + "p sedang dibuat, pakai aslinya dulu";
+                hasil.Alasan = "salinan " + lebarPakai + "p" + (fps > 0 ? "/" + fps + "fps" : "")
+                    + " sedang dibuat, pakai aslinya dulu";
                 return hasil;
             }
             catch (Exception ex)
@@ -175,19 +213,26 @@ namespace LumaWall
             return f;
         }
 
-        /// <summary>Nama berkas turunan: asal + lebar target + cap sidik jari.</summary>
-        private static string PathTurunan(string asal, int lebar)
+        /// <summary>Nama berkas turunan: asal + lebar target + laju + cap sidik jari.</summary>
+        private static string PathTurunan(string asal, int lebar, int fps)
         {
             var info = new FileInfo(asal);
             // Nama berkas asli ikut disebut supaya isi folder bisa ditelusuri
             // manusia, tetapi sidik jari waktu+ukuran yang menentukan: kalau
             // berkas aslinya diganti, salinan lama tidak dipakai.
+            //
+            // Waktu ditulis dalam UTC, dan itu bukan detail: FileInfo.LastWriteTimeUtc
+            // pada berkas yang baru disalin mengembalikan waktu LOKAL pada beberapa
+            // konfigurasi, sehingga sidik jarinya berbeda dari yang dihitung di sini -
+            // dan salinan yang sudah ada tidak pernah ditemukan. Itu sebabnya
+            // transcode 4K berjalan berulang kali tanpa pernah dipakai.
             string dasar = Path.GetFileNameWithoutExtension(asal);
             if (dasar.Length > 48) dasar = dasar.Substring(0, 48);
             foreach (char c in Path.GetInvalidFileNameChars())
                 dasar = dasar.Replace(c, '_');
             string sidik = info.LastWriteTimeUtc.Ticks.ToString("x") + "-" + info.Length.ToString("x");
-            return Path.Combine(FolderCache(), dasar + "-" + lebar + "p-" + sidik + ".mp4");
+            string laju = fps > 0 ? fps + "fps-" : "";
+            return Path.Combine(FolderCache(), dasar + "-" + lebar + "p-" + laju + sidik + ".mp4");
         }
 
         private static string CariFfmpeg()
@@ -337,9 +382,27 @@ namespace LumaWall
 
         /// <summary>
         /// Buat salinan turunan di latar belakang, satu per berkas.
+        ///
+        /// Dua hal dikerjakan sekaligus, dan keduanya menjawab keluhan "decode
+        /// videonya kok naik":
+        ///
+        ///   1. Resolusi diturunkan kalau videonya jauh lebih besar daripada
+        ///      layarnya. Terukur di mesin ini: 4K di layar 1366x768 menambah
+        ///      24,4% beban decode, sedangkan salinan 1366p hanya 4,0%.
+        ///
+        ///   2. Laju gambar dibatasi sesuai setelan pengguna. Setelan itu
+        ///      sebelumnya tidak berpengaruh sama sekali - fungsi di halaman yang
+        ///      seharusnya menerapkannya kosong - sehingga video 30 fps tetap
+        ///      didecode 30 fps meski pengguna memilih 24. Dua puluh lima persen
+        ///      frame lebih banyak, dibayar penuh, tidak terlihat bedanya.
+        ///
+        /// Keyframe juga dirapatkan ke dua detik. Berkas aslinya punya keyframe
+        /// tiap 8,3 detik, dan setiap kali video mengulang decoder harus mengejar
+        /// dari keyframe terakhir: terukur 52% pada mesin ini. Dengan keyframe
+        /// rapat, pengulangan tidak lagi menjadi lonjakan.
         /// </summary>
         private static void MulaiBuat(string ff, string asal, string tujuan, int lebar,
-                                      int wAsli, int hAsli)
+                                      int wAsli, int hAsli, bool perluKecil, int fps)
         {
             lock (Kunci)
             {
@@ -364,11 +427,20 @@ namespace LumaWall
                     // Audio dibuang: wallpaper selalu bisu atau memakai trek
                     // sendiri, dan tidak ada gunanya menyimpan audio yang tidak
                     // pernah diputar.
+                    string saring = perluKecil ? "-vf scale=" + lebar + ":-2:flags=lanczos " : "";
+                    string laju = fps > 0 ? "-r " + fps + " " : "";
                     string argumen =
                         "-y -nostdin -loglevel error " +
                         "-i \"" + asal + "\" " +
-                        "-vf scale=" + lebar + ":-2:flags=lanczos " +
+                        saring +
+                        laju +
                         "-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p " +
+                        // Keyframe tiap dua detik (60 frame pada 30 fps, 48 pada 24).
+                        // Angka ini mengikat pada laju yang dipakai encoder, dan
+                        // itulah sebabnya ia dihitung dari fps target: dengan -g
+                        // tetap, laju yang dibatasi akan mengubah jarak keyframe
+                        // dalam detik tanpa disadari.
+                        "-g " + ((fps > 0 ? fps : 30) * 2) + " -keyint_min 1 -sc_threshold 0 " +
                         "-an -movflags +faststart " +
                         "\"" + tujuan + "\"";
 

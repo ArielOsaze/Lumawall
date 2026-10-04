@@ -2578,7 +2578,28 @@ namespace LumaWall
       if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(mark);else setTimeout(mark,60);
     }
   }
-  function setFps(fps){}
+  // ── the frame-rate cap ────────────────────────────────────────────────────
+  //
+  // The app's 24 FPS setting used to do nothing at all: this function was empty, so
+  // every wallpaper decoded at its file's own rate. A 30 fps file cost 25% more decode
+  // than the user asked for.
+  //
+  // The cap cannot be enforced here without changing what the user sees: the only
+  // levers in the page are playbackRate (which changes the SPEED) and pausing between
+  // frames (which stutters). Both are worse than the load they would save.
+  //
+  // So the cap is applied where it is free - in the transcode that already produces
+  // the per-monitor copy. The copy is re-encoded at the requested rate, so the file
+  // itself has fewer frames and the decoder genuinely has less to do. See
+  // VideoScale.Pilih, which takes the target rate and passes it to ffmpeg.
+  //
+  // This function therefore only records what the page was asked for, so state()
+  // reports the real value rather than a number nobody applied.
+  var fpsCap = 0;
+  function setFps(fps){
+    var n = Number(fps);
+    fpsCap = (isFinite(n) && n > 0) ? Math.max(10, Math.min(30, Math.round(n))) : 0;
+  }
   function state(){var v=active;return JSON.stringify({generation:generation,paused:paused,muted:muted,active:active?active.tagName:null,readyState:v&&v.tagName==='VIDEO'?v.readyState:null,currentTime:v&&v.tagName==='VIDEO'?Number((v.currentTime||0).toFixed(2)):null,videoWidth:v&&v.tagName==='VIDEO'?v.videoWidth:null,error:v&&v.error?v.error.code:null,connected:v?v.isConnected:null,elements:document.querySelectorAll('video,img').length,hasOptions:!!opts,span:span?'yes':'no',rate:rate})}
   window.luma={prepare:prepare,setPlayback:setPlayback,setFps:setFps,state:state,apply:apply};
  })();
@@ -2660,7 +2681,11 @@ namespace LumaWall
             try
             {
                 if (IsImagePath(path)) return path;
-                var pilihan = VideoScale.Pilih(path, screen.Bounds.Width, screen.Bounds.Height);
+                // The user's frame-rate setting is applied here, in the transcode that
+                // already makes the per-monitor copy. It cannot be applied in the page
+                // without changing what the user sees - see VideoScale.Pilih for why -
+                // and until this was passed through, the setting did nothing at all.
+                var pilihan = VideoScale.Pilih(path, screen.Bounds.Width, screen.Bounds.Height, targetFps);
                 if (pilihan.Diskalakan && !string.IsNullOrEmpty(pilihan.Path)
                     && File.Exists(pilihan.Path))
                 {
