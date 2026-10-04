@@ -2671,7 +2671,15 @@ namespace LumaWall
                 Background = new SolidColorBrush(CSurface),
                 BorderBrush = new SolidColorBrush(CBorder),
                 BorderThickness = new Thickness(1),
-                MinWidth = 320
+                // MinWidth was 320, and with the 16px gutter that is 336 - wider than
+                // the column at a 920px window, so the card hung 18px past its cell.
+                // The layout checker caught it as "Border keluar dari Grid (433,0
+                // ukuran 320x221 di dalam 751x243)".
+                //
+                // The number is lowered rather than removed: the card still refuses to
+                // collapse into an unreadable sliver on a narrow window, but it can now
+                // shrink to the column it is given.
+                MinWidth = 260
             };
             var stack = new StackPanel();
             stack.Children.Add(new TextBlock { Text = Tr("perf.live"), Foreground = new SolidColorBrush(CText), FontSize = 14, FontWeight = FontWeights.SemiBold });
@@ -2871,7 +2879,16 @@ namespace LumaWall
         /// </summary>
         private UIElement BuildResolutionPicker()
         {
-            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            // WrapPanel, bukan StackPanel: empat kartu selebar 168px berjumlah 704px,
+            // dan pada jendela sempit kartu terakhir keluar dari batas - terdeteksi
+            // oleh --periksa-ui sebagai "Border keluar dari Grid".
+            //
+            // MaxWidth 336 memaksa dua kartu per baris (160 + 8 jarak), dua baris.
+            // Tanpa batas ini, kolom Auto di SettingGroup meminta 704px, kolom teks
+            // di sebelahnya terhimpit jadi 1px, dan judulnya pecah satu huruf per
+            // baris - itu juga terdeteksi pemeriksa sebagai "TextBlock keluar dari
+            // StackPanel (0,0 ukuran 113x20 di dalam 1x1335)".
+            var stack = new WrapPanel { Orientation = Orientation.Horizontal, MaxWidth = 336 };
             string[] modes = { VideoScale.Mode.Otomatis, VideoScale.Mode.PasLayar, VideoScale.Mode.Hemat, VideoScale.Mode.Asli };
             string[] names = { Tr("res.auto"), Tr("res.monitor"), Tr("res.half"), Tr("res.source") };
             string[] hints = { Tr("res.autoHint"), Tr("res.monitorHint"), Tr("res.halfHint"), Tr("res.sourceHint") };
