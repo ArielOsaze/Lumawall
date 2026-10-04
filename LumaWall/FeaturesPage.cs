@@ -683,8 +683,9 @@ namespace LumaWall
                 make.Margin = new Thickness(0, 0, 8, 6);
                 make.Click += delegate
                 {
-                    string path = config.MonitorVideos.ContainsKey(studioDevice) && File.Exists(config.MonitorVideos[studioDevice])
-                        ? config.MonitorVideos[studioDevice]
+                    string current = config.WallpaperFor(studioDevice);
+                    string path = current != null && File.Exists(current)
+                        ? current
                         : config.Library.FirstOrDefault(File.Exists);
                     if (string.IsNullOrEmpty(path)) { ShowToast(Tr("studio.spanNoWallpaper")); return; }
                     var group = new SpanGroup
@@ -730,7 +731,7 @@ namespace LumaWall
             {
                 Forms.Screen screen = Forms.Screen.AllScreens.FirstOrDefault(s => s.DeviceName == device);
                 if (screen == null) continue;
-                config.MonitorVideos[device] = group.Path;
+                config.SetWallpaper(device, group.Path);
                 manager.Apply(screen, group.Path, config.Mute, config.TargetFps);
             }
             group.Enabled = true;
@@ -751,9 +752,10 @@ namespace LumaWall
                 if (string.IsNullOrEmpty(fallback)) continue;
                 Forms.Screen screen = Forms.Screen.AllScreens.FirstOrDefault(s => s.DeviceName == device);
                 if (screen == null) continue;
-                if (!config.MonitorVideos.ContainsKey(device) || config.MonitorVideos[device] == group.Path)
-                    config.MonitorVideos[device] = fallback;
-                manager.Apply(screen, config.MonitorVideos[device], config.Mute, config.TargetFps);
+                string sekarang = config.WallpaperFor(device);
+                if (sekarang == null || sekarang == group.Path)
+                    config.SetWallpaper(device, fallback);
+                manager.Apply(screen, config.WallpaperFor(device), config.Mute, config.TargetFps);
             }
             manager.RefreshOptions();
         }

@@ -2231,9 +2231,10 @@ namespace LumaWall
             int index = 1;
             foreach (Forms.Screen screen in Forms.Screen.AllScreens)
             {
-                string current;
-                config.MonitorVideos.TryGetValue(screen.DeviceName, out current);
-                list.Children.Add(MonitorCard(screen, index, current));
+                // Resolved through the monitor's identity, so the card shows the
+                // wallpaper that belongs to this physical screen even after a cable is
+                // moved and Windows renumbers the displays.
+                list.Children.Add(MonitorCard(screen, index, config.WallpaperFor(screen.DeviceName)));
                 index++;
             }
             content.Children.Add(list);
@@ -2329,7 +2330,15 @@ namespace LumaWall
                 Margin = new Thickness(0, 0, 16, 16),
                 CornerRadius = new CornerRadius(11),
                 Background = new SolidColorBrush(CSurface),
-                BorderBrush = new SolidColorBrush(screen.Primary ? CPrimary : CBorder),
+                // The primary monitor used to be outlined in the app's crimson, and its
+                // badge carried the same colour. On a page of three cards that reads as
+                // one card wearing a red box - which is what "logo recording merah merah
+                // nutupin laman" was: a red outline around a whole panel looks like a
+                // recording indicator that has covered the page, not like a status.
+                //
+                // The primary monitor is named by the badge instead, in the same neutral
+                // the other cards use, so nothing has to be red to be understood.
+                BorderBrush = new SolidColorBrush(screen.Primary ? CBorderHot : CBorder),
                 BorderThickness = new Thickness(1),
                 ClipToBounds = true
             };
@@ -2354,7 +2363,13 @@ namespace LumaWall
             var number = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(240, 10, 12, 16)),
-                BorderBrush = new SolidColorBrush(screen.Primary ? CPrimary : CBorderHot),
+                // Neutral for every monitor, primary included.
+                //
+                // This border and the card's outline were both crimson on the primary
+                // display, which put a red box around a whole panel - the thing that
+                // read as a recording indicator covering the page. Which monitor is
+                // primary is already stated in words inside this badge.
+                BorderBrush = new SolidColorBrush(CBorderHot),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(10, 5, 10, 5),
@@ -2384,10 +2399,17 @@ namespace LumaWall
             });
             if (screen.Primary)
             {
+                // Neutral, not crimson.
+                //
+                // This badge used to be the app's red, and together with the red card
+                // outline it made the primary monitor's whole panel read as a red box
+                // laid over the page - the "logo recording merah" that looked like it
+                // was covering the screen. The word itself says which monitor is
+                // primary; the colour was decoration that read as a warning.
                 numberStack.Children.Add(new TextBlock
                 {
                     Text = Tr("display.primary").ToUpperInvariant(),
-                    Foreground = new SolidColorBrush(CPrimaryHi),
+                    Foreground = new SolidColorBrush(CMuted),
                     FontFamily = FMono,
                     FontSize = 9,
                     FontWeight = FontWeights.Bold,
@@ -2478,7 +2500,7 @@ namespace LumaWall
                 string tuning = DescribeDisplayOptions(screen.DeviceName);
                 if (tuning.Length > 0)
                 {
-                    status.Children.Add(StatusChip(tuning, CPrimaryHi));
+                    status.Children.Add(StatusChip(tuning, CMuted));
                 }
                 else
                 {
@@ -3104,7 +3126,7 @@ namespace LumaWall
             {
                 string path;
                 if (!profile.TryGetValue(screen.DeviceName, out path) || !File.Exists(path)) continue;
-                config.MonitorVideos[screen.DeviceName] = path;
+                config.SetWallpaper(screen.DeviceName, path);
                 manager.Apply(screen, path, config.Mute, config.TargetFps);
             }
             store.Save(config);
@@ -3300,7 +3322,7 @@ namespace LumaWall
 
             string path = dialog.FileName;
             manager.Apply(screen, path, config.Mute, config.TargetFps);
-            config.MonitorVideos[device] = path;
+            config.SetWallpaper(device, path);
             store.Save(config);
             // Masuk ke library juga, supaya berkasnya bisa dipakai lagi di layar
             // lain tanpa harus dicari dari awal.
@@ -3330,7 +3352,7 @@ namespace LumaWall
             Forms.Screen screen = Forms.Screen.AllScreens.FirstOrDefault(x => x.DeviceName == device);
             if (screen == null) { ShowToast(Tr("toast.monitor")); return; }
             manager.Apply(screen, selectedVideo, config.Mute, config.TargetFps);
-            config.MonitorVideos[device] = selectedVideo;
+            config.SetWallpaper(device, selectedVideo);
             store.Save(config);
             ShowToast(Tr("toast.applied"));
             SwitchPage("displays");
@@ -3342,7 +3364,7 @@ namespace LumaWall
             foreach (Forms.Screen screen in screens)
             {
                 manager.Apply(screen, path, config.Mute, config.TargetFps);
-                config.MonitorVideos[screen.DeviceName] = path;
+                config.SetWallpaper(screen.DeviceName, path);
             }
             store.Save(config);
             ShowToast(Tr("toast.applied"));
@@ -3876,6 +3898,17 @@ namespace LumaWall
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             var loadedClock = System.Diagnostics.Stopwatch.StartNew();
+
+            // Reconcile the display numbers with the monitors behind them before
+            // anything reads a setting.
+            //
+            // This has to run first: every lookup below resolves through the monitor's
+            // identity, and the reconciliation is what retires the number-keyed entries
+            // that a cable swap would otherwise hand to the wrong screen. Doing it later
+            // would let one frame of the wrong framing reach the desktop.
+            config.ReconcileMonitors();
+            AppLog.Write("monitors: " + config.MonitorIdsAtLastRun.Count + " identified");
+
             config.Library = config.Library.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             AppLog.Write(string.Format("startup: library filtered ({0} files) at {1} ms", config.Library.Count, loadedClock.ElapsedMilliseconds));
             store.Save(config);
@@ -3964,7 +3997,7 @@ namespace LumaWall
                     foreach (Forms.Screen target in targets)
                     {
                         manager.Apply(target, requested, config.Mute, config.TargetFps);
-                        config.MonitorVideos[target.DeviceName] = requested;
+                        config.SetWallpaper(target.DeviceName, requested);
                     }
                     store.Save(config);
                     AppLog.Write("Invocation applied wallpaper to " + targets.Length + " monitor(s): " + requested);
@@ -3996,16 +4029,19 @@ namespace LumaWall
             // this to rebuild a wallpaper whose window was destroyed along with
             // the desktop (Explorer restart), where the path has to be recovered
             // from the config rather than from the dead window.
+            //
+            // Resolved through the monitor's identity rather than its display number,
+            // so a monitor keeps its own wallpaper after a cable is moved and Windows
+            // renumbers the displays.
             manager.WallpaperLookup = delegate(string device)
             {
-                string value;
-                return config.MonitorVideos.TryGetValue(device, out value) ? value : null;
+                return config.WallpaperFor(device);
             };
             manager.SetDefaults(config.Mute, config.TargetFps);
             foreach (Forms.Screen screen in Forms.Screen.AllScreens)
             {
-                string path;
-                if (!config.MonitorVideos.TryGetValue(screen.DeviceName, out path) || string.IsNullOrWhiteSpace(path))
+                string path = config.WallpaperFor(screen.DeviceName);
+                if (string.IsNullOrWhiteSpace(path))
                     continue;
 
                 // A wallpaper whose file cannot be found used to be skipped in silence.
@@ -4039,11 +4075,19 @@ namespace LumaWall
                     AppLog.Write(string.Format(
                         "Wallpaper for {0} was recorded as '{1}' but found as '{2}'; using the file on disk",
                         screen.DeviceName, path, resolved));
-                    config.MonitorVideos[screen.DeviceName] = resolved;
+                    config.SetWallpaper(screen.DeviceName, resolved);
                     store.Save(config);
                 }
+                // Record the assignment under the monitor's identity as well, so the
+                // next run finds it without having to fall back to the display number.
+                config.SetWallpaper(screen.DeviceName, resolved);
                 manager.Apply(screen, resolved, config.Mute, config.TargetFps);
             }
+
+            // Saved once at the end rather than inside the loop: the identity keys are
+            // learned while the loop runs, and a config written before the last monitor
+            // was resolved would be missing that monitor's assignment.
+            store.Save(config);
         }
 
         /// <summary>
@@ -4190,6 +4234,14 @@ namespace LumaWall
             if (signature != lastMonitorSignature)
             {
                 lastMonitorSignature = signature;
+
+                // The identity cache is per display number, and this is the one moment
+                // it is guaranteed to be stale: a number can now belong to a different
+                // monitor. Reading a cached answer here would describe the monitor that
+                // used to hold the number - the exact mix-up being fixed.
+                MonitorIdentity.Forget();
+                config.ReconcileMonitors();
+
                 manager.CloseAll();
                 RestoreWallpapers();
                 ShowToast(Forms.Screen.AllScreens.Length + " " + Tr("apply.screens"));

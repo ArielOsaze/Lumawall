@@ -465,6 +465,34 @@ namespace LumaWall
         [DataMember] public bool ShowMature = false;
         [DataMember] public Dictionary<string, Dictionary<string, string>> DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
 
+        // ── per-monitor look and playback, keyed by the MONITOR ─────────────
+        //
+        // Not by display number. Windows numbers displays in the order it finds
+        // them, and that order is not stable: unplugging and replugging an HDMI
+        // cable swaps the numbers between two monitors. Settings keyed by number
+        // therefore follow the number rather than the screen, and a monitor ends
+        // up wearing another monitor's framing - which is exactly how a wallpaper
+        // turns mirrored and cropped on a display that was never configured that
+        // way.
+        //
+        // The key is the monitor's own identity from its EDID ("VSC423F#UID28932"),
+        // which survives the cable being moved.
+        [DataMember] public Dictionary<string, DisplayOptions> DisplaysByMonitor = new Dictionary<string, DisplayOptions>(StringComparer.OrdinalIgnoreCase);
+
+        // ── which wallpaper is on which MONITOR ─────────────────────────────
+        //
+        // Same reasoning as DisplaysByMonitor: the assignment has to follow the
+        // physical screen. Otherwise moving a cable puts one monitor's wallpaper
+        // on another monitor.
+        [DataMember] public Dictionary<string, string> WallpapersByMonitor = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // ── the display numbers the identity keys were learned from ─────────
+        //
+        // Written on every load, so the next run can tell whether a display number
+        // has been handed to a different monitor since. A mismatch is what triggers
+        // re-keying.
+        [DataMember] public Dictionary<string, string> MonitorIdsAtLastRun = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         // ── per-display look and playback ────────────────────────────────────
         //
         // Keyed by device name. A monitor with no entry uses the defaults, so an
@@ -499,6 +527,9 @@ namespace LumaWall
             if (Library == null) Library = new List<string>();
             if (DisplayProfiles == null) DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
             if (Displays == null) Displays = new Dictionary<string, DisplayOptions>(StringComparer.OrdinalIgnoreCase);
+            if (DisplaysByMonitor == null) DisplaysByMonitor = new Dictionary<string, DisplayOptions>(StringComparer.OrdinalIgnoreCase);
+            if (WallpapersByMonitor == null) WallpapersByMonitor = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (MonitorIdsAtLastRun == null) MonitorIdsAtLastRun = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (SpanGroups == null) SpanGroups = new List<SpanGroup>();
             if (Timer == null) Timer = new TimerConfig();
             // A group whose device list is null would fail the same way one level deeper.
@@ -514,11 +545,164 @@ namespace LumaWall
         public DisplayOptions OptionsFor(string deviceName)
         {
             if (string.IsNullOrEmpty(deviceName)) return new DisplayOptions();
+
+            string monitor = MonitorIdentity.For(deviceName);
+            if (monitor != null)
+            {
+                DisplayOptions byMonitor;
+                if (DisplaysByMonitor.TryGetValue(monitor, out byMonitor) && byMonitor != null) return byMonitor;
+
+                var fresh = new DisplayOptions();
+                DisplaysByMonitor[monitor] = fresh;
+                return fresh;
+            }
+
+            // A monitor whose identity cannot be read (a virtual display, a remote
+            // session) has nothing better than its number.
             DisplayOptions options;
             if (Displays.TryGetValue(deviceName, out options) && options != null) return options;
             options = new DisplayOptions();
             Displays[deviceName] = options;
             return options;
+        }
+
+        /// <summary>
+        /// The monitor's identity for a display number, or null.
+        ///
+        /// Exposed so the pages and the manager all name a monitor the same way. A
+        /// second implementation that keyed on the display number is what made the
+        /// Studio page and the Displays page disagree about which screen they were
+        /// editing.
+        /// </summary>
+        public string MonitorKeyFor(string deviceName)
+        {
+            return MonitorIdentity.For(deviceName);
+        }
+
+        /// <summary>
+        /// Wallpaper for a display number, resolved through the monitor's identity.
+        ///
+        /// The assignment is carried across from the old number-keyed entry on first
+        /// sight, unlike the look settings. A wrong wallpaper is visible and takes one
+        /// click to change, whereas dropping the assignment leaves the desktop empty -
+        /// and an empty desktop is the failure this app exists to avoid.
+        /// </summary>
+        public string WallpaperFor(string deviceName)
+        {
+            if (string.IsNullOrEmpty(deviceName)) return null;
+            string monitor = MonitorIdentity.For(deviceName);
+            string path;
+
+            if (monitor != null && WallpapersByMonitor.TryGetValue(monitor, out path) && !string.IsNullOrWhiteSpace(path))
+                return path;
+
+            if (MonitorVideos.TryGetValue(deviceName, out path) && !string.IsNullOrWhiteSpace(path))
+            {
+                if (monitor != null) WallpapersByMonitor[monitor] = path;
+                return path;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Records the wallpaper for a display.
+        ///
+        /// Always written to both dictionaries: the monitor-keyed one is what is read,
+        /// and the number-keyed one is kept because a build that predates the
+        /// monitor-keyed scheme still reads it. Writing only one of them is how the two
+        /// views drift apart.
+        /// </summary>
+        public void SetWallpaper(string deviceName, string path)
+        {
+            if (string.IsNullOrEmpty(deviceName)) return;
+            if (path == null) path = "";
+            MonitorVideos[deviceName] = path;
+
+            string monitor = MonitorIdentity.For(deviceName);
+            if (monitor != null) WallpapersByMonitor[monitor] = path;
+        }
+
+        /// <summary>
+        /// Records a look setting for a display, under the monitor's identity.
+        ///
+        /// Returns the object the caller should write into, so a page can keep its
+        /// existing "get then set a field" shape without having to know how the entry is
+        /// keyed.
+        /// </summary>
+        public DisplayOptions LookFor(string deviceName)
+        {
+            return OptionsFor(deviceName);
+        }
+
+        /// <summary>
+        /// Records which monitor currently sits behind each display number, and retires
+        /// the settings that the old number-keyed scheme left behind.
+        ///
+        /// Retiring them is the whole point, and it is deliberately a one-time loss.
+        ///
+        /// An entry keyed by number cannot be attributed to a monitor once the numbers
+        /// have moved: the entry for "\\.\DISPLAY3" was written for whichever monitor
+        /// held that number when it was saved, and nothing on the machine records which
+        /// one that was. Carrying it across is what produced the reported defect - a
+        /// monitor that had never been configured for it displayed a wallpaper that was
+        /// mirrored and cropped, because it inherited the framing of the monitor that
+        /// used to answer to its number.
+        ///
+        /// So the choice is between a monitor wearing another monitor's framing, or a
+        /// monitor going back to neutral once. Neutral is the honest answer, and it is
+        /// the one the user can correct in seconds - the wrong framing is not, because
+        /// nothing on screen says it came from somewhere else.
+        /// </summary>
+        public void ReconcileMonitors()
+        {
+            var current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var screen in System.Windows.Forms.Screen.AllScreens)
+            {
+                string monitor = MonitorIdentity.For(screen.DeviceName);
+                if (monitor != null) current[screen.DeviceName] = monitor;
+            }
+
+            bool swapped = false;
+            foreach (var pair in current)
+            {
+                string previous;
+                if (MonitorIdsAtLastRun.TryGetValue(pair.Key, out previous) && previous != null &&
+                    !string.Equals(previous, pair.Value, StringComparison.OrdinalIgnoreCase))
+                {
+                    swapped = true;
+                    AppLog.Write("Display " + pair.Key + " now belongs to monitor " + pair.Value +
+                        " (was " + previous + "); settings follow the monitor, not the number");
+                }
+            }
+
+            // Retire the number-keyed entries, but only when the monitors can actually
+            // be identified.
+            //
+            // If nothing can be read - a virtual display, a remote session - then the
+            // number is the only handle there is, and clearing those entries would
+            // throw away the user's settings with nothing to replace them.
+            if (Displays.Count > 0 && current.Count > 0)
+            {
+                AppLog.Write("Retired " + Displays.Count + " look setting(s) stored by display number" +
+                    (swapped ? " after the display numbers moved" : " in favour of per-monitor settings") +
+                    "; each monitor starts from neutral rather than inheriting another monitor's framing");
+                Displays.Clear();
+            }
+
+            // Give every attached monitor an entry, so the saved config states which
+            // monitors this machine has and what each one looks like.
+            //
+            // Without this the dictionary stays empty until something happens to ask
+            // for a setting, and a config that names no monitor cannot be inspected,
+            // diffed, or hand-edited - which is how the number-keyed scheme survived
+            // unnoticed for so long.
+            foreach (var pair in current)
+            {
+                if (!DisplaysByMonitor.ContainsKey(pair.Value))
+                    DisplaysByMonitor[pair.Value] = new DisplayOptions();
+            }
+
+            if (current.Count > 0) MonitorIdsAtLastRun = current;
         }
 
         /// <summary>

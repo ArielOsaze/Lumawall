@@ -8,6 +8,96 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.17.0
+
+### Bahasa Indonesia
+
+**Pindah kabel HDMI tidak lagi membuat wallpaper terbalik dan terpotong**
+
+Ini bug yang paling lama bersembunyi, dan sebabnya bukan kabelnya.
+
+Windows menomori layar menurut urutan ia menemukannya, dan urutan itu **tidak
+tetap**. Mencabut lalu memasang kembali kabel HDMI membuat Windows menukar
+nomor antar monitor - dan aplikasinya menyimpan setelan per **nomor**, bukan
+per layar.
+
+Di mesin ini buktinya terekam:
+
+```
+sebelum:  DISPLAY1 = 1920x1080 (utama)   DISPLAY3 = 1366x768
+sesudah:  DISPLAY1 = 1366x768            DISPLAY3 = 1920x1080 (utama)
+```
+
+dan setelan yang tersimpan untuk `DISPLAY3` adalah **`FlipVertical: true`**
+dengan **`Fit: "center"`** - dibuat untuk layar 1366x768. Setelah nomornya
+bertukar, layar utama 1920x1080 mewarisi setelan itu: `FlipVertical` membalik
+gambarnya, dan `"center"` menggambar video seukuran aslinya di tengah sehingga
+layar yang lebih besar memotongnya. Persis "kebalik dan ke crop".
+
+Sekarang setelan disimpan per **identitas monitor**, yang dibaca dari EDID
+monitornya sendiri (`VSC423F#UID28932`) dan tidak ikut bertukar saat kabel
+dipindah. Ada juga rekonsiliasi yang berjalan setiap kali susunan layar
+berubah, sehingga perbaikannya berlaku tanpa perlu menutup aplikasi.
+
+Setelan lama yang tersimpan per nomor **sengaja dipensiunkan**, bukan
+diwariskan. Setelan itu ditulis untuk monitor mana pun yang memegang nomor itu
+saat disimpan, dan tidak ada yang mencatat monitor mana itu - jadi mewariskannya
+persis yang menyebabkan bug ini. Monitor yang terpengaruh kembali ke netral
+sekali, dan itu jawaban yang jujur: netral bisa diperbaiki dalam hitungan
+detik, sedangkan framing yang salah tidak terlihat asalnya dari mana.
+
+**Tidak ada lagi kotak merah di halaman Displays**
+
+Monitor utama dulu diberi garis tepi merah dan lencana merah. Pada halaman berisi
+tiga kartu, satu kartu bergaris merah tebal terbaca sebagai kotak merah yang
+menutupi panel - bukan sebagai penanda status. Sekarang semuanya netral, dan
+yang menyebut monitor mana yang utama adalah tulisannya.
+
+### English
+
+**Moving an HDMI cable no longer mirrors and crops the wallpaper**
+
+This is the bug that hid the longest, and the cable was never the cause.
+
+Windows numbers displays in the order it finds them, and that order is **not
+stable**. Unplugging and replugging an HDMI cable makes Windows swap the numbers
+between two monitors - and the app stored its settings per **number**, not per
+screen.
+
+The evidence is recorded on this machine:
+
+```
+before:  DISPLAY1 = 1920x1080 (primary)   DISPLAY3 = 1366x768
+after:   DISPLAY1 = 1366x768              DISPLAY3 = 1920x1080 (primary)
+```
+
+and the settings stored for `DISPLAY3` were **`FlipVertical: true`** with
+**`Fit: "center"`** - written for a 1366x768 screen. Once the numbers traded, the
+1920x1080 primary inherited them: `FlipVertical` mirrored the picture, and
+`"center"` drew the video at its native size in the middle, so the larger screen
+cropped it. Exactly "mirrored and cropped".
+
+Settings are now stored per **monitor identity**, read from the monitor's own
+EDID (`VSC423F#UID28932`), which does not change when the cable moves. A
+reconciliation also runs whenever the display layout changes, so the fix applies
+without restarting the app.
+
+The old number-keyed settings are **deliberately retired** rather than carried
+across. They were written for whichever monitor held that number when they were
+saved, and nothing records which one that was - so carrying them across is
+precisely what caused this. An affected monitor goes back to neutral once, which
+is the honest answer: neutral can be corrected in seconds, whereas wrong framing
+gives no hint of where it came from.
+
+**No more red box on the Displays page**
+
+The primary monitor used to be outlined in red and carried a red badge. On a page
+of three cards, one card in a heavy red outline reads as a red box laid over the
+panel rather than as a status marker. Everything is neutral now, and the words
+say which monitor is primary.
+
+---
+
 ## 4.5.16.0
 
 ### Bahasa Indonesia
