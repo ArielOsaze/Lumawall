@@ -254,6 +254,44 @@ namespace LumaWall
                     int code = PeriksaUi.Jalankan(commandLine[i + 1]);
                     Environment.Exit(code);
                 }
+
+                // Mencetak keputusan resolusi untuk satu video di satu ukuran layar.
+                //
+                // Alat pemeriksa memanggil ini alih-alih menghitung ulang aturannya di
+                // Python: hitungan ulang hanya membuktikan bahwa Python bisa berhitung,
+                // bukan bahwa aplikasinya memilih berkas yang benar. Empat mode harus
+                // menghasilkan empat jawaban yang berbeda, dan itu yang diperiksa.
+                if (commandLine[i] == "--pilih-video" && i + 3 < commandLine.Length)
+                {
+                    string berkas = commandLine[i + 1];
+                    int lw, lt;
+                    if (!int.TryParse(commandLine[i + 2], out lw)) lw = 1920;
+                    if (!int.TryParse(commandLine[i + 3], out lt)) lt = 1080;
+                    string mode = "auto";
+                    for (int j = i; j < commandLine.Length - 1; j++)
+                        if (commandLine[j] == "--mode") mode = commandLine[j + 1];
+
+                    var hasil = VideoScale.Pilih(berkas, lw, lt, 24, mode, true);
+                    // "putuskan" is the DECISION - the width this mode wants. It is
+                    // reported separately from "pakai" because the first call for a new
+                    // mode only starts the transcode and plays the original until the copy
+                    // is ready; a checker that read only "pakai" would see no difference
+                    // between the modes and wrongly conclude the setting does nothing.
+                    //
+                    // The last argument makes this a dry run: no transcode is started, so
+                    // the command returns at once and a checker cannot hang waiting on
+                    // ffmpeg's output pipe.
+                    Console.WriteLine("pilih-video mode=" + mode
+                        + " layar=" + lw + "x" + lt
+                        + " asli=" + hasil.LebarAsli + "x" + hasil.TinggiAsli
+                        + " putuskan=" + VideoScale.LebarTarget(mode, hasil.LebarAsli, lw)
+                        + " pakai=" + hasil.LebarPakai
+                        + " diskalakan=" + (hasil.Diskalakan ? "ya" : "tidak")
+                        + " siap=" + (hasil.Diskalakan && hasil.Path != berkas ? "ya" : "belum")
+                        + " alasan=" + hasil.Alasan);
+                    if (hasil.Diskalakan) Console.WriteLine("berkas=" + hasil.Path);
+                    Environment.Exit(0);
+                }
             }
 
             bool ownsMutex;
@@ -461,6 +499,18 @@ namespace LumaWall
         [DataMember] public bool StartWithWindows = false;
         [DataMember] public string FeedUrl = "";
         [DataMember] public int TargetFps = 24;
+
+        // ── how far a video may differ from its monitor's resolution ─────────
+        //
+        //   auto     shrink only when the video is far larger than the screen
+        //   monitor  force the video to the screen's resolution
+        //   half     half the screen's resolution, for a machine under load
+        //   source   never shrink; always decode the original file
+        //
+        // Kept on the config rather than per display: it is a statement about the
+        // machine, not about one monitor, and a user who sets it once does not
+        // expect to set it again for each screen.
+        [DataMember] public string VideoResolution = "auto";
         [DataMember] public string Language = "id";
         [DataMember] public bool ShowMature = false;
         [DataMember] public Dictionary<string, Dictionary<string, string>> DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
@@ -532,6 +582,8 @@ namespace LumaWall
             if (MonitorIdsAtLastRun == null) MonitorIdsAtLastRun = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (SpanGroups == null) SpanGroups = new List<SpanGroup>();
             if (Timer == null) Timer = new TimerConfig();
+            if (string.IsNullOrEmpty(VideoResolution) || !VideoScale.Mode.Valid(VideoResolution))
+                VideoResolution = VideoScale.Mode.Otomatis;
             // A group whose device list is null would fail the same way one level deeper.
             foreach (SpanGroup group in SpanGroups)
             {
@@ -1772,6 +1824,10 @@ namespace LumaWall
         private bool pendingPlaybackSync;
         private bool muted;
         private int targetFps;
+        // How far this display's video may differ from its resolution. Set from the
+        // config when the wallpaper is created, and read when the file to decode is
+        // chosen - which happens on every media change, not only at startup.
+        private string resolutionMode = VideoScale.Mode.Otomatis;
         private bool browserReady;
         private bool pageReady;
         private bool initialCompletionReported;
@@ -2681,11 +2737,13 @@ namespace LumaWall
             try
             {
                 if (IsImagePath(path)) return path;
-                // The user's frame-rate setting is applied here, in the transcode that
-                // already makes the per-monitor copy. It cannot be applied in the page
-                // without changing what the user sees - see VideoScale.Pilih for why -
-                // and until this was passed through, the setting did nothing at all.
-                var pilihan = VideoScale.Pilih(path, screen.Bounds.Width, screen.Bounds.Height, targetFps);
+                // Both of the user's video settings are applied here, in the transcode
+                // that already makes the per-monitor copy: the frame-rate cap and the
+                // resolution mode. Neither can be applied in the page without changing
+                // what the user sees - see VideoScale.Pilih for why - and until they
+                // were passed through, the frame-rate setting did nothing at all.
+                var pilihan = VideoScale.Pilih(path, screen.Bounds.Width, screen.Bounds.Height,
+                                               targetFps, resolutionMode);
                 if (pilihan.Diskalakan && !string.IsNullOrEmpty(pilihan.Path)
                     && File.Exists(pilihan.Path))
                 {
@@ -3949,6 +4007,25 @@ namespace LumaWall
             targetFps = Math.Max(10, Math.Min(30, fps));
             if (!staticMode) RunScript("window.luma.setFps(" + targetFps + ")");
         }
+
+        /// <summary>
+        /// Sets how far this display's video may differ from its resolution.
+        ///
+        /// The file is chosen when the media is queued, so changing the mode has to
+        /// re-queue it: without that, the setting would only take effect the next time
+        /// the wallpaper changed, and the user would conclude it did nothing - which is
+        /// exactly what happened to the frame-rate setting next to it.
+        /// </summary>
+        public void SetResolutionMode(string mode)
+        {
+            if (!VideoScale.Mode.Valid(mode)) mode = VideoScale.Mode.Otomatis;
+            if (string.Equals(resolutionMode, mode, StringComparison.Ordinal)) return;
+            resolutionMode = mode;
+            // Only re-queue once the page can act on it. Before that, the mode is already
+            // in place for the media the window is about to load, and queuing here would
+            // prepare the same file twice - the second prepare racing the first.
+            if (!IsDisposed && !staticMode && pageReady) QueueMedia(mediaPath);
+        }
         public bool Matches(Forms.Screen target, string path)
         {
             return string.Equals(screen.DeviceName, target.DeviceName, StringComparison.OrdinalIgnoreCase) &&
@@ -4210,6 +4287,9 @@ namespace LumaWall
 
             CancelPending(screen.DeviceName);
             var window = new WallpaperWindow(screen, path, mute, fps);
+            // The resolution mode has to be set before the window chooses its file, and
+            // it chooses on Show() - so it is applied here rather than in a loop later.
+            window.SetResolutionMode(resolutionMode);
             // Pushed before Show() so the page's very first painted frame already carries
             // the user's grade. Doing it after would flash the ungraded picture first.
             PushOptions(window, screen.DeviceName);
@@ -4506,6 +4586,11 @@ namespace LumaWall
         /// <summary>Remembers the current mute/FPS so a rebuilt wallpaper matches.</summary>
         private bool mute = true;
         private int fps = 24;
+        // The resolution mode every window should use. Held here, not only pushed to the
+        // windows that exist right now: RestoreWallpapers creates its windows after this
+        // is set, and a window that missed it would decode the full-size file - the
+        // heaviest case, on the displays the user restored.
+        private string resolutionMode = VideoScale.Mode.Otomatis;
         public void SetDefaults(bool muteValue, int fpsValue) { mute = muteValue; fps = fpsValue; }
 
         /// <summary>Path of the wallpaper assigned to a display, or null.</summary>
@@ -4538,6 +4623,21 @@ namespace LumaWall
         {
             foreach (var window in windows.Values) window.SetTargetFps(value);
             foreach (var window in pending.Values) window.SetTargetFps(value);
+        }
+
+        /// <summary>
+        /// Applies a resolution mode to every live wallpaper.
+        ///
+        /// Every window is told, not only the one whose settings page is open: the mode
+        /// describes the machine, and a user who lowers it because the machine is under
+        /// load expects every display to lighten, not just the one in front of them.
+        /// </summary>
+        public void SetResolutionMode(string mode)
+        {
+            if (!VideoScale.Mode.Valid(mode)) mode = VideoScale.Mode.Otomatis;
+            resolutionMode = mode;
+            foreach (var window in windows.Values) window.SetResolutionMode(mode);
+            foreach (var window in pending.Values) window.SetResolutionMode(mode);
         }
 
         public void CloseAll()

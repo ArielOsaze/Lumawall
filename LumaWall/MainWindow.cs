@@ -95,6 +95,16 @@ namespace LumaWall
             { "perf.sub", new[] { "Batasi penggunaan daya dan proses video.", "Control power use and video processing.", "控制功耗和视频处理。", "電力使用量と動画処理を調整します。" } },
             { "fps.title", new[] { "Batas frame rate", "Frame-rate limit", "帧率限制", "フレームレート上限" } },
             { "fps.sub", new[] { "Optimasi membuat salinan video sesuai FPS pilihan.", "Optimization creates a copy at the selected FPS.", "优化会按所选帧率创建视频副本。", "選択したFPSで最適化済みのコピーを作成します。" } },
+            { "res.title", new[] { "Resolusi video", "Video resolution", "视频分辨率", "動画の解像度" } },
+            { "res.sub", new[] { "Seberapa jauh video boleh berbeda dari resolusi layar. Makin kecil, makin ringan.", "How far a video may differ from your screen's resolution. Smaller is lighter.", "视频与屏幕分辨率允许的差距。越小越省资源。", "動画と画面解像度の差の許容範囲。小さいほど軽くなります。" } },
+            { "res.auto", new[] { "Otomatis", "Automatic", "自动", "自動" } },
+            { "res.autoHint", new[] { "Hanya diturunkan kalau videonya jauh lebih besar.", "Only shrunk when the video is far larger.", "仅当视频远大于屏幕时缩小。", "動画が大幅に大きい場合のみ縮小。" } },
+            { "res.monitor", new[] { "Pas layar", "Fit screen", "匹配屏幕", "画面に合わせる" } },
+            { "res.monitorHint", new[] { "Disamakan dengan lebar layar ini.", "Matched to this screen's width.", "与此屏幕宽度一致。", "この画面の幅に合わせます。" } },
+            { "res.half", new[] { "Hemat", "Light", "轻量", "軽量" } },
+            { "res.halfHint", new[] { "Setengah lebar layar. Paling ringan.", "Half the screen width. Lightest.", "屏幕宽度的一半，最省资源。", "画面幅の半分。最も軽い。" } },
+            { "res.source", new[] { "Asli", "Original", "原始", "オリジナル" } },
+            { "res.sourceHint", new[] { "Tidak pernah diturunkan. Paling tajam.", "Never shrunk. Sharpest.", "从不缩小，最清晰。", "縮小しません。最も精細。" } },
             { "auto.title", new[] { "Pause otomatis", "Automatic pause", "自动暂停", "自動一時停止" } },
             { "auto.sub", new[] { "Hentikan pemutaran saat wallpaper tidak terlihat.", "Stop playback when the wallpaper is not visible.", "壁纸不可见时停止播放。", "壁紙が見えないときは再生を停止します。" } },
             { "check.fullscreen", new[] { "Saat aplikasi fullscreen", "While an app is fullscreen", "应用全屏时", "アプリが全画面のとき" } },
@@ -116,6 +126,7 @@ namespace LumaWall
             { "stat.active", new[] { "Wallpaper aktif", "Active wallpapers", "活动壁纸", "稼働中の壁紙" } },
             { "toast.tray", new[] { "LumaWall tetap aktif di area notifikasi.", "LumaWall is still running in the notification area.", "LumaWall 仍在通知区域运行。", "LumaWall は通知領域で実行中です。" } },
             { "toast.fps", new[] { "Batas FPS", "FPS limit", "帧率限制", "FPS上限" } },
+            { "toast.resolution", new[] { "Resolusi video", "Video resolution", "视频分辨率", "動画の解像度" } },
             { "rail.screens", new[] { "LAYAR", "SCREENS", "屏幕", "画面" } },
             { "toast.selected", new[] { "Terpilih", "Selected", "已选择", "選択中" } },
             { "toast.pick", new[] { "Pilih wallpaper terlebih dahulu.", "Select a wallpaper first.", "请先选择壁纸。", "先に壁紙を選択してください。" } },
@@ -2592,6 +2603,11 @@ namespace LumaWall
             topRow.Children.Add(telemetryCard);
             content.Children.Add(topRow);
 
+            // The resolution mode sits directly under the frame-rate row: the two
+            // settings answer the same question ("how much work per frame"), and a user
+            // who came here to lighten the load will want both in one place.
+            content.Children.Add(SettingGroup(Tr("res.title"), Tr("res.sub"), BuildResolutionPicker()));
+
             content.Children.Add(SettingGroup(Tr("auto.title"), Tr("auto.sub"), BuildToggleStack()));
             var note = new Border
             {
@@ -2838,6 +2854,110 @@ namespace LumaWall
                 stack.Children.Add(b);
             }
             return stack;
+        }
+
+        /// <summary>
+        /// The resolution mode picker.
+        ///
+        /// Four modes rather than a slider: each one is a different intent, not a point
+        /// on a scale, and a slider would have to be labelled with the same four names
+        /// anyway. Each card states what the mode does in the user's terms - the
+        /// question being answered is "how much of my video is being thrown away", and
+        /// "half the screen" answers it where "720p" does not.
+        ///
+        /// The width each mode would produce for THIS machine is shown under the name,
+        /// so the choice is concrete: a user can see that "fit screen" means 1920 and
+        /// "save" means 960 without having to know their monitor's resolution.
+        /// </summary>
+        private UIElement BuildResolutionPicker()
+        {
+            var stack = new StackPanel { Orientation = Orientation.Horizontal };
+            string[] modes = { VideoScale.Mode.Otomatis, VideoScale.Mode.PasLayar, VideoScale.Mode.Hemat, VideoScale.Mode.Asli };
+            string[] names = { Tr("res.auto"), Tr("res.monitor"), Tr("res.half"), Tr("res.source") };
+            string[] hints = { Tr("res.autoHint"), Tr("res.monitorHint"), Tr("res.halfHint"), Tr("res.sourceHint") };
+
+            // The widest monitor decides the number shown: a mode is a statement about
+            // the machine, so quoting the smallest screen would understate what the user
+            // is choosing between.
+            int lebar = 1920;
+            try
+            {
+                foreach (Forms.Screen s in Forms.Screen.AllScreens)
+                    if (s.Bounds.Width > lebar) lebar = s.Bounds.Width;
+            }
+            catch { }
+
+            for (int i = 0; i < modes.Length; i++)
+            {
+                string mode = modes[i];
+                bool active = string.Equals(config.VideoResolution, mode, StringComparison.OrdinalIgnoreCase);
+
+                var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                content.Children.Add(new TextBlock
+                {
+                    Text = names[i],
+                    Foreground = new SolidColorBrush(active ? Colors.White : CText),
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold
+                });
+                content.Children.Add(new TextBlock
+                {
+                    Text = LebarMode(mode, lebar),
+                    Foreground = new SolidColorBrush(active ? Colors.White : CMuted),
+                    FontFamily = FMono,
+                    FontSize = 10,
+                    Margin = new Thickness(0, 3, 0, 0)
+                });
+                content.Children.Add(new TextBlock
+                {
+                    Text = hints[i],
+                    Foreground = new SolidColorBrush(active ? Colors.White : CDim),
+                    FontSize = 9.5,
+                    Margin = new Thickness(0, 3, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 150
+                });
+
+                var b = new Button
+                {
+                    Content = content,
+                    Tag = mode,
+                    Width = 168,
+                    MinHeight = 84,
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Padding = new Thickness(12, 10, 12, 10),
+                    Cursor = Cursors.Hand,
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = new SolidColorBrush(active ? CPrimary : CBorder),
+                    Background = new SolidColorBrush(active ? CPrimary : CSurface2),
+                    HorizontalContentAlignment = HorizontalAlignment.Left
+                };
+                System.Windows.Automation.AutomationProperties.SetName(b, Tr("res.title") + " " + names[i]);
+                b.MouseEnter += delegate { if (!string.Equals((string)b.Tag, config.VideoResolution, StringComparison.OrdinalIgnoreCase)) { b.Background = new SolidColorBrush(CSurfaceHover); b.BorderBrush = new SolidColorBrush(CBorderHot); } };
+                b.MouseLeave += delegate { if (!string.Equals((string)b.Tag, config.VideoResolution, StringComparison.OrdinalIgnoreCase)) { b.Background = new SolidColorBrush(CSurface2); b.BorderBrush = new SolidColorBrush(CBorder); } };
+                b.Click += delegate(object sender, RoutedEventArgs e)
+                {
+                    config.VideoResolution = (string)((Button)sender).Tag;
+                    manager.SetResolutionMode(config.VideoResolution);
+                    store.Save(config);
+                    SwitchPage("performance");
+                    ShowToast(Tr("toast.resolution") + ": " + config.VideoResolution);
+                };
+                SetRoundedButton(b, 9);
+                stack.Children.Add(b);
+            }
+            return stack;
+        }
+
+        /// <summary>
+        /// What a mode means in pixels on this machine, as the user would see it.
+        /// </summary>
+        private static string LebarMode(string mode, int lebarLayar)
+        {
+            if (mode == VideoScale.Mode.Asli) return "4K / 1440p / 1080p";
+            if (mode == VideoScale.Mode.Hemat) return (lebarLayar / 2) + " px";
+            if (mode == VideoScale.Mode.PasLayar) return lebarLayar + " px";
+            return "\u2264 " + lebarLayar + " px";
         }
 
         private UIElement BuildToggleStack()
@@ -4038,6 +4158,10 @@ namespace LumaWall
                 return config.WallpaperFor(device);
             };
             manager.SetDefaults(config.Mute, config.TargetFps);
+            // The resolution mode is a property of the machine, so it is pushed to the
+            // manager once here and carried to every window - including the ones created
+            // later by RestoreWallpapers below.
+            manager.SetResolutionMode(config.VideoResolution);
             foreach (Forms.Screen screen in Forms.Screen.AllScreens)
             {
                 string path = config.WallpaperFor(screen.DeviceName);

@@ -58,6 +58,71 @@ namespace LumaWall
         private const double AmbangKelebihan = 1.3;
 
         /// <summary>
+        /// Mode resolusi yang bisa dipilih pengguna.
+        ///
+        /// Sampai sekarang hanya ada satu perilaku - turunkan kalau videonya jauh
+        /// lebih besar daripada layarnya - dan pengguna tidak punya suara atas
+        /// itu. Di mesin yang videonya berat, "otomatis" masih menyisakan decode
+        /// yang tidak perlu; di mesin yang layarnya besar, pengguna mungkin ingin
+        /// ketajaman penuh. Keduanya permintaan yang sah, dan keduanya butuh
+        /// pilihan.
+        /// </summary>
+        internal static class Mode
+        {
+            /// <summary>Turunkan hanya kalau videonya jauh lebih besar. Bawaan.</summary>
+            public const string Otomatis = "auto";
+
+            /// <summary>Paksa pas dengan resolusi layar, walau selisihnya kecil.</summary>
+            public const string PasLayar = "monitor";
+
+            /// <summary>Setengah resolusi layar: penghematan terbesar.</summary>
+            public const string Hemat = "half";
+
+            /// <summary>Jangan pernah diperkecil; pakai berkas aslinya.</summary>
+            public const string Asli = "source";
+
+            public static bool Valid(string mode)
+            {
+                return mode == Otomatis || mode == PasLayar || mode == Hemat || mode == Asli;
+            }
+        }
+
+        /// <summary>
+        /// Lebar target untuk sebuah mode, atau 0 kalau berkasnya tidak perlu
+        /// diperkecil.
+        ///
+        /// Dipisah dari Pilih supaya aturannya bisa diperiksa sendiri: satu
+        /// tempat yang menjawab "mode ini meminta lebar berapa", bukan tiga
+        /// cabang yang tersebar.
+        /// </summary>
+        private static int LebarUntukMode(string mode, int wAsli, int lebarLayar)
+        {
+            if (mode == Mode.Asli) return 0;
+            if (mode == Mode.Hemat) return BatasLebar(Math.Max(640, lebarLayar / 2));
+            if (mode == Mode.PasLayar) return BatasLebar(lebarLayar);
+
+            // Otomatis: hanya kalau kelebihannya besar.
+            int batas = BatasLebar(lebarLayar);
+            return wAsli > batas * AmbangKelebihan ? batas : 0;
+        }
+
+        /// <summary>
+        /// Lebar yang diminta sebuah mode untuk video ini, atau 0 kalau tidak ada.
+        ///
+        /// Dipakai oleh alat pemeriksa lewat perintah --pilih-video. Keputusan dan
+        /// hasilnya sengaja dipisah: panggilan pertama untuk sebuah mode baru hanya
+        /// MEMULAI transcode dan memutar berkas aslinya sampai salinannya siap. Alat
+        /// yang hanya membaca berkas yang dipakai akan melihat keempat mode sama dan
+        /// menyimpulkan setelannya tidak bekerja - padahal keputusannya sudah benar.
+        /// </summary>
+        public static int LebarTarget(string mode, int wAsli, int lebarLayar)
+        {
+            if (!Mode.Valid(mode)) mode = Mode.Otomatis;
+            int lebar = LebarUntukMode(mode, wAsli, lebarLayar);
+            return lebar > 0 && lebar < wAsli ? lebar : 0;
+        }
+
+        /// <summary>
         /// Resolusi maksimum yang masih masuk akal untuk sebuah monitor.
         ///
         /// Dibatasi 3840 supaya video 8K di layar 4K tetap diturunkan, dan
@@ -111,6 +176,43 @@ namespace LumaWall
         /// </summary>
         public static Hasil Pilih(string videoPath, int lebarLayar, int tinggiLayar, int fpsTarget)
         {
+            return Pilih(videoPath, lebarLayar, tinggiLayar, fpsTarget, Mode.Otomatis);
+        }
+
+        /// <summary>
+        /// Pilih berkas video untuk monitor ini, dengan mode resolusi yang dipilih
+        /// pengguna.
+        ///
+        /// Mode menentukan seberapa jauh video boleh berbeda dari layarnya:
+        ///
+        ///   auto     turunkan hanya kalau videonya jauh lebih besar (bawaan)
+        ///   monitor  paksa pas dengan resolusi layar
+        ///   half     setengah resolusi layar, untuk mesin yang berat
+        ///   source   jangan diperkecil sama sekali
+        ///
+        /// "Pas dengan layar" berarti lebar video disamakan dengan lebar layar,
+        /// bukan tinggi: rasio aslinya dipertahankan, dan video yang lebih lebar
+        /// daripada layar adalah kasus yang membuang piksel paling banyak.
+        /// </summary>
+        public static Hasil Pilih(string videoPath, int lebarLayar, int tinggiLayar,
+                                  int fpsTarget, string mode)
+        {
+            return Pilih(videoPath, lebarLayar, tinggiLayar, fpsTarget, mode, false);
+        }
+
+        /// <summary>
+        /// Pilih berkas video, atau hanya PUTUSKAN pilihannya.
+        ///
+        /// `kering` (dry run) menjawab pertanyaannya tanpa memulai transcode. Alat
+        /// pemeriksa memakainya: menjalankan transcode sungguhan membuat perintahnya
+        /// menunggu ffmpeg, dan pemeriksa yang menunggu selamanya lebih buruk daripada
+        /// tidak ada pemeriksa sama sekali.
+        /// </summary>
+        public static Hasil Pilih(string videoPath, int lebarLayar, int tinggiLayar,
+                                  int fpsTarget, string mode, bool kering)
+        {
+            if (!Mode.Valid(mode)) mode = Mode.Otomatis;
+
             var hasil = new Hasil
             {
                 Path = videoPath,
@@ -146,8 +248,8 @@ namespace LumaWall
                 hasil.LebarAsli = wAsli;
                 hasil.TinggiAsli = hAsli;
 
-                int batas = BatasLebar(lebarLayar);
-                bool perluKecil = wAsli > batas * AmbangKelebihan;
+                int lebarMode = LebarUntukMode(mode, wAsli, lebarLayar);
+                bool perluKecil = lebarMode > 0 && lebarMode < wAsli;
                 int fps = fpsTarget > 0 ? Math.Max(10, Math.Min(60, fpsTarget)) : 0;
 
                 if (!perluKecil && fps == 0)
@@ -167,7 +269,7 @@ namespace LumaWall
                     return hasil;
                 }
 
-                int lebarPakai = perluKecil ? batas : wAsli;
+                int lebarPakai = perluKecil ? lebarMode : wAsli;
                 string turunan = PathTurunan(videoPath, lebarPakai, fps);
                 if (File.Exists(turunan) && new FileInfo(turunan).Length > 1024)
                 {
@@ -183,12 +285,18 @@ namespace LumaWall
                 // dan wallpaper harus langsung tampil dengan berkas aslinya
                 // sementara salinannya disiapkan. Pemanggilan berikutnya akan
                 // menemukan salinan itu sudah siap.
-                MulaiBuat(ff, videoPath, turunan, lebarPakai, wAsli, hAsli, perluKecil, fps);
+                //
+                // Dalam mode kering, keputusannya sudah dibuat dan dilaporkan, tetapi
+                // transcodenya tidak dimulai: alat pemeriksa tidak boleh menunggu ffmpeg.
+                if (!kering)
+                    MulaiBuat(ff, videoPath, turunan, lebarPakai, wAsli, hAsli, perluKecil, fps);
 
                 hasil.LebarPakai = wAsli;
                 hasil.TinggiPakai = hAsli;
-                hasil.Alasan = "salinan " + lebarPakai + "p" + (fps > 0 ? "/" + fps + "fps" : "")
-                    + " sedang dibuat, pakai aslinya dulu";
+                hasil.Alasan = kering
+                    ? "kering: akan dibuat " + lebarPakai + "p" + (fps > 0 ? "/" + fps + "fps" : "")
+                    : "salinan " + lebarPakai + "p" + (fps > 0 ? "/" + fps + "fps" : "")
+                        + " sedang dibuat, pakai aslinya dulu";
                 return hasil;
             }
             catch (Exception ex)

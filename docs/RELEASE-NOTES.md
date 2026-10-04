@@ -8,6 +8,81 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.19.0
+
+### Bahasa Indonesia
+
+**Resolusi video sekarang bisa dipilih, dan videonya benar-benar disesuaikan
+dengan monitor**
+
+Sampai sekarang hanya ada satu perilaku - video diturunkan kalau jauh lebih
+besar daripada layar - dan pengguna tidak punya suara atas itu. Di mesin yang
+sedang berat, "otomatis" masih menyisakan decode yang tidak perlu; di mesin
+dengan layar besar, pengguna mungkin ingin ketajaman penuh. Keduanya permintaan
+yang sah, dan keduanya butuh pilihan.
+
+Sekarang ada empat mode di halaman Performa, tepat di bawah pilihan FPS:
+
+| Mode | Artinya |
+|---|---|
+| **Otomatis** | Diturunkan hanya kalau videonya jauh lebih besar. Bawaan. |
+| **Pas layar** | Disamakan dengan lebar layar, walau selisihnya kecil. |
+| **Hemat** | Setengah lebar layar. Paling ringan. |
+| **Asli** | Tidak pernah diturunkan. Paling tajam. |
+
+Tiap kartu menyebut **angkanya untuk mesin ini** - "Pas layar · 1920 px",
+"Hemat · 960 px" - sehingga pilihannya konkret dan tidak perlu tahu resolusi
+monitornya sendiri.
+
+Memilih mode langsung berlaku: berkasnya dipilih ulang saat itu juga, bukan
+menunggu wallpaper diganti. Itu pelajaran dari setelan FPS di sebelahnya, yang
+dulu tombolnya ada tetapi tidak melakukan apa pun.
+
+**Yang juga diperbaiki: mode "Pas layar" tidak membuang ketajaman tanpa alasan**
+
+Aturan lama hanya menurunkan kalau videonya lebih dari 1,3 kali lebar layar.
+Dengan mode "Pas layar", video 1440p di layar 1080p sekarang juga diturunkan -
+dan sebaliknya, mode "Otomatis" tetap **tidak** menurunkan video 1080p di layar
+1080p, karena menurunkannya membuang ketajaman tanpa menghemat apa pun yang
+berarti.
+
+### English
+
+**Video resolution is now a choice, and videos really are matched to the
+monitor**
+
+Until now there was one behaviour - shrink the video when it is far larger than
+the screen - and no way for the user to weigh in. On a machine under load,
+"automatic" still leaves decode on the table; on a machine with a large screen, a
+user may want full sharpness. Both are legitimate, and both need a choice.
+
+There are now four modes on the Performance page, directly under the frame-rate
+row:
+
+| Mode | Meaning |
+|---|---|
+| **Automatic** | Shrunk only when the video is far larger. Default. |
+| **Fit screen** | Matched to the screen's width, even when the difference is small. |
+| **Light** | Half the screen width. Lightest. |
+| **Original** | Never shrunk. Sharpest. |
+
+Each card states **the number for this machine** - "Fit screen · 1920 px",
+"Light · 960 px" - so the choice is concrete and needs no knowledge of the
+monitor's own resolution.
+
+Choosing a mode takes effect immediately: the file is chosen again right away
+rather than waiting for the wallpaper to change. That is the lesson from the
+frame-rate setting beside it, whose button existed but did nothing.
+
+**Also fixed: "Fit screen" no longer discards sharpness for nothing**
+
+The old rule only shrank a video when it was more than 1.3 times the screen
+width. With "Fit screen", a 1440p video on a 1080p screen is now shrunk too - and
+conversely, "Automatic" still does **not** shrink a 1080p video on a 1080p
+screen, because shrinking it would discard sharpness for no meaningful saving.
+
+---
+
 ## 4.5.18.0
 
 ### Bahasa Indonesia
