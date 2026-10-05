@@ -1815,6 +1815,11 @@ namespace LumaWall
         private readonly Forms.Screen screen;
         private string mediaPath;
         private string currentMediaPath;
+        // The file actually being decoded, which may be a smaller copy than mediaPath.
+        // Recorded so a copy that finishes transcoding can be compared against what is
+        // playing: re-queueing a display that is already on the copy would restart the
+        // video for nothing.
+        private string currentDecodedPath;
         private WebView2 webView;
         private StaticImageSurface staticSurface;
         private bool staticMode;
@@ -2709,6 +2714,7 @@ namespace LumaWall
             // the request is delivered to a renderer that is not running scripts.
             PrepareForMediaChange();
             string source = new Uri(PilihUntukMonitor(path), UriKind.Absolute).AbsoluteUri;
+            currentDecodedPath = Uri.UnescapeDataString(new Uri(source).LocalPath);
             RunScript("window.luma.prepare(" + JavaScriptString(source) + ",false," + (muted ? "true" : "false") + "," + request + "," + targetFps + ")");
             AppLog.Write("Media prepared in permanent host " + screen.DeviceName + " -> " + path);
         }
@@ -2759,6 +2765,9 @@ namespace LumaWall
                     }
                     return pilihan.Path;
                 }
+                // The original is being decoded - either because it is already the right
+                // size, or because the copy is still being made. Recorded so a copy that
+                // finishes later can be recognised as an improvement worth switching to.
                 return pilihan.Path ?? path;
             }
             catch
@@ -4034,6 +4043,25 @@ namespace LumaWall
         /// <summary>The display this wallpaper is attached to.</summary>
         public string DeviceName { get { return screen.DeviceName; } }
 
+        /// <summary>The wallpaper the user chose, as stored in the config.</summary>
+        public string MediaPath { get { return mediaPath; } }
+
+        /// <summary>The file actually being decoded, which may be a smaller copy.</summary>
+        public string CurrentDecodedPath { get { return currentDecodedPath; } }
+
+        /// <summary>
+        /// Chooses the media file again for this display.
+        ///
+        /// Called when a transcode finishes. QueueMedia runs PilihUntukMonitor, which
+        /// now finds the copy on disk and returns it - so the display moves from the
+        /// full-size file to the smaller one without the wallpaper changing.
+        /// </summary>
+        public void RequeueMedia()
+        {
+            if (IsDisposed || staticMode) return;
+            QueueMedia(mediaPath);
+        }
+
         /// <summary>The display this wallpaper covers, for callers that need to know which.</summary>
         public Forms.Screen Screen { get { return screen; } }
 
@@ -4591,6 +4619,31 @@ namespace LumaWall
         // is set, and a window that missed it would decode the full-size file - the
         // heaviest case, on the displays the user restored.
         private string resolutionMode = VideoScale.Mode.Otomatis;
+
+        /// <summary>
+        /// The UI thread's dispatcher, captured when the manager is built.
+        ///
+        /// Needed because the transcode finishes on its own thread, and a WebView2 can
+        /// only be touched from the UI thread. Dispatcher.CurrentDispatcher is NOT the
+        /// answer on a background thread: on a thread with no dispatcher it creates a
+        /// new one, so BeginInvoke would queue the work onto a dispatcher that never
+        /// runs - a silent failure that looks exactly like the handler never firing.
+        /// </summary>
+        private readonly System.Windows.Threading.Dispatcher uiDispatcher;
+
+        /// <summary>
+        /// Subscribes to the transcode-complete notification.
+        ///
+        /// Done in the constructor rather than by the caller: forgetting to subscribe is
+        /// silent, and its symptom is the load this whole path exists to remove - the
+        /// wallpaper decoding a 4K file while a 1366p copy sits unused on disk.
+        /// </summary>
+        public WallpaperManager()
+        {
+            uiDispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+            VideoScale.SelesaiDibuat += SalinanSiap;
+        }
+
         public void SetDefaults(bool muteValue, int fpsValue) { mute = muteValue; fps = fpsValue; }
 
         /// <summary>Path of the wallpaper assigned to a display, or null.</summary>
@@ -4638,6 +4691,93 @@ namespace LumaWall
             resolutionMode = mode;
             foreach (var window in windows.Values) window.SetResolutionMode(mode);
             foreach (var window in pending.Values) window.SetResolutionMode(mode);
+        }
+
+        /// <summary>
+        /// Points a display at the copy that just became ready.
+        ///
+        /// Called when a transcode finishes. The copy is chosen when the media is
+        /// queued, and at that moment it did not exist - so the original file was used.
+        /// Without this the wallpaper keeps decoding the full-size file for as long as
+        /// it stays on screen, which is exactly the load the copy was made to remove.
+        ///
+        /// Only the display whose video this copy belongs to is re-queued, and only if
+        /// that display is still showing the same wallpaper: a copy that finished after
+        /// the user moved on must not drag the screen back to it.
+        ///
+        /// This runs on the transcoder's own thread, so the work is handed to the UI
+        /// thread first. Touching a WebView2 from another thread throws
+        /// "CoreWebView2 can only be accessed from the UI thread" - and because the
+        /// whole body was inside one try, that exception was swallowed and logged as a
+        /// generic failure, so the copy was made and never used.
+        /// </summary>
+        public void SalinanSiap(string salinan)
+        {
+            if (string.IsNullOrWhiteSpace(salinan)) return;
+
+            Action kerja = delegate { PakaiSalinan(salinan); };
+            try
+            {
+                if (uiDispatcher != null && !uiDispatcher.CheckAccess())
+                {
+                    uiDispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, kerja);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Tidak bisa mengantre ke UI thread: " + ex.Message);
+            }
+            kerja();
+        }
+
+        private void PakaiSalinan(string salinan)
+        {
+            string dasar = Path.GetFileName(salinan);
+
+            var semua = new List<WallpaperWindow>();
+            foreach (var pair in windows) semua.Add(pair.Value);
+            foreach (var pair in pending) semua.Add(pair.Value);
+
+            foreach (WallpaperWindow window in semua)
+            {
+                try
+                {
+                    if (window == null || window.IsDisposed) continue;
+
+                    // Does this copy belong to the wallpaper this window is showing?
+                    // The copy's name is "<original stem>-<width>p[-<fps>fps]-<fingerprint>.mp4",
+                    // so the original's stem has to be a prefix of it. Compared on the
+                    // stem rather than the whole path because the fingerprint in the name
+                    // is derived from the file, not from its path.
+                    string asli = window.MediaPath;
+                    if (string.IsNullOrWhiteSpace(asli)) continue;
+                    // A copy is only ever made for a video, so a still image can never
+                    // match. Checked by extension here because the image test lives on the
+                    // window and is private to it.
+                    string ekstensi = Path.GetExtension(asli).ToLowerInvariant();
+                    if (ekstensi != ".mp4" && ekstensi != ".webm" && ekstensi != ".mkv" &&
+                        ekstensi != ".mov" && ekstensi != ".avi") continue;
+                    string batang = Path.GetFileNameWithoutExtension(asli);
+                    if (batang.Length > 48) batang = batang.Substring(0, 48);
+                    foreach (char c in Path.GetInvalidFileNameChars()) batang = batang.Replace(c, '_');
+                    if (!dasar.StartsWith(batang + "-", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    // Already decoding this copy: re-queueing would restart the video for
+                    // nothing.
+                    string sebelumnya = window.CurrentDecodedPath;
+                    if (!string.IsNullOrWhiteSpace(sebelumnya) &&
+                        string.Equals(sebelumnya, salinan, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    window.RequeueMedia();
+                    AppLog.Write("Salinan siap dipakai di " + window.DeviceName + " -> " + dasar);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Write("Gagal memakai salinan yang siap: " + ex.Message);
+                }
+            }
         }
 
         public void CloseAll()

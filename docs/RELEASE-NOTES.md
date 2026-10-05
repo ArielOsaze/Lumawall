@@ -8,6 +8,123 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.20.0
+
+### Bahasa Indonesia
+
+**Decode video turun drastis: salinan yang sudah dibuat akhirnya dipakai**
+
+Ini bug yang menjelaskan keluhan "usage decode videonya kenapa gede banget".
+
+Salinan video yang lebih kecil **sudah dibuat** dengan benar, dan **tidak pernah
+dipakai**. Berkasnya dipilih satu kali saat wallpaper dipasang - dan pada saat
+itu salinannya belum ada, jadi berkas aslinya yang dipakai - lalu tidak ada yang
+memilih ulang. Komentar di kodenya berkata "pemanggilan berikutnya akan
+menemukan salinan itu sudah siap", tetapi pemanggilan berikutnya tidak pernah
+terjadi sampai pengguna mengganti wallpaper sendiri.
+
+Akibatnya layar 1366x768 men-decode berkas 4K selama berjam-jam, padahal salinan
+1366p-nya sudah ada di disk. Terukur: **24% beban decode untuk berkas asli,
+3,4% untuk salinannya.**
+
+Sekarang aplikasi diberi tahu saat sebuah salinan selesai dibuat, dan langsung
+memakainya. Dua hal yang membuat ini tidak bekerja sebelumnya, keduanya
+diperbaiki:
+
+1. **Pemberitahuannya tidak ada.** Sekarang ada, dan dikirim setelah transcode
+   benar-benar selesai.
+
+2. **Transcode selesai di thread latar, sedangkan WebView2 hanya boleh disentuh
+   dari UI thread.** Percobaan pertama gagal dengan "CoreWebView2 can only be
+   accessed from the UI thread", dan karena seluruh badannya ada di dalam satu
+   `try`, galat itu tertelan dan tercatat sebagai kegagalan umum. Sekarang
+   pekerjaannya diantre ke dispatcher UI thread yang disimpan saat aplikasi
+   dibuat.
+
+**Pil di halaman Displays tidak lagi berdempetan**
+
+Keluhannya: "pada toggle di display ga rapi berantakan dempetan pil nya".
+
+Tiga sebab, ketiganya nyata:
+
+1. Baris pil memakai `StackPanel` horizontal, yang **tidak pernah membungkus**.
+   Teks setelan yang panjang seperti "DREAM · Bright 100% · Saturation 100%"
+   mendorong barisnya keluar dari kartu dan teksnya terpotong jadi
+   "Saturati...". Sekarang `WrapPanel`, dan teksnya membungkus di dalam pil
+   alih-alih langsung dipotong.
+
+2. Jaraknya hanya di sisi kanan (`Margin(0,0,6,0)`), jadi **antar baris tidak ada
+   jarak sama sekali** - dua baris pil terbaca sebagai satu blok padat. Sekarang
+   ada jarak di kanan dan bawah.
+
+3. Tombol aksinya memakai `WrapPanel` dengan margin kiri 6px yang **ditempelkan
+   satu per satu** pada tiap tombol. Karena lebar tiap tombol berbeda mengikuti
+   panjang teksnya, tiap kartu membungkus di titik yang berbeda dan tiga kartu
+   yang seharusnya identik terlihat tidak sejajar. Sekarang grid 2×2 dengan
+   kolom sama lebar, sehingga keempat tombol rata di semua kartu.
+
+**Tombol "Tune colour & framing" tidak lagi meluber**
+
+Di dalam kolom yang sama lebarnya, teks itu butuh 113px sementara kolomnya
+sekitar 110px, jadi teksnya keluar dari tombolnya. Paddingnya dikurangi dan
+teksnya bisa menyusut. Ditemukan oleh pemeriksa tata letak, bukan oleh mata.
+
+### English
+
+**Video decode drops sharply: the copy that was already made is finally used**
+
+This is the bug behind "usage decode videonya kenapa gede banget".
+
+The smaller video copy **was being made** correctly, and **was never used**. The
+file is chosen once when the wallpaper is applied - and at that moment the copy
+does not exist yet, so the original is used - and nothing ever chose again. The
+comment in the code said "the next call will find the copy ready", but the next
+call never came until the user changed the wallpaper themselves.
+
+So a 1366x768 screen decoded a 4K file for hours while its 1366p copy sat on
+disk. Measured: **24% decode load for the original, 3.4% for the copy.**
+
+The app is now told when a copy finishes and switches to it immediately. Two
+things had kept this from working, both fixed:
+
+1. **There was no notification.** There is now, sent when the transcode truly
+   finishes.
+
+2. **The transcode finishes on a background thread, and a WebView2 may only be
+   touched from the UI thread.** The first attempt failed with "CoreWebView2 can
+   only be accessed from the UI thread", and because the whole body sat inside
+   one `try`, that error was swallowed and logged as a generic failure. The work
+   is now queued onto the UI dispatcher captured when the app was built.
+
+**The pills on the Displays page are no longer cramped**
+
+The complaint: "pada toggle di display ga rapi berantakan dempetan pil nya".
+
+Three causes, all real:
+
+1. The pill row used a horizontal `StackPanel`, which **never wraps**. A long
+   tuning string like "DREAM · Bright 100% · Saturation 100%" pushed the row past
+   the card and the text was cut to "Saturati...". It is a `WrapPanel` now, and
+   the text wraps inside the pill instead of being truncated outright.
+
+2. The gap was only on the right (`Margin(0,0,6,0)`), so **there was no gap
+   between rows at all** - two rows of pills read as one solid block. There is
+   now a gap on the right and at the bottom.
+
+3. The action buttons used a `WrapPanel` with a 6px left margin **stuck onto each
+   button individually**. Because each button's width follows its own text, every
+   card wrapped at a different point and three cards that should look identical
+   looked misaligned. It is a 2×2 grid with equal columns now, so all four
+   buttons line up on every card.
+
+**"Tune colour & framing" no longer overflows**
+
+Inside an equal-width column that text needs 113px while the column is about
+110px, so it hung out of its button. The padding is reduced and the label can
+shrink. Found by the layout checker, not by eye.
+
+---
+
 ## 4.5.19.0
 
 ### Bahasa Indonesia

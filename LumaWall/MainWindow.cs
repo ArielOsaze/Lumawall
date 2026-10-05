@@ -2009,9 +2009,9 @@ namespace LumaWall
             var hoverActions = new StackPanel { Orientation = Orientation.Horizontal };
             var primary = CompactActionButton(GetLocalCatalogPath(item) != null ? Tr("action.apply") : Tr("action.download"));
             primary.Click += async delegate { await ActivateCatalogItem(cardItem); };
+            primary.Margin = new Thickness(0, 0, 6, 0);
             hoverActions.Children.Add(primary);
             var details = CompactActionButton(Tr("action.details"));
-            details.Margin = new Thickness(6, 0, 0, 0);
             details.Click += delegate { ShowCatalogDetails(cardItem); };
             hoverActions.Children.Add(details);
             hoverStack.Children.Add(hoverActions);
@@ -2265,7 +2265,12 @@ namespace LumaWall
             {
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(7, 3, 7, 3),
-                Margin = new Thickness(0, 0, 6, 0),
+                // Consistent gap, and room for the row to wrap between pills.
+                //
+                // The bottom margin is what makes a wrapped row readable: without it the
+                // second line sits flush against the first, and two rows of pills read as
+                // one crowded block - which is what "dempetan" described.
+                Margin = new Thickness(0, 0, 6, 6),
                 VerticalAlignment = VerticalAlignment.Center,
                 Background = new SolidColorBrush(Color.FromArgb(28, tint.R, tint.G, tint.B)),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(90, tint.R, tint.G, tint.B)),
@@ -2278,6 +2283,11 @@ namespace LumaWall
                 FontFamily = FMono,
                 FontSize = 9,
                 FontWeight = FontWeights.SemiBold,
+                // Trimming is the fallback, not the first answer: a chip whose text is
+                // cut to "Saturati..." tells the user nothing, so the text is allowed to
+                // wrap inside the pill first. MaxWidth only stops a single pill from
+                // claiming the whole card.
+                TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 190
             };
@@ -2502,7 +2512,13 @@ namespace LumaWall
             // monitor's own settings - brightness, filter, fit, speed, all of them
             // real and all of them adjustable - were invisible here. The card is the
             // only place that is about one monitor, so it is where they belong.
-            var status = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 7, 0, 0) };
+            // Pills that wrap, instead of one unbroken row.
+            //
+            // A horizontal StackPanel never wraps, so a long tuning string pushed the
+            // row past the card and the text was cut to "DREAM - Bright 100% -
+            // Saturati...". WrapPanel puts the next pill on its own line when it does
+            // not fit, and the pill itself grows instead of truncating.
+            var status = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
             status.Children.Add(StatusChip(
                 hasWallpaper ? Tr("display.state.on") : Tr("display.state.off"),
                 hasWallpaper ? CAccent : CDim));
@@ -2529,14 +2545,51 @@ namespace LumaWall
             // apa akibatnya, dan ada kontrol yang memang dibutuhkan di sini -
             // memilih wallpaper untuk monitor INI, menjeda hanya monitor ini, dan
             // mengatur seberapa keras ia bekerja.
-            var actions = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
+            //
+            // Disusun sebagai grid 2x2 dengan lebar kolom yang sama, bukan WrapPanel
+            // dengan margin kiri yang ditempelkan pada tiap tombol.
+            //
+            // Dua masalah nyata yang diperbaiki:
+            //
+            //   1. Margin 6px hanya di sisi kiri, ditulis satu per satu pada tiap
+            //      tombol, membuat jaraknya bergantung pada urutan penambahan: tombol
+            //      pertama tidak punya jarak kiri, sisanya punya, dan jarak antar baris
+            //      tidak ada sama sekali. Itulah yang terbaca sebagai "dempetan".
+            //
+            //   2. WrapPanel membagi baris menurut lebar tiap tombol, dan lebarnya
+            //      berbeda-beda karena teksnya berbeda panjang. Hasilnya tiap kartu
+            //      membungkus di titik yang berbeda, sehingga tiga kartu yang
+            //      seharusnya identik terlihat tidak sejajar.
+            //
+            // Grid dengan dua kolom sama lebar membuat keempat tombol rata di semua
+            // kartu, dan jaraknya ditentukan satu tempat saja.
+            var actions = new Grid { Margin = new Thickness(0, 9, 0, 0) };
+            actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            actions.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            actions.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            const double gap = 6;
             string device = screen.DeviceName;
+
+            Action<UIElement, int, int> taruh = delegate(UIElement el, int kolom, int baris)
+            {
+                var bungkus = new Border { Child = el };
+                bungkus.Margin = new Thickness(
+                    kolom == 0 ? 0 : gap / 2,
+                    baris == 0 ? 0 : gap,
+                    kolom == 1 ? 0 : gap / 2,
+                    0);
+                Grid.SetColumn(bungkus, kolom);
+                Grid.SetRow(bungkus, baris);
+                actions.Children.Add(bungkus);
+            };
 
             // 1. Pilih wallpaper: membuka dialog berkas untuk monitor ini saja.
             var pilih = CompactActionButton(Tr("display.choose"));
             pilih.ToolTip = Tr("display.chooseHint");
+            pilih.HorizontalAlignment = HorizontalAlignment.Stretch;
             pilih.Click += delegate { ChooseWallpaperFor(device); };
-            actions.Children.Add(pilih);
+            taruh(pilih, 0, 0);
 
             // 2. Jeda / lanjut monitor ini saja.
             //
@@ -2546,26 +2599,26 @@ namespace LumaWall
             // misalnya untuk menghemat GPU saat bermain game di satu layar saja.
             bool sedangJeda = MonitorPaused(device);
             var jeda = CompactActionButton(sedangJeda ? Tr("display.resume") : Tr("display.pause"));
-            jeda.Margin = new Thickness(6, 0, 0, 0);
             jeda.ToolTip = Tr("display.pauseHint");
+            jeda.HorizontalAlignment = HorizontalAlignment.Stretch;
             jeda.Click += delegate { ToggleMonitorPause(device); SwitchPage("displays"); };
-            actions.Children.Add(jeda);
+            taruh(jeda, 1, 0);
 
             // 3. Buka pengaturan lengkap monitor ini di Luma Studio.
             var atur = CompactActionButton(Tr("display.tune"));
-            atur.Margin = new Thickness(6, 0, 0, 0);
             atur.ToolTip = Tr("display.tuneHint");
+            atur.HorizontalAlignment = HorizontalAlignment.Stretch;
             atur.Click += delegate { BukaStudioUntuk(device); };
-            actions.Children.Add(atur);
+            taruh(atur, 0, 1);
 
             // 4. Hentikan: benar-benar melepas wallpaper dari monitor ini.
             //
             // Diberi label yang menyebut akibatnya, dan warnanya dibedakan, supaya
             // tidak ada yang menekannya karena mengira itu tombol jeda.
             var stop = CompactActionButton(Tr("display.detach"));
-            stop.Margin = new Thickness(6, 0, 0, 0);
             stop.ToolTip = Tr("display.detachHint");
             stop.Foreground = new SolidColorBrush(CPrimaryHi);
+            stop.HorizontalAlignment = HorizontalAlignment.Stretch;
             stop.Click += delegate
             {
                 var jawab = MessageBox.Show(
@@ -2577,7 +2630,7 @@ namespace LumaWall
                     SwitchPage("displays");
                 }
             };
-            actions.Children.Add(stop);
+            taruh(stop, 1, 1);
 
             Grid.SetRow(actions, 1);
             body.Children.Add(actions);
@@ -4685,12 +4738,29 @@ namespace LumaWall
 
         private Button CompactActionButton(string text)
         {
+            // A TextBlock rather than a bare string, so the label can shrink and trim
+            // instead of overflowing its button.
+            //
+            // The card's action buttons now sit in equal-width grid columns, and
+            // "Tune colour & framing" is 113px of text: with 12px padding on each side
+            // it needed 137px in a column that is about 110px wide, so the text hung out
+            // of the button. The layout checker caught it as "TextBlock keluar dari
+            // ContentPresenter (0,0 ukuran 113x14 di dalam 110x14)".
+            var label = new TextBlock
+            {
+                Text = text,
+                FontSize = 10.5,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
             var button = new Button
             {
-                Content = text,
+                Content = label,
                 Height = 31,
                 MinWidth = 64,
-                Padding = new Thickness(12, 0, 12, 0),
+                Padding = new Thickness(8, 0, 8, 0),
                 Background = new SolidColorBrush(CSurface2),
                 Foreground = new SolidColorBrush(CText),
                 BorderBrush = new SolidColorBrush(CBorder),

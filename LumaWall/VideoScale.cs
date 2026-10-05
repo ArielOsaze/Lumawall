@@ -45,6 +45,24 @@ namespace LumaWall
         private static readonly HashSet<string> sedangDibuat = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
+        /// Dipanggil ketika sebuah salinan selesai dibuat.
+        ///
+        /// Ini yang membuat transcode benar-benar terpakai. Tanpa ini, salinannya
+        /// dibuat dengan rapi di latar belakang dan tidak pernah dipakai: berkasnya
+        /// dipilih sekali saat wallpaper dipasang - dan saat itu salinannya belum ada,
+        /// jadi berkas aslinya yang dipakai - lalu tidak ada yang memilih ulang.
+        /// Komentar lama berkata "pemanggilan berikutnya akan menemukan salinan itu
+        /// sudah siap", tetapi pemanggilan berikutnya tidak pernah terjadi sampai
+        /// pengguna mengganti wallpaper sendiri. Akibatnya decode berjalan pada berkas
+        /// penuh: 4K di layar 1366x768, terukur 24% beban decode, padahal salinan
+        /// 1366p-nya sudah ada di disk dan hanya berbiaya 3,4%.
+        ///
+        /// Argumennya adalah berkas TUJUAN (salinan), supaya penerimanya bisa memeriksa
+        /// apakah berkas itu memang yang seharusnya dipakai sekarang.
+        /// </summary>
+        public static event Action<string> SelesaiDibuat;
+
+        /// <summary>
         /// Berapa kali piksel video boleh melebihi piksel layar sebelum
         /// diskalakan.
         ///
@@ -576,6 +594,19 @@ namespace LumaWall
                             AppLog.Write("Video diskalakan " + wAsli + "x" + hAsli + " -> "
                                 + lebar + "p untuk layar ini (" + (ukuran / 1024) + " KB): "
                                 + Path.GetFileName(asal));
+
+                            // Salinannya siap, jadi sekarang ia harus benar-benar dipakai.
+                            // Sebelum ini, berkasnya dipilih sekali saat wallpaper dipasang
+                            // - dan saat itu salinannya belum ada, jadi berkas aslinya yang
+                            // dipakai - lalu tidak ada yang memilih ulang. Decode pun
+                            // berjalan pada berkas penuh selamanya meski salinannya sudah
+                            // ada di disk.
+                            Action<string> selesai = SelesaiDibuat;
+                            if (selesai != null)
+                            {
+                                try { selesai(tujuan); }
+                                catch (Exception ex) { AppLog.Write("Pemberitahuan salinan gagal: " + ex.Message); }
+                            }
                         }
                         else
                         {
