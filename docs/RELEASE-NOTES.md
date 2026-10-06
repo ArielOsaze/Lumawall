@@ -8,6 +8,77 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.22.0
+
+### Bahasa Indonesia
+
+**Luma Studio: sebelas kartu jadi empat bagian, satu kartu per bagian**
+
+Keluhannya: "sangat sangat ga rapi berantakan bikin user bingung ga minimalis
+card card bertabrakan jdi bingung ini settingan apa bikin per section yg rapi",
+lalu "per section yg bnr bnr rapi gaussa dibelah jdi dua card".
+
+Keduanya benar, dan penyebabnya struktural: halaman ini punya **sebelas kartu**
+dalam dua kolom, tanpa satu pun judul bagian. Warna, Bingkai, dan Pemutaran
+berdiri sendiri-sendiri padahal ketiganya satu topik, dan **Jam Desktop bahkan
+terbelah dua** — tombol hidup/mati, mode, dan gaya jamnya di kolom kiri,
+sementara pad penempatannya di kolom kanan. Mengatur jam berarti menengok ke
+dua tempat yang berjauhan, dan tidak ada yang memberi tahu bahwa keduanya satu
+hal.
+
+Sekarang **empat bagian, masing-masing satu kartu**:
+
+| Bagian | Isi |
+|---|---|
+| **Tampilan** | monitor yang diatur + pratinjau |
+| **Gaya** | preset cepat, HDR, lintas monitor, atur ulang |
+| **Gambar** | warna, filter, bingkai, pemutaran |
+| **Jam desktop** | hidup/mati, mode, gaya, **dan penempatannya** |
+
+Judul bagian ada di **luar** kartu (judul + garis tipis + satu baris
+penjelasan), isinya di **dalam** kartu, dan kelompok di dalamnya dipisah garis
+tipis dengan judulnya sendiri. Halaman kini terbaca sebagai empat bagian, bukan
+sebagai daftar kotak.
+
+**Diverifikasi dengan mengukur piksel**, bukan dengan mata: kolom kanan hanya
+punya **satu** tepi kartu (x=741 sampai x=1452) dengan lima kelompok dipisah
+garis tipis di dalamnya, dan kolom kiri dua kartu — satu per bagian.
+
+### English
+
+**Luma Studio: eleven cards become four sections, one card per section**
+
+The complaint was that the page was "very very untidy, confusing, not
+minimalist, cards colliding, can't tell what setting this is", then "make it
+properly per section, don't split it into two cards".
+
+Both were right, and the cause was structural: the page held **eleven cards**
+in two columns with **no section heading anywhere**. Colour, Framing and
+Playback stood apart even though they are one topic, and **the Desktop clock
+was split in two** — its on/off switch, mode and style in the left column while
+its placement pad sat in the right. Adjusting the clock meant looking in two
+distant places, with nothing saying they were the same thing.
+
+Now **four sections, each one card**:
+
+| Section | Contents |
+|---|---|
+| **Display** | the display being edited + preview |
+| **Look** | quick presets, HDR, across monitors, reset |
+| **Image** | colour, filter, framing, playback |
+| **Desktop clock** | on/off, mode, style, **and its placement** |
+
+Section headings sit **outside** the card (title + thin rule + one line of
+explanation), the contents sit **inside**, and groups within are separated by
+thin rules with their own headings. The page now reads as four sections rather
+than a list of boxes.
+
+**Verified by measuring pixels**, not by eye: the right column has exactly
+**one** card border (x=741 to x=1452) with five groups separated by thin rules
+inside it, and the left column has two cards — one per section.
+
+---
+
 ## 4.5.21.0
 
 ### Bahasa Indonesia
