@@ -8,6 +8,138 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.23.0
+
+### Bahasa Indonesia
+
+**ffmpeg tidak ikut di paket — tiga fitur gagal diam-diam di PC pembeli**
+
+Ini bug yang paling penting di rilis ini, dan tidak satu pun pengguna akan
+melaporkannya dengan benar: yang mereka lihat hanya pesan "FFmpeg tidak
+ditemukan", tanpa tahu bahwa fitur yang mereka bayar tidak pernah berjalan.
+
+Tiga fitur memanggil `ffmpeg.exe`: **memperkecil video** (perbaikan decode
+4.5.20.0), **membatasi FPS**, dan **kenburns** (gambar jadi video bergerak).
+Pencariannya melihat folder aplikasi, lalu `PATH`. Installer dan MSIX **tidak
+pernah menyertakan ffmpeg**, jadi satu-satunya harapan adalah `PATH` — dan di
+PC pembeli ffmpeg tidak ada di sana. Di mesin pengembang semuanya tampak baik
+karena ffmpeg dipasang lewat WinGet dan ada di `PATH`.
+
+Sekarang ffmpeg **diunduh otomatis** saat pertama dibutuhkan (80 MB, sekali),
+dengan pesan kemajuan di aplikasi. Mengunduh dipilih daripada ikut dipaketkan
+supaya installer yang diunduh pembeli tetap 23 MB.
+
+**Pemindai zip sendiri menghasilkan ffmpeg rusak**
+
+Percobaan pertama mengambil ffmpeg dengan membaca arsip zip sendiri. Hasilnya
+**rusak** — dan itu ketahuan hanya karena hasilnya benar-benar dijalankan:
+
+```
+ffmpeg.exe hasil ekstraksi : 35,7 MB   (seharusnya 80 MB)
+tanda MZ                   : tidak ada
+Windows                    : "not compatible with the version of Windows"
+```
+
+Sebabnya: arsip dari gyan.dev memakai *data descriptor*, sehingga ukuran berkas
+tidak ada di header lokal. Pemindai yang menyalin sebesar ukuran dari daftar isi
+mengambil data berkas **ditambah header entri berikutnya**.
+
+Kalau tidak diuji dengan menjalankannya, setiap pembeli akan menerima ffmpeg
+rusak dan ketiga fitur itu tetap gagal — persis seperti sebelum diperbaiki,
+hanya dengan kode yang tampak lebih baik. Sekarang memakai pembaca zip bawaan
+.NET, dan hasilnya diuji: **100,5 MB, tanda MZ ada, `ffmpeg version 9.0.2`,
+dan kenburns berhasil membuat video.**
+
+**61 thumbnail yang tidak bisa ditampilkan**
+
+- **54 entri** memakai placeholder `nsfw_min.png` dari DesktopHut sendiri
+  (situsnya memang tidak menyediakan pratinjau untuk wallpaper itu)
+- **3 entri** tanpa thumbnail sama sekali
+- **3 kelompok** thumbnail dipakai bersama oleh wallpaper yang **berbeda** —
+  videonya berbeda semua (`app1077904` vs `app1077863`), yang sama hanya
+  thumbnailnya
+
+Semuanya diberi **frame dari videonya sendiri**, disimpan di
+`site/assets/thumbs/` dan dirujuk lewat alamat situs — **bukan** `file://` lokal,
+karena katalog ikut dipaketkan ke installer dan jalur lokal mesin pengembang
+akan menunjuk berkas yang tidak ada di PC pembeli.
+
+Lembar kontak 48 thumbnail diperiksa dengan mata: **48/48 berisi gambar asli**,
+tidak ada yang hitam atau kartu judul.
+
+**Duplikat: tidak ada satu pun**
+
+Pemeriksa duplikat baru memeriksa `videoUrl`, `thumbnailUrl`, judul, dan id —
+dan menemukan bug di **dirinya sendiri**: membuang *query string* membuat 1.724
+URL moewalls (`download.php?video=<token>`) terlihat identik, dan itu melaporkan
+**ribuan duplikat palsu**. Setelah diperbaiki: `videoUrl` **0 kelompok**,
+`thumbnailUrl` **0 kelompok**.
+
+### English
+
+**ffmpeg was never in the package — three features failed silently on buyers' PCs**
+
+This is the most important fix in this release, and no user would have reported
+it correctly: all they would see is "FFmpeg was not found", with no way to know
+that a feature they paid for never ran.
+
+Three features call `ffmpeg.exe`: **shrinking videos** (the 4.5.20.0 decode
+fix), **capping FPS**, and **kenburns** (still image to moving video). The lookup
+checked the app folder, then `PATH`. The installer and MSIX **never included
+ffmpeg**, so `PATH` was the only hope — and buyers' PCs do not have it there. On
+the development machine everything looked fine because ffmpeg was installed via
+WinGet and sat on `PATH`.
+
+ffmpeg is now **downloaded automatically** the first time it is needed (80 MB,
+once), with a progress message in the app. Downloading was chosen over bundling
+so the installer buyers download stays 23 MB.
+
+**The hand-written zip reader produced a broken ffmpeg**
+
+The first attempt fetched ffmpeg by reading the zip archive directly. The result
+was **broken**, and that was only discovered by actually running it:
+
+```
+extracted ffmpeg.exe : 35.7 MB   (should be 80 MB)
+MZ signature         : absent
+Windows              : "not compatible with the version of Windows"
+```
+
+The cause: gyan.dev's archive uses *data descriptors*, so the file size is not in
+the local header. A reader copying the size recorded in the central directory
+takes the file data **plus the next entry's header**.
+
+Without running the result, every buyer would have received a broken ffmpeg and
+all three features would still fail — exactly as before the fix, only with code
+that looked better. It now uses .NET's built-in zip reader, and the result is
+verified: **100.5 MB, MZ signature present, `ffmpeg version 9.0.2`, and kenburns
+successfully produces a video.**
+
+**61 thumbnails that could not be shown**
+
+- **54 entries** used DesktopHut's own `nsfw_min.png` placeholder (the site
+  simply has no preview for those wallpapers)
+- **3 entries** had no thumbnail at all
+- **3 groups** of thumbnails were shared by **different** wallpapers — the videos
+  are all different (`app1077904` vs `app1077863`); only the thumbnail matched
+
+All were given **a frame from their own video**, stored in
+`site/assets/thumbs/` and referenced by site URL — **not** a local `file://`
+path, because the catalogue ships inside the installer and a local path would
+point at a file buyers do not have.
+
+A contact sheet of 48 thumbnails was inspected by eye: **48/48 show real
+artwork**, none blank or a title card.
+
+**Duplicates: none**
+
+The new duplicate checker examines `videoUrl`, `thumbnailUrl`, title and id — and
+found a bug in **itself**: dropping the query string made 1,724 moewalls URLs
+(`download.php?video=<token>`) look identical, reporting **thousands of false
+duplicates**. Once fixed: `videoUrl` **0 groups**, `thumbnailUrl` **0 groups**.
+
+---
+
 ## 4.5.22.0
 
 ### Bahasa Indonesia
