@@ -226,6 +226,20 @@ namespace LumaWall
             { "studio.spanWith", new[] { "Sambung dengan {0}", "Stretch with {0}", "与 {0} 拼接", "{0} とつなげる" } },
             { "studio.sub", new[] { "Atur warna, filter, dan bentuk wallpaper untuk tiap monitor.", "Tune colour, filters and framing for each display.", "为每台显示器调整色彩、滤镜与画面构图。", "モニターごとに色、フィルター、表示方法を調整します。" } },
             { "studio.timer", new[] { "Timer desktop", "Desktop timer", "桌面计时器", "デスクトップタイマー" } },
+            // Judul bagian di Luma Studio.
+            //
+            // Halaman ini punya sebelas kartu tanpa satu pun judul bagian, dan
+            // keluhannya persis itu: "card card bertabrakan jadi bingung ini
+            // settingan apa bikin per section yg rapi". Judul-judul ini yang
+            // membuat halamannya terbaca sebagai bagian-bagian.
+            { "studio.secView", new[] { "Tampilan", "Display", "显示器", "表示" } },
+            { "studio.secViewSub", new[] { "Pilih monitor yang diatur, lalu lihat hasilnya.", "Pick the display to adjust, then watch the result.", "选择要调整的显示器，然后查看效果。", "調整するモニターを選び、結果を確認します。" } },
+            { "studio.secLook", new[] { "Gaya tampilan", "Look", "外观", "見た目" } },
+            { "studio.secLookSub", new[] { "Pilihan cepat yang berlaku pada seluruh tampilan.", "Quick choices that apply to the whole display.", "适用于整个显示器的快捷选项。", "モニター全体に適用される簡単な選択です。" } },
+            { "studio.secImage", new[] { "Gambar", "Image", "图像", "画像" } },
+            { "studio.secImageSub", new[] { "Warna, bentuk, dan kecepatan wallpaper di monitor ini.", "Colour, shape and speed of the wallpaper on this display.", "此显示器上壁纸的色彩、形状与速度。", "このモニターでの壁紙の色、形、速度。" } },
+            { "studio.secTimer", new[] { "Jam desktop", "Desktop clock", "桌面时钟", "デスクトップ時計" } },
+            { "studio.secTimerSub", new[] { "Jam, stopwatch, atau hitung mundur - beserta tempatnya.", "A clock, stopwatch or countdown - and where it sits.", "时钟、秒表或倒计时，以及它的位置。", "時計、ストップウォッチ、カウントダウン、そしてその位置。" } },
             { "timer.placementTitle", new[] { "Penempatan timer", "Timer placement", "计时器位置", "タイマーの配置" } },
             { "timer.placementHint", new[] { "Di mana widget duduk dan seberapa besar.", "Where the widget sits and how big it is.", "小部件的位置和大小。", "ウィジェットの位置と大きさ。" } },
             { "timer.edgeLeft", new[] { "KIRI", "LEFT", "左", "左" } },

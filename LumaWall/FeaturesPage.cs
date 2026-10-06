@@ -104,34 +104,21 @@ namespace LumaWall
                 return page;
             }
 
-            // Two columns, dan pembagiannya diatur supaya kedua kolom selesai
-            // pada ketinggian yang hampir sama.
+            // Satu bagian = satu kartu.
             //
-            // Sebelumnya kolom kiri memuat tujuh kartu dan kolom kanan empat,
-            // sehingga halaman berakhir dengan satu kolom yang jauh lebih
-            // panjang daripada yang lain - dan itu terbaca sebagai halaman yang
-            // belum selesai. Yang menentukan pembagiannya adalah tinggi kartu
-            // yang sudah diukur, bukan selera:
+            // Keluhannya: "per section yg bnr bnr rapi gaussa dibelah jdi dua
+            // card". Sebelumnya halaman ini punya sebelas kartu - Warna,
+            // Bingkai, dan Pemutaran berdiri sendiri-sendiri padahal ketiganya
+            // satu topik, dan Jam Desktop bahkan terbelah dua: pengaturannya di
+            // kolom kiri sementara penempatannya di kolom kanan.
             //
-            //   Monitor yang diatur    254      Warna         336
-            //   Pratinjau              275      Bingkai       357
-            //   Preset cepat           158      Pemutaran     313
-            //   Lintas monitor         177      Penempatan    455
-            //   HDR                    199
-            //   Atur ulang             136
-            //   Jam desktop            118
+            // Sekarang empat bagian, masing-masing SATU kartu berisi beberapa
+            // kelompok yang dipisah garis tipis di dalamnya. Judul bagian ada di
+            // luar kartu, jadi terbaca sebagai bagian; isinya ada di dalam, jadi
+            // terbaca sebagai satu hal.
             //
-            // Kiri 254+275+158+177 = 864. Kanan 336+357+313+455 = 1461. Selisih
-            // 597 piksel. Dipindahkan supaya jadi:
-            //
-            //   kiri:  Monitor 254 + Pratinjau 275 + Preset 158 + HDR 199 + Reset 136 = 1022
-            //   kanan: Warna 336 + Bingkai 357 + Pemutaran 313 + Penempatan 455 = 1461
-            //
-            // Selisihnya masih ada karena kartu Penempatan memang tinggi dan
-            // tidak boleh dipindah - padanya ada pad penempatan yang butuh lebar.
-            // Yang menghilangkan selisih itu adalah kartu yang bisa dilebarkan:
-            // kolom kiri dibuat sedikit lebih lebar dan kartunya mengisi tinggi
-            // yang tersedia.
+            // Pembagian kolom ditentukan tinggi yang sudah diukur, bukan selera:
+            // kiri memuat bagian Tampilan dan Gaya, kanan memuat Gambar dan Jam.
             var columns = new Grid { Margin = new Thickness(0, 4, 0, 0) };
             columns.ColumnDefinitions.Add(new ColumnDefinition
             {
@@ -145,41 +132,63 @@ namespace LumaWall
             });
 
             var left = new StackPanel { Margin = new Thickness(0, 0, 16, 0) };
-            left.Children.Add(StudioDisplayPicker(screens));
-            left.Children.Add(StudioPreviewCard());
-            left.Children.Add(StudioPresetCard());
-            left.Children.Add(StudioSpanCard());
-            left.Children.Add(StudioHdrCard(config.OptionsFor(studioDevice)));
-            left.Children.Add(StudioResetCard());
-            left.Children.Add(StudioTimerCard());
+
+            // ── Bagian 1: Tampilan ──────────────────────────────────────────
+            // Monitor mana yang diatur, dan bagaimana hasilnya terlihat.
+            left.Children.Add(StudioSection(Tr("studio.secView"), Tr("studio.secViewSub")));
+            Border viewCard;
+            StackPanel viewBody = StudioCard(Tr("studio.display"), null, Icons.Displays, CStudioAccent, out viewCard);
+            StudioDisplayBody(viewBody, screens);
+            viewBody.Children.Add(StudioDivider());
+            viewBody.Children.Add(StudioHeading(Tr("studio.preview")));
+            StudioPreviewBody(viewBody);
+            left.Children.Add(viewCard);
+
+            // ── Bagian 2: Gaya tampilan ─────────────────────────────────────
+            // Pilihan yang berlaku pada seluruh tampilan, bukan pada satu gambar.
+            left.Children.Add(StudioSection(Tr("studio.secLook"), Tr("studio.secLookSub")));
+            Border lookCard;
+            StackPanel lookBody = StudioCard(Tr("studio.presets"), Tr("studio.presetsHint"), Icons.Optimize, CStudioPlay, out lookCard);
+            StudioPresetBody(lookBody);
+            lookBody.Children.Add(StudioDivider());
+            StudioHdrBody(lookBody, config.OptionsFor(studioDevice));
+            lookBody.Children.Add(StudioDivider());
+            StudioSpanBody(lookBody);
+            lookBody.Children.Add(StudioDivider());
+            StudioResetBody(lookBody);
+            left.Children.Add(lookCard);
+
             Grid.SetColumn(left, 0);
             columns.Children.Add(left);
 
             DisplayOptions options = config.OptionsFor(studioDevice);
 
-            // The right column holds the groups that act on one image, plus the placement
-            // pad.
-            //
-            // Which card goes where is decided by measurement, not by taste. Measured card
-            // heights:
-            //
-            //   Display being edited  254      Colour        336
-            //   Preview               275      Framing       357
-            //   Quick presets         158      Playback      313
-            //   Across monitors       177      Placement     455
-            //   HDR                   199
-            //   Reset                 136
-            //   Desktop timer         118
-            //
-            // The placement pad is the tallest card in the page and it used to sit in the
-            // left column, which finished 569px longer than the right - a page that reads as
-            // unfinished. Moving it right and the small timer card left brings the two
-            // columns to within a few pixels of each other.
             var right = new StackPanel();
-            right.Children.Add(StudioColourCard(options));
-            right.Children.Add(StudioFrameCard(options));
-            right.Children.Add(StudioPlaybackCard(options));
-            right.Children.Add(StudioTimerPlacementCard());
+
+            // ── Bagian 3: Gambar ────────────────────────────────────────────
+            // Apa yang dilakukan pada gambarnya: warna, bentuk, kecepatan.
+            right.Children.Add(StudioSection(Tr("studio.secImage"), Tr("studio.secImageSub")));
+            Border imageCard;
+            StackPanel imageBody = StudioCard(Tr("studio.look"), Tr("studio.lookHint"), Icons.Palette, CStudioColour, out imageCard);
+            StudioColourBody(imageBody, options);
+            imageBody.Children.Add(StudioDivider());
+            imageBody.Children.Add(StudioHeading(Tr("studio.framing")));
+            StudioFrameBody(imageBody, options);
+            imageBody.Children.Add(StudioDivider());
+            imageBody.Children.Add(StudioHeading(Tr("studio.playback")));
+            StudioPlaybackBody(imageBody, options);
+            right.Children.Add(imageCard);
+
+            // ── Bagian 4: Jam desktop ───────────────────────────────────────
+            // Hidup/mati, mode, gaya, DAN penempatannya dalam satu kartu.
+            right.Children.Add(StudioSection(Tr("studio.secTimer"), Tr("studio.secTimerSub")));
+            Border timerCard;
+            StackPanel timerBody = StudioCard(Tr("studio.timer"), Tr("timer.hint"), Icons.Timer, CStudioHdr, out timerCard);
+            StudioTimerBody(timerBody);
+            timerBody.Children.Add(StudioDivider());
+            StudioTimerPlacementBody(timerBody);
+            right.Children.Add(timerCard);
+
             Grid.SetColumn(right, 1);
             columns.Children.Add(right);
 
@@ -213,10 +222,8 @@ namespace LumaWall
         /// look alike and the user has to remember which is which. The chosen row is
         /// filled and ticked, so the page always answers "what am I editing".
         /// </summary>
-        private UIElement StudioDisplayPicker(Forms.Screen[] screens)
+        private void StudioDisplayBody(StackPanel host, Forms.Screen[] screens)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.display"), null, Icons.Displays, CStudioAccent, out card);
 
             foreach (Forms.Screen screen in screens)
             {
@@ -279,7 +286,6 @@ namespace LumaWall
                 host.Children.Add(row);
             }
 
-            return card;
         }
 
         /// <summary>
@@ -292,10 +298,8 @@ namespace LumaWall
         /// would otherwise have to be read off five separate sliders are printed
         /// underneath in one line.
         /// </summary>
-        private UIElement StudioPreviewCard()
+        private void StudioPreviewBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.preview"), Tr("studio.previewHint"), Icons.Wallpaper, CStudioAccent, out card);
 
             var frame = new Border
             {
@@ -365,7 +369,6 @@ namespace LumaWall
             frame.Loaded += delegate { StudioLayOutPreview(frame, marks); };
 
             StudioRefreshPreview();
-            return card;
         }
 
         private void StudioLayOutPreview(Border frame, Canvas marks)
@@ -398,10 +401,8 @@ namespace LumaWall
         }
 
         /// <summary>Presets: one click sets the whole grade.</summary>
-        private UIElement StudioPresetCard()
+        private void StudioPresetBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.presets"), Tr("studio.presetsHint"), Icons.Optimize, CStudioPlay, out card);
 
             var row = new WrapPanel();
             foreach (string[] preset in StudioPresets())
@@ -422,15 +423,12 @@ namespace LumaWall
                 row.Children.Add(button);
             }
             host.Children.Add(row);
-            return card;
         }
 
         // ── the right column ─────────────────────────────────────────────────────────
 
-        private UIElement StudioColourCard(DisplayOptions options)
+        private void StudioColourBody(StackPanel host, DisplayOptions options)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.look"), Tr("studio.lookHint"), Icons.Palette, CStudioColour, out card);
 
             host.Children.Add(StudioSlider(Tr("studio.brightness"), 0.2, 2.0, 0.01, options.Brightness, "F2",
                 delegate(double v) { config.OptionsFor(studioDevice).Brightness = v; }));
@@ -456,13 +454,10 @@ namespace LumaWall
                     StudioRefreshPreview();
                 }));
 
-            return card;
         }
 
-        private UIElement StudioHdrCard(DisplayOptions options)
+        private void StudioHdrBody(StackPanel host, DisplayOptions options)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.hdr"), Tr("studio.hdrHint"), Icons.Hdr, CStudioHdr, out card);
 
             host.Children.Add(StudioToggle(Tr("studio.hdrOn"), null, options.HdrToneMap,
                 delegate(bool v) { config.OptionsFor(studioDevice).HdrToneMap = v; }));
@@ -477,13 +472,10 @@ namespace LumaWall
             host.Children.Add(StudioSlider(Tr("studio.hdrHighlight"), 0.1, 1.0, 0.01, options.HdrHighlight, "F2",
                 delegate(double v) { config.OptionsFor(studioDevice).HdrHighlight = v; }, on));
 
-            return card;
         }
 
-        private UIElement StudioFrameCard(DisplayOptions options)
+        private void StudioFrameBody(StackPanel host, DisplayOptions options)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.framing"), Tr("studio.framingHint"), Icons.Frame, CStudioFrame, out card);
 
             host.Children.Add(StudioLabel(Tr("studio.fit")));
             host.Children.Add(StudioChipRow(
@@ -518,13 +510,10 @@ namespace LumaWall
                     target.FlipVertical = value == "v" || value == "both";
                 }));
 
-            return card;
         }
 
-        private UIElement StudioPlaybackCard(DisplayOptions options)
+        private void StudioPlaybackBody(StackPanel host, DisplayOptions options)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.playback"), Tr("studio.playbackHint"), Icons.Speed, CStudioPlay, out card);
 
             // Speed as chips as well as a slider. The useful values are a handful of
             // recognisable speeds, and "1.37x" is not a choice anybody makes on purpose -
@@ -569,7 +558,6 @@ namespace LumaWall
             host.Children.Add(StudioDivider());
             host.Children.Add(StudioResetRow());
 
-            return card;
         }
 
         /// <summary>
@@ -579,17 +567,14 @@ namespace LumaWall
         /// belong to different combinations at different times - and turning a span off has
         /// to leave every monitor's own wallpaper intact.
         /// </summary>
-        private UIElement StudioSpanCard()
+        private void StudioSpanBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.span"), Tr("studio.spanHint"), Icons.AllDisplays, CStudioAccent, out card);
 
             Forms.Screen[] screens = Forms.Screen.AllScreens;
             if (screens.Length < 2)
             {
                 host.Children.Add(StudioHint(Tr("studio.spanSingle")));
-                return card;
-            }
+                }
 
             foreach (SpanGroup group in config.SpanGroups.ToList())
             {
@@ -714,7 +699,6 @@ namespace LumaWall
                 host.Children.Add(line);
             }
 
-            return card;
         }
 
         /// <summary>
@@ -828,10 +812,8 @@ namespace LumaWall
             return row;
         }
 
-        private UIElement StudioTimerCard()
+        private void StudioTimerBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.timer"), Tr("timer.hint"), Icons.Timer, CStudioHdr, out card);
 
             host.Children.Add(StudioToggle(Tr("timer.enable"), null, config.Timer.Enabled,
                 delegate(bool v)
@@ -840,7 +822,7 @@ namespace LumaWall
                     timerRefresh();
                 }, true));
 
-            if (!config.Timer.Enabled) return card;
+            if (!config.Timer.Enabled) return;
 
             host.Children.Add(StudioDivider());
             host.Children.Add(StudioLabel(Tr("timer.mode")));
@@ -881,7 +863,6 @@ namespace LumaWall
             actions.Children.Add(hold);
             host.Children.Add(actions);
 
-            return card;
         }
 
         /// <summary>
@@ -893,11 +874,8 @@ namespace LumaWall
         /// that much taller than the other. Two cards of roughly 360px let the columns
         /// finish within the 220px the layout check allows.
         /// </summary>
-        private UIElement StudioTimerPlacementCard()
+        private void StudioTimerPlacementBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("timer.placementTitle"), Tr("timer.placementHint"),
-                                  Icons.Displays, CStudioHdr, out card);
 
             host.Children.Add(StudioLabel(Tr("timer.position")));
             host.Children.Add(StudioPositionPad());
@@ -922,7 +900,6 @@ namespace LumaWall
             host.Children.Add(StudioToggle(Tr("timer.blink"), Tr("timer.blinkHint"), config.Timer.BlinkAtEnd,
                 delegate(bool v) { config.Timer.BlinkAtEnd = v; }));
 
-            return card;
         }
 
         /// <summary>
@@ -1381,6 +1358,13 @@ namespace LumaWall
 
             var outer = new StackPanel();
 
+            // Kepala kartu hanya digambar kalau ada judulnya.
+            //
+            // Kartu bagian bisa memuat dua kelompok atau lebih, dan judulnya sudah
+            // ada di luar kartu sebagai judul bagian. Menggambar kepala kosong
+            // hanya menyisakan ikon 34px tanpa keterangan di atas kartu.
+            if (!string.IsNullOrEmpty(title))
+            {
             var head = new Grid { Margin = new Thickness(17, 15, 17, 0) };
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1420,6 +1404,7 @@ namespace LumaWall
             Grid.SetColumn(copy, 1);
             head.Children.Add(copy);
             outer.Children.Add(head);
+            }
 
             var body = new StackPanel { Margin = new Thickness(17, 14, 17, 15) };
             outer.Children.Add(body);
@@ -1429,6 +1414,65 @@ namespace LumaWall
         }
 
         /// <summary>A hairline between two groups of controls inside one card.</summary>
+        /// <summary>
+        /// A section heading: a title, a rule, and one line of explanation.
+        ///
+        /// Why this exists: the page held eleven cards with no heading above any
+        /// of them, so nothing said that Colour, Framing and Playback are three
+        /// different things - they read as one stack of boxes, and the complaint
+        /// was exactly that ("card card bertabrakan jadi bingung ini settingan
+        /// apa"). A heading with a rule above it turns a stack into sections.
+        /// </summary>
+        private UIElement StudioSection(string title, string subtitle)
+        {
+            var box = new StackPanel { Margin = new Thickness(0, 0, 0, 11) };
+
+            var line = new Grid();
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var left = new TextBlock
+            {
+                Text = title,
+                FontSize = 12.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(CText),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(left, 0);
+            line.Children.Add(left);
+
+            // Aturan tipis mengisi ruang antara judul dan ujung kanan, supaya
+            // batas bagiannya terlihat tanpa perlu kotak.
+            var rule = new Border
+            {
+                Height = 1,
+                Background = new SolidColorBrush(CBorder),
+                Margin = new Thickness(12, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(rule, 1);
+            line.Children.Add(rule);
+
+            box.Children.Add(line);
+
+            if (!string.IsNullOrEmpty(subtitle))
+            {
+                box.Children.Add(new TextBlock
+                {
+                    Text = subtitle,
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(CDim),
+                    Margin = new Thickness(0, 5, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    LineHeight = 15,
+                });
+            }
+
+            return box;
+        }
+
         private UIElement StudioDivider()
         {
             return new Border
@@ -1436,6 +1480,26 @@ namespace LumaWall
                 Height = 1,
                 Background = new SolidColorBrush(CBorder),
                 Margin = new Thickness(0, 12, 0, 14),
+            };
+        }
+
+        /// <summary>
+        /// A group heading inside a section card.
+        ///
+        /// A section card holds several groups separated by rules, and each group
+        /// needs its own name. StudioLabel cannot do this job: it is 12px and the
+        /// same size as a control's own name, so "Framing" (a group) would read as
+        /// equally important as "How it fills the screen" (a control under it).
+        /// </summary>
+        private TextBlock StudioHeading(string text)
+        {
+            return new TextBlock
+            {
+                Text = text,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(CText),
+                Margin = new Thickness(0, 0, 0, 9),
             };
         }
 
@@ -1908,12 +1972,9 @@ namespace LumaWall
         /// display's grade, and a button that destructive should not look like the chips
         /// above it. The note says what each one does before it is pressed.
         /// </summary>
-        private UIElement StudioResetCard()
+        private void StudioResetBody(StackPanel host)
         {
-            Border card;
-            var host = StudioCard(Tr("studio.reset"), Tr("studio.resetHint"), Icons.Reset, CStudioAccent, out card);
             host.Children.Add(StudioResetRow());
-            return card;
         }
 
         // ── presets and the preview ──────────────────────────────────────────────────
