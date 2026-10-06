@@ -137,6 +137,10 @@ namespace LumaWall
             { "toast.video", new[] { "Pilih video terlebih dahulu.", "Select a video first.", "请先选择视频。", "先に動画を選択してください。" } },
             { "toast.static", new[] { "Wallpaper statis tidak perlu optimasi FPS.", "Static wallpapers do not need FPS optimization.", "静态壁纸无需帧率优化。", "静止画はFPS最適化が不要です。" } },
             { "toast.ffmpeg", new[] { "FFmpeg tidak ditemukan.", "FFmpeg was not found.", "未找到 FFmpeg。", "FFmpeg が見つかりません。" } },
+            // ffmpeg diunduh saat pertama dibutuhkan (80 MB). Tanpa pesan
+            // ini, pemakaian pertama fitur optimasi FPS atau kenburns akan
+            // tampak menggantung tanpa penjelasan.
+            { "toast.ffmpegMuat", new[] { "Menyiapkan pemroses video…", "Preparing the video processor…", "正在准备视频处理器…", "動画プロセッサを準備中…" } },
             { "toast.optimizing", new[] { "Mengoptimalkan", "Optimizing", "正在优化", "最適化中" } },
             { "toast.ready", new[] { "Versi optimal siap digunakan.", "Optimized version is ready.", "优化版本已准备就绪。", "最適化版を使用できます。" } },
             { "toast.failed", new[] { "Optimasi gagal.", "Optimization failed.", "优化失败。", "最適化に失敗しました。" } },
@@ -481,6 +485,22 @@ namespace LumaWall
 
         public MainWindow()
         {
+
+            // ffmpeg diunduh saat pertama dibutuhkan, dan itu 80 MB. Tanpa
+            // pemberitahuan, pemakaian pertama fitur optimasi FPS atau kenburns
+            // akan tampak menggantung tanpa penjelasan.
+            Ffmpeg.Lapor = delegate(string pesan)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate { ShowToast(pesan); }));
+            };
+            Ffmpeg.Kemajuan = delegate(int persen)
+            {
+                if (persen < 0) return;
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ShowToast(Tr("toast.ffmpegMuat") + " " + persen + "%");
+                }));
+            };
             config = store.Load();
             if (config.DisplayProfiles == null) config.DisplayProfiles = new Dictionary<string, Dictionary<string, string>>();
             startHidden = Environment.GetCommandLineArgs().Any(x => string.Equals(x, "--background", StringComparison.OrdinalIgnoreCase));
@@ -4874,15 +4894,19 @@ namespace LumaWall
             return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".bmp" || extension == ".webp";
         }
 
+        /// <summary>
+        /// Jalur ffmpeg.exe, atau null kalau tidak ada dan tidak bisa diunduh.
+        ///
+        /// Pencariannya ada di Ffmpeg.cs, yang juga mengunduhnya kalau tidak ada
+        /// di mana pun. Versi lama fungsi ini hanya melihat folder aplikasi lalu
+        /// PATH; folder aplikasi tidak pernah berisi ffmpeg, sehingga di PC
+        /// pembeli fitur optimasi FPS dan kenburns gagal diam-diam - sementara
+        /// di mesin pengembang semuanya tampak baik karena ffmpeg dipasang
+        /// lewat WinGet dan ada di PATH.
+        /// </summary>
         private static string FindFfmpeg()
         {
-            string local = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe");
-            if (File.Exists(local)) return local;
-            foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
-            {
-                try { string candidate = Path.Combine(folder.Trim(), "ffmpeg.exe"); if (File.Exists(candidate)) return candidate; } catch { }
-            }
-            return null;
+            return Ffmpeg.Cari();
         }
 
         /// <summary>

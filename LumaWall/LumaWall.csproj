@@ -18,6 +18,8 @@
     <Reference Include="WindowsBase" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
@@ -40,6 +42,7 @@
     <Compile Include="MemoryTrim.cs" />
     <Compile Include="VideoScale.cs" />
     <Compile Include="FontLoader.cs" />
+    <Compile Include="Ffmpeg.cs" />
     <Compile Include="MonitorIdentity.cs" />
     <Compile Include="DesktopTimer.cs" />
     <Compile Include="TimerPreview.cs" />

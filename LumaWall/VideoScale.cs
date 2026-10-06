@@ -368,49 +368,19 @@ namespace LumaWall
                 if (ffmpegDicari) return ffmpegPath;
                 ffmpegDicari = true;
 
-                // 1. Di samping aplikasi: kalau nanti ffmpeg ikut dipaketkan,
-                //    ini yang dipakai - tidak bergantung pada apa pun di mesin
-                //    pengguna.
-                try
-                {
-                    string sendiri = Path.GetDirectoryName(
-                        System.Reflection.Assembly.GetExecutingAssembly().Location);
-                    foreach (string nama in new[] { "ffmpeg.exe", @"tools\ffmpeg.exe" })
-                    {
-                        string coba = Path.Combine(sendiri, nama);
-                        if (File.Exists(coba)) { ffmpegPath = coba; return ffmpegPath; }
-                    }
-                }
-                catch { }
-
-                // 2. Di PATH. Ini yang bekerja di mesin pengembang, dan tidak
-                //    apa-apa kalau tidak ada - fitur ini hanya tidak aktif.
-                try
-                {
-                    var psi = new ProcessStartInfo("ffmpeg", "-version")
-                    {
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    using (var p = Process.Start(psi))
-                    {
-                        if (p != null)
-                        {
-                            p.WaitForExit(4000);
-                            if (p.HasExited && p.ExitCode == 0)
-                            {
-                                ffmpegPath = "ffmpeg";
-                                return ffmpegPath;
-                            }
-                        }
-                    }
-                }
-                catch { }
-
-                ffmpegPath = null;
-                return null;
+                // Pencariannya ada di Ffmpeg.cs, yang juga MENGUNDUH ffmpeg
+                // kalau tidak ada di mana pun.
+                //
+                // Sebelumnya pencariannya ada di sini, dan hanya melihat folder
+                // aplikasi lalu PATH. Folder aplikasi tidak pernah berisi ffmpeg
+                // - installer dan MSIX tidak menyertakannya - sehingga di PC
+                // pembeli satu-satunya harapan adalah PATH, dan ffmpeg tidak ada
+                // di sana. Akibatnya perbaikan decode yang menjadi alasan rilis
+                // 4.5.20.0 tidak pernah berjalan untuk siapa pun yang membeli
+                // aplikasinya; di mesin pengembang semuanya tampak baik karena
+                // ffmpeg dipasang lewat WinGet.
+                ffmpegPath = Ffmpeg.Cari();
+                return ffmpegPath;
             }
         }
 
@@ -425,7 +395,7 @@ namespace LumaWall
             {
                 try
                 {
-                    string probe = ff == "ffmpeg" ? "ffprobe" : Path.Combine(Path.GetDirectoryName(ff), "ffprobe.exe");
+                    string probe = Ffmpeg.CariProbe();
                     var psi = new ProcessStartInfo(probe,
                         "-v error -select_streams v:0 -show_entries stream=width,height " +
                         "-of csv=p=0 \"" + path + "\"")
