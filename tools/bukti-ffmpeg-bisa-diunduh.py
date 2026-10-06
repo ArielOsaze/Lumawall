@@ -24,8 +24,10 @@ dan itu harus diketahui SEKARANG, bukan setelah dirilis.
 """
 
 import io
+import os
 import re
 import struct
+import subprocess
 import sys
 import urllib.request
 import zipfile
@@ -64,28 +66,28 @@ print()
 
 # ── 2. Unduh dan baca isinya ──────────────────────────────────────────────
 print("  ── 2. mengunduh dan membaca isi arsip ──")
-tujuan = W / "build" / "uji-ffmpeg.zip"
-tujuan.parent.mkdir(parents=True, exist_ok=True)
+tujuan_zip = W / "build" / "uji-ffmpeg.zip"
+tujuan_zip.parent.mkdir(parents=True, exist_ok=True)
 
-if tujuan.exists() and tujuan.stat().st_size > 10_000_000:
-    print("     sudah ada dari uji sebelumnya (%.1f MB)" % (tujuan.stat().st_size / 1048576))
+if tujuan_zip.exists() and tujuan_zip.stat().st_size > 10_000_000:
+    print("     sudah ada dari uji sebelumnya (%.1f MB)" % (tujuan_zip.stat().st_size / 1048576))
 else:
     print("     mengunduh… (bisa 1-3 menit)")
     try:
         r = urllib.request.Request(SUMBER, headers=UA)
-        with urllib.request.urlopen(r, timeout=600) as f, open(tujuan, "wb") as keluar:
+        with urllib.request.urlopen(r, timeout=900) as f, open(tujuan_zip, "wb") as keluar:
             while True:
                 b = f.read(1 << 20)
                 if not b:
                     break
                 keluar.write(b)
-        print("     terunduh: %.1f MB" % (tujuan.stat().st_size / 1048576))
+        print("     terunduh: %.1f MB" % (tujuan_zip.stat().st_size / 1048576))
     except Exception as e:
         print("     ! GAGAL mengunduh: %s" % str(e)[:90])
         sys.exit(1)
 print()
 
-with zipfile.ZipFile(tujuan) as z:
+with zipfile.ZipFile(tujuan_zip) as z:
     semua = z.namelist()
     ff = [n for n in semua if n.endswith("/ffmpeg.exe") or n == "ffmpeg.exe"]
     fp = [n for n in semua if n.endswith("/ffprobe.exe") or n == "ffprobe.exe"]
@@ -100,86 +102,108 @@ if not ff:
     sys.exit(1)
 print()
 
-# ── 3. Uji pemindai zip Ffmpeg.cs ─────────────────────────────────────────
-print("  ── 3. pemindai zip Ffmpeg.cs (bukan pustaka Python) ──")
+# ── 3. Ekstraksi dengan ZipFile, sama seperti Ffmpeg.cs ───────────────────
+print("  ── 3. ekstraksi dengan System.IO.Compression.ZipFile ──")
 #
-# Ffmpeg.cs membaca daftar isi zip dari belakang, mencari tanda 0x06054b50
-# (End of Central Directory), lalu menelusuri entri untuk menemukan nama yang
-# dicocokkan di AKHIR nama - karena nama di arsip memuat folder versinya.
-data = tujuan.read_bytes()
+# Pemindai zip buatan sendiri TIDAK dipakai lagi. Ia menghasilkan ffmpeg rusak:
+# 35,7 MB (seharusnya 100 MB), tanpa tanda MZ, dan Windows menolaknya dengan
+# "not compatible with the version of Windows". Sebabnya arsip gyan.dev memakai
+# data descriptor, sehingga ukuran berkas tidak ada di header lokal.
+#
+# Ffmpeg.cs sekarang memakai ZipFile bawaan .NET, dan alat ini memakai pustaka
+# yang sama supaya hasilnya mencerminkan apa yang dilakukan aplikasi.
+import zipfile
 
-def cari_zip(data, nama):
+KELUAR = W / "build" / "uji-ffmpeg"
+KELUAR.mkdir(parents=True, exist_ok=True)
+
+
+def ekstrak(zip_path, nama_dicari, tujuan):
     """Cara yang sama dengan Ffmpeg.BacaZip."""
-    panjang = len(data)
-    batas = max(0, panjang - 66000)
-    eocd = -1
-    for i in range(panjang - 22, batas - 1, -1):
-        if data[i:i+4] == b"PK\x05\x06":
-            eocd = i
-            break
-    if eocd < 0:
-        return None, "tanda End of Central Directory tidak ditemukan"
+    with zipfile.ZipFile(zip_path) as arsip:
+        for entri in arsip.infolist():
+            nama_entri = entri.filename.replace("\\", "/")
+            if not (nama_entri.endswith("/" + nama_dicari) or nama_entri == nama_dicari):
+                continue
+            sementara = tujuan + ".sebagian"
+            with arsip.open(entri) as masuk, open(sementara, "wb") as keluar:
+                while True:
+                    b = masuk.read(65536)
+                    if not b:
+                        break
+                    keluar.write(b)
+            if os.path.exists(tujuan):
+                os.remove(tujuan)
+            os.rename(sementara, tujuan)
+            return tujuan, entri.file_size
+    return None, None
 
-    jumlah = struct.unpack_from("<H", data, eocd + 10)[0]
-    mulai = struct.unpack_from("<I", data, eocd + 16)[0]
-    if jumlah <= 0 or mulai <= 0 or mulai >= panjang:
-        return None, "daftar isi tidak masuk akal"
 
-    pos = mulai
-    for _ in range(jumlah):
-        if data[pos:pos+4] != b"PK\x01\x02":
-            return None, "tanda entri daftar tidak ditemukan di %d" % pos
-        ukuran_padat = struct.unpack_from("<I", data, pos + 20)[0]
-        panjang_nama = struct.unpack_from("<H", data, pos + 28)[0]
-        panjang_tambahan = struct.unpack_from("<H", data, pos + 30)[0]
-        panjang_komentar = struct.unpack_from("<H", data, pos + 32)[0]
-        offset_lokal = struct.unpack_from("<I", data, pos + 42)[0]
-        nama_entri = data[pos+46:pos+46+panjang_nama].decode("utf-8", "replace")
+for dicari in ["ffmpeg.exe", "ffprobe.exe"]:
+    tujuan = str(KELUAR / dicari)
+    hasil, ukuran_asli = ekstrak(str(tujuan_zip), dicari, tujuan)
+    if hasil is None:
+        print("     %-12s GAGAL: tidak ada di arsip" % dicari)
+        if dicari == "ffmpeg.exe":
+            sys.exit(1)
+        continue
 
-        if nama_entri.endswith("/" + nama) or nama_entri == nama:
-            # Header lokal, panjang nama dan tambahannya dibaca dari situ.
-            if data[offset_lokal:offset_lokal+4] != b"PK\x03\x04":
-                return None, "tanda header lokal tidak ditemukan"
-            nl = struct.unpack_from("<H", data, offset_lokal + 26)[0]
-            tl = struct.unpack_from("<H", data, offset_lokal + 28)[0]
-            mulai_data = offset_lokal + 30 + nl + tl
-            return data[mulai_data:mulai_data+ukuran_padat], nama_entri
+    ukuran = os.path.getsize(hasil)
+    with open(hasil, "rb") as f:
+        kepala = f.read(2)
+    tanda = "MZ (exe sungguhan)" if kepala == b"MZ" else "BUKAN exe (%r)" % kepala
+    print("     %-12s %.1f MB  %s" % (dicari, ukuran / 1048576, tanda))
 
-        pos += 46 + panjang_nama + panjang_tambahan + panjang_komentar
-    return None, "tidak ada entri yang cocok"
-
-isi, keterangan = cari_zip(data, "ffmpeg.exe")
-if isi is None:
-    print("     ! GAGAL: %s" % keterangan)
-    sys.exit(1)
-
-print("     ditemukan : %s" % keterangan)
-print("     ukuran    : %.1f MB" % (len(isi) / 1048576))
-
-# Berkas exe harus mulai dengan tanda MZ.
-if isi[:2] != b"MZ":
-    print("     ! isinya bukan berkas exe (tidak diawali MZ)")
-    sys.exit(1)
-print("     tanda MZ  : ada (berkas exe sungguhan)")
-print()
+    if dicari == "ffmpeg.exe" and kepala != b"MZ":
+        print()
+        print("     ! hasilnya bukan berkas exe - ekstraksinya salah")
+        sys.exit(1)
 
 # ── 4. Jalankan hasilnya ──────────────────────────────────────────────────
-print("  ── 4. menjalankan hasilnya ──")
-keluar = W / "build" / "uji-ffmpeg" / "ffmpeg.exe"
-keluar.parent.mkdir(parents=True, exist_ok=True)
-keluar.write_bytes(isi)
-
-import subprocess
-r = subprocess.run([str(keluar), "-version"], capture_output=True, text=True, timeout=60, errors="replace")
-baris = (r.stdout or r.stderr or "").splitlines()
+print()
+print("  ── 4. menjalankan hasil ekstraksi ──")
+exe = KELUAR / "ffmpeg.exe"
+r = subprocess.run([str(exe), "-version"], capture_output=True, text=True,
+                   timeout=120, errors="replace")
 print("     kode keluar: %d" % r.returncode)
-for b in baris[:3]:
-    print("     %s" % b[:80])
+for b in (r.stdout or r.stderr or "").splitlines()[:2]:
+    print("     %s" % b[:84])
 
 if r.returncode != 0:
     print()
-    print("     ! ffmpeg hasil ekstraksi tidak bisa dijalankan")
+    print("  ! ffmpeg hasil ekstraksi tidak bisa dijalankan")
     sys.exit(1)
+
+# ── 5. Uji benar-benar memproses video ────────────────────────────────────
+print()
+print("  ── 5. uji kenburns (gambar jadi video) ──")
+try:
+    from PIL import Image
+    uji_img = W / "build" / "uji-kenburns2.jpg"
+    Image.new("RGB", (1280, 720), (60, 40, 120)).save(uji_img, quality=90)
+
+    hasil_video = W / "build" / "uji-kenburns2.mp4"
+    filter_ = ("[0:v]scale=1280:720:force_original_aspect_ratio=decrease[fg];"
+               "[0:v]scale=1280:720,boxblur=20:1,eq=brightness=-0.18[bg];"
+               "[bg][fg]overlay=(W-w)/2:(H-h)/2,"
+               "zoompan=z='1.0+0.015*sin(2*PI*on/192)':x='iw/2-(iw/zoom/2)':"
+               "y='ih/2-(ih/zoom/2)':d=192:s=1280x720:fps=24[v]")
+
+    r2 = subprocess.run(
+        [str(exe), "-y", "-i", str(uji_img), "-filter_complex", filter_,
+         "-map", "[v]", "-frames:v", "192", "-an", "-c:v", "libx264",
+         "-preset", "veryfast", "-crf", "25", "-pix_fmt", "yuv420p",
+         "-movflags", "+faststart", str(hasil_video)],
+        capture_output=True, text=True, timeout=300, errors="replace")
+
+    print("     kode keluar: %d" % r2.returncode)
+    if hasil_video.exists() and hasil_video.stat().st_size > 10000:
+        print("     hasil: %.2f MB" % (hasil_video.stat().st_size / 1048576))
+    else:
+        print("     ! video tidak terbentuk")
+        sys.exit(1)
+except ImportError:
+    print("     (PIL tidak ada, uji kenburns dilewati)")
 
 print()
 print("  ══ KESIMPULAN ══")
