@@ -411,7 +411,7 @@ namespace LumaWall
                 button.Height = 31;
                 button.Padding = new Thickness(12, 0, 12, 0);
                 button.FontSize = 11.5;
-                button.Margin = new Thickness(0, 0, 6, 6);
+                button.Margin = new Thickness(0, 0, 9, 9);
                 button.Click += delegate
                 {
                     StudioApplyPreset(captured);
@@ -539,7 +539,7 @@ namespace LumaWall
                 button.Height = 31;
                 button.Padding = new Thickness(13, 0, 13, 0);
                 button.FontSize = 11.5;
-                button.Margin = new Thickness(0, 0, 6, 6);
+                button.Margin = new Thickness(0, 0, 9, 9);
                 if (chosen)
                 {
                     button.Background = new SolidColorBrush(CStudioAccent);
@@ -680,7 +680,7 @@ namespace LumaWall
                 make.Height = 31;
                 make.Padding = new Thickness(12, 0, 12, 0);
                 make.FontSize = 11.5;
-                make.Margin = new Thickness(0, 0, 8, 6);
+                make.Margin = new Thickness(0, 0, 9, 9);
                 make.Click += delegate
                 {
                     string current = config.WallpaperFor(studioDevice);
@@ -794,7 +794,7 @@ namespace LumaWall
                 button.Height = 31;
                 button.Padding = new Thickness(13, 0, 13, 0);
                 button.FontSize = 11.5;
-                button.Margin = new Thickness(0, 0, 6, 6);
+                button.Margin = new Thickness(0, 0, 9, 9);
                 if (chosen)
                 {
                     button.Background = new SolidColorBrush(CPrimary);
@@ -952,7 +952,7 @@ namespace LumaWall
                 string key = keys[i];
                 bool chosen = (config.Timer.Style ?? "minimal") == key;
 
-                var cell = new StackPanel { Margin = new Thickness(0, 0, 8, 6) };
+                var cell = new StackPanel { Margin = new Thickness(0, 0, 9, 9) };
                 var tile = new Border
                 {
                     Width = 66,
@@ -1484,7 +1484,7 @@ namespace LumaWall
                 button.Height = 31;
                 button.Padding = new Thickness(13, 0, 13, 0);
                 button.FontSize = 11.5;
-                button.Margin = new Thickness(0, 0, 6, 6);
+                button.Margin = new Thickness(0, 0, 9, 9);
                 // The chosen chip is filled: a chip row that does not show which option is
                 // active is a row of buttons, not a selector.
                 if (chosen)
