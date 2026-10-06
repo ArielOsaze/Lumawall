@@ -8,6 +8,133 @@ Nomor versi di sini harus sama dengan yang ada di `LumaWall/Properties/AssemblyI
 
 ---
 
+## 4.5.21.0
+
+### Bahasa Indonesia
+
+**Kategori Mature: 69 → 1.092**
+
+Ini jawaban untuk "cari yg mature banyakin ini cuma 69 masa aku mat at least
+1000 buat mature pastiin anime mature ya".
+
+Dua sumber yang sudah dipakai — moewalls dan desktophut — hanya punya sekitar
+80 dan 150 judul dewasa, dan tidak ada sumber gratis mana pun yang punya 1.000
+**video** anime dewasa. wallhaven punya 17.963 gambar anime bergaya ecchi pada
+lanskap HD ke atas, dan itu dipakai.
+
+**Yang perlu diketahui:** entri ini **gambar statis**, bukan video. Kategori
+"anime" di wallhaven berarti ilustrasinya bergaya anime, bukan adegan dari
+serial anime. Jadi ini ilustrasi anime, bukan potongan anime. Setiap entri
+menyebutkan asalnya, dan tautan ke halamannya disimpan supaya bisa diperiksa.
+
+**Kategorinya tidak nyasar.** Pemeriksa katalog menolak entri Mature yang tidak
+punya dasar yang bisa diperiksa, dan setelah penambahan ini:
+
+- **332 judul** diambil tag aslinya dari halaman wallhaven
+- **71 entri dibuang** dari katalog: judulnya menyebut serial yang tokohnya
+  dikodekan sebagai anak sekolah. Seri itu tidak boleh ada di kategori Mature,
+  apa pun gambarnya
+- **58 entri dipindah** ke Anime Girls: tagnya hanya "beach" atau "swimsuit",
+  yang tidak membenarkan Mature
+
+**Pemeriksa katalog diperbaiki — ia sempat berbohong.** Satu baris data tanpa
+nomor membuat pemeriksa menganggap **semua** entri baru "sudah ditinjau", dan
+ia menyatakan katalog sehat padahal 1.152 entri belum diperiksa sama sekali.
+Setelah diperbaiki, ia langsung menemukan 391 entri tanpa dasar — yang kemudian
+dibenahi seperti di atas.
+
+**Halaman Displays dirapikan**
+
+Keluhan "terlalu banyak card dan pil dan saling menimpa sama menutupi" benar.
+Tiga kartu besar, masing-masing berisi preview, judul, baris ukuran, **dua pil
+status**, dan **empat tombol berlabel** — untuk tiga monitor itu berarti enam
+pil dan dua belas tombol di satu halaman, dan setiap kartu mengulang empat aksi
+yang sama.
+
+Sekarang **satu baris ringkas per monitor**: preview kecil di kiri, nama
+wallpaper dan faktanya di tengah dipisah titik — bukan dipecah jadi pil — dan
+empat aksi sebagai tombol ikon di kanan. Nama wallpaper terbaca penuh, tidak
+lagi terpotong di kolom sempit.
+
+Monitor juga diurutkan secara tetap: sebelumnya baris berlabel "MONITOR 1"
+bisa menunjuk layar yang berbeda setelah reboot.
+
+**Luma Studio: jarak antar tombol**
+
+Baris Filter, Framing, Mirror, dan Presets berdempetan — 6px pada tombol
+setinggi 31px terbaca sebagai satu blok, bukan sebagai pilihan-pilihan
+terpisah. Jaraknya kini 9px.
+
+**Hasil pemeriksaan**
+
+- 26.778 entri, 16 kategori, 0 duplikat, 0 AI, 100% HD, 95,5% dinamis
+- Mature 1.092, 0 judul tidak aman, 0 entri tanpa dasar
+- Aplikasi menampilkan "Mature 18+ 1092" — cocok persis dengan katalog
+- 19 dari 20 URL sampel menjawab dan menyajikan gambar
+- 0 masalah tata letak di 6 halaman × 3 lebar
+
+### English
+
+**Mature category: 69 → 1,092**
+
+The answer to "find more mature, this is only 69, I want at least 1000, and
+make sure the anime is mature". The two sources already in use — moewalls and
+desktophut — hold only about 80 and 150 adult titles, and no free source has
+1,000 adult anime **videos**. wallhaven has 17,963 anime-style ecchi images at
+landscape HD and above, and that is what is used.
+
+**What this means:** these entries are **still images**, not video. wallhaven's
+"anime" category means the illustration is anime-style, not a scene from an
+anime series. Every entry states its source, and a link to its page is kept so
+it can be checked.
+
+**Nothing strayed into the category.** The catalogue checker rejects Mature
+entries with no verifiable basis, and after this addition:
+
+- **332 titles** were rebuilt from their real wallhaven tags
+- **71 entries were removed** from the catalogue entirely: their titles named a
+  series whose characters are coded as schoolchildren. That series must not be
+  in the Mature category whatever the image shows
+- **58 entries moved** to Anime Girls: their tags were only "beach" or
+  "swimsuit", which does not justify Mature
+
+**The catalogue checker was fixed — it had been lying.** A single data row with
+no number made it treat **every** new entry as "already reviewed", and it
+declared the catalogue healthy while 1,152 entries had never been checked. Once
+fixed, it immediately found 391 unjustified entries, which were then repaired
+as above.
+
+**Displays page tidied**
+
+The complaint that there were "too many cards and pills, overlapping and
+covering each other" was correct. Three large cards, each holding a preview,
+title, size row, **two status pills** and **four labelled buttons** — for three
+monitors that is six pills and twelve buttons on one page, with every card
+repeating the same four actions.
+
+Now **one compact row per monitor**: small preview on the left, wallpaper name
+and facts in the middle separated by dots — not split into pills — and four
+actions as icon buttons on the right. Wallpaper names read in full instead of
+being clipped in a narrow column.
+
+Monitors are also ordered consistently: the row labelled "MONITOR 1" could
+previously point at a different screen after a reboot.
+
+**Luma Studio: button spacing**
+
+The Filter, Framing, Mirror and Presets rows were cramped — 6px on a 31px
+button reads as one block rather than separate choices. Now 9px.
+
+**Check results**
+
+- 26,778 entries, 16 categories, 0 duplicates, 0 AI, 100% HD, 95.5% dynamic
+- Mature 1,092, 0 unsafe titles, 0 unjustified entries
+- The app shows "Mature 18+ 1092" — an exact match with the catalogue
+- 19 of 20 sampled URLs answer and serve an image
+- 0 layout problems across 6 pages × 3 widths
+
+---
+
 ## 4.5.20.0
 
 ### Bahasa Indonesia
