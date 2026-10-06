@@ -3,7 +3,7 @@
 Setiap baris punya angka yang diukur, bukan klaim. Perintah di kolom kanan bisa dijalankan
 ulang kapan saja; kalau checker-nya tidak bisa gagal, ia tidak dipakai.
 
-Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
+Terakhir diperbarui: rilis 4.5.21.0 + kategori Mature 1.092 + halaman Displays dirapikan.
 
 ---
 
@@ -20,10 +20,10 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 6 | Pilih placement **tidak scroll ke atas** | ✅ | Offset dipulihkan; pad persegi 126x126, drift label **0.0px** | `tools/test-studio-scroll.ps1` |
 | 7 | **Cold start tidak ngelag** | ✅ diperbaiki | Parse katalog 273 ms **di luar UI thread**; jendela dibangun **0.20–0.34s**; wallpaper pertama **1.27s** (limit 4.0s) | `tools/check-startup.py` |
 | 8 | **Update apa pun otomatis update installer di web** | ✅ | `python tools/release.py <versi>` — 11 langkah, berhenti kalau ada yang gagal | `tools/release.py` |
-| 9 | **Tile hitam di katalog** | ✅ diperbaiki | **22.879** entri, **0** tanpa `thumbnailUrl` | `tools/check-catalog.py` |
+| 9 | **Tile hitam di katalog** | ✅ diperbaiki | **26.778** entri, **0** tanpa `thumbnailUrl` | `tools/check-catalog.py` |
 | 10 | **Favicon logo lama** | ✅ | `/favicon.ico` HTTP 200, ICO 3 ukuran, tinta = logo L | `curl -D - https://lumawall.xinet.id/favicon.ico` |
 | 11 | **Scrollbar gelap** | ✅ | Isi 11785px dalam 700px → bar 10px, kecerahan app **8** | `tools/check-scrollbar-site.mjs` |
-| 12 | **Katalog besar, kategori benar** | ✅ | **22.879** entri · 100% dinamis · 100% HD · 58.8% 2K/4K · 0 duplikat · 0 AI · 16 kategori · mature 249 | `tools/check-catalog.py` |
+| 12 | **Katalog besar, kategori benar** | ✅ | **26.778** entri · 95,5% dinamis · 100% HD · 57,8% 2K/4K · 0 duplikat · 0 AI · 16 kategori · **Mature 1.092** | `tools/check-catalog.py` |
 | 13 | **Dua bahasa (ID/EN)** | ✅ | Kedua halaman ada, `hreflang` **per halaman**; semua kunci terjemahan lengkap 4 bahasa | `tools/check-seo.py`, `tools/check-translations.py` |
 | 14 | **Primary display ikut beranimasi** | ✅ diperbaiki | Nama berkas dengan huruf Сirilik tersimpan sebagai `Ð¡` → `File.Exists` false → monitor **dilewati tanpa pesan**. Sekarang path dipulihkan: **2 renderer → 3 renderer** | `tools/check-wallpaper-alive.ps1` |
 | 15 | **Timer bisa pindah layar** | ✅ baru | Dulu `Place()` membaca `Screen.PrimaryScreen` tanpa syarat. Sekarang ada pemilih layar; checker mengklik chip dan membaca persegi jendela widget: pindah ke DISPLAY3, **bertahan lintas repaint**, kembali ke DISPLAY1 | `tools/check-timer-display.py` |
@@ -49,6 +49,16 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 34 | **Checker pause/resume bisa gagal** | ✅ baru | 15 kasus: `paused [DISPLAY1]` dengan DISPLAY2/DISPLAY3 hanya disebut di bagian depan harus **tidak** dianggap dijeda. Pencocokan yang mencari nama di seluruh baris pernah membuat uji lulus/gagal karena alasan yang tidak ada hubungannya dengan wallpaper | `python tools/check-pause-resume-bisa-gagal.py` |
 | 35 | **Halaman Displays menampilkan keadaan sebenarnya** | ✅ diperbaiki | Dulu hanya tombol Apply/Stop tanpa keterangan. Sekarang tiap monitor menampilkan status (Active/Empty) dan ringkasan pengaturannya sendiri. Chip statusnya dulu **ada di pohon UI tetapi jatuh di luar kartu** (tinggi 262 px) - terlihat benar sampai diperiksa | `python tools/shoot-displays.py` |
 | 36 | **Pemeriksaan tidak menutup jendela pengguna** | ✅ diperbaiki | Semua checker kini **meminimalkan** jendela yang menghalangi lalu memulihkannya. Hanya Chrome yang diluncurkan checker sendiri yang ditutup, dan dikenali dari **profil**-nya, bukan dari judul jendela | `tools/chrome_uji.py` |
+
+| 37 | **Kategori Mature cukup banyak (target 1.000)** | ✅ baru | **69 → 1.092** entri. Sumber: wallhaven, 17.963 gambar anime ecchi lanskap HD. Entri ini **gambar statis** - ditulis di lisensi tiap entri; kategori "anime" di wallhaven berarti ilustrasinya bergaya anime, bukan adegan serial. Pemeriksa katalog LULUS SEMUA | `tools/check-catalog.py`, `tools/gabung-mature-wallhaven.py` |
+| 38 | **Mature tidak nyasar kategori** | ✅ baru | 332 judul diambil tag aslinya; **71 entri dibuang** (judulnya menyebut serial dengan tokoh anak sekolah); **58 dipindah** ke Anime Girls (tagnya hanya "beach"/"swimsuit"). Sisa 0 tanpa dasar, 0 judul tidak aman | `tools/check-catalog.py` |
+| 39 | **Pemeriksa katalog bisa gagal** | ✅ diperbaiki | `selected.json` memuat satu baris tanpa `motionId` → himpunannya berisi string kosong → **setiap** entri yang URL-nya bukan pola `/media/(\d+)/` dianggap "sudah ditinjau". Pemeriksa melaporkan "reviewed: 1221, keyword: 0" dan menyatakan katalog sehat, padahal 1.152 entri belum diperiksa. Setelah diperbaiki ia langsung menemukan **391** entri tanpa dasar | `tools/check-catalog.py` |
+| 40 | **Isi Mature benar-benar anime & mature** | ✅ baru | Lembar kontak 24 entri acak diperiksa dengan mata: **24/24 ilustrasi anime**, 24/24 berpakaian renang/lingerie/adegan sugestif, **0** pemandangan atau benda | `tools/lembar-mature-baru.py` |
+| 41 | **Halaman Displays tidak lagi bertumpuk** | ✅ diperbaiki | Tiga kartu 306x296 dengan **2 pil + 4 tombol berlabel** masing-masing = 6 pil dan 12 tombol; salah satu pil terpotong jadi "Default captio". Sekarang **satu baris ringkas per monitor**: preview kecil, fakta dipisah titik (bukan pil), 4 tombol ikon. 0 tata letak bermasalah di 6 halaman x 3 lebar | `LumaWall.exe --periksa-ui`, `tools/shoot-ui.py --halaman displays` |
+| 42 | **Nomor monitor tidak berubah-ubah** | ✅ diperbaiki | `Forms.Screen.AllScreens` tidak menjamin urutan, jadi baris berlabel "MONITOR 1" bisa menunjuk layar berbeda setelah reboot. Sekarang `OrderedScreens()` - primary lebih dulu, lalu posisi di desktop | `LumaWall/MainWindow.cs` |
+| 43 | **Luma Studio: tombol tidak berdempetan** | ✅ diperbaiki | Jarak antar chip 6px pada tombol 31px terbaca sebagai satu blok. Sekarang 9px | `LumaWall.exe --periksa-ui` |
+| 44 | **Alat tangkap layar menangkap jendela yang benar** | ✅ diperbaiki | Dua kesalahan: (1) nama menu dikirim sebagai argumen PowerShell, dan argumen sesudah `-Command` tidak sampai ke `param()` → pencarian selalu "TIDAK ADA" padahal tombolnya ada; (2) `CopyFromScreen` menyalin apa yang TERLIHAT, jadi jendela lain yang menutupi ikut tertangkap - halaman Luma Studio pernah tertangkap sebagai jendela editor, dan pemeriksaannya melaporkan tata letak aplikasi lain. `PrintWindow` dicoba tetapi WebView2 mengembalikan gambar hitam (0% piksel terang). Solusinya: jendela diangkat hanya selama tangkapan, lalu hasilnya diperiksa - tangkapan yang hampir seluruhnya hitam dilaporkan, bukan disimpan | `tools/shoot-ui.py`, `tools/lihat-nama-elemen.py` |
+| 45 | **Pemeriksa AI tidak salah tuduh** | ✅ diperbaiki | Pencocokan `"ai"` sebagai **substring** cocok di dalam h-AI-r, t-AI-l, r-AI-nbow, n-AI-ls, p-AI-nted → alat melaporkan "1022 dari 1058 entri adalah karya AI", kesimpulan yang sepenuhnya salah. Sekarang `"ai"` dicocokkan sebagai **kata utuh** | `tools/periksa-ai-mature.py`, `tools/periksa-ai-lengkap.py` |
 
 ---
 
@@ -81,7 +91,7 @@ Terakhir diperbarui: rilis 4.5.7.0 + gerbang pembayaran web.
 | 9 | Hover tombol terlihat | ✅ 3/3 tombol, hover merah di close `(255, 46, 67)`, **tidak ada Aero blue** |
 | 10 | Semua checker | ✅ `tools/verify-all.py` |
 | 11 | Jam gaya iOS **solid**, bukan berongga | ✅ kepadatan piksel huruf 10-17% (huruf berongga 3-6%). Bayangan halo delapan arah diganti bayangan rapat untuk semua gaya tipis | `LumaWall.exe --render-timer` + hitung kepadatan |
-| 12 | Jam gaya iOS **memakai Inter**, bukan Segoe | ✅ render melaporkan `ioslarge -> Inter ExtraLight`, `ioslight -> Inter Light`, `iosdate -> Inter Medium` | `LumaWall.exe --render-timer` |
+| 12 | Jam gaya iOS memakai **SF Pro Display**, bukan Inter atau Segoe | ✅ diperbaiki | Dulu `FontLoader` dan csproj hanya memuat `*.ttf`, sedangkan SF Pro Display dikirim sebagai `.otf` - filternya membuang berkas itu tanpa pesan dan fontnya jatuh kembali ke Inter. Setelah `.otf` dimuat: `ioslight` dinilai **9/10** oleh pemeriksaan visual ("paling mendekati lock screen iOS asli"). Tanggal juga memakai muka yang sama, karena di lock screen iOS keduanya satu keluarga | `LumaWall.exe --render-timer`, `build/jam-sf-banding.jpg` |
 | 13 | Jam gaya iOS **tidak menampilkan detik** | ✅ `ShowSeconds` diabaikan untuk ioslarge/ioslight/iosstack/iosdate | baca `Format()` di `DesktopTimer.cs` |
 | 14 | Sakelar Studio **bisa dibaca alat bantu** | ✅ 6/6 sakelar ditemukan, `toggle=True`, ukuran 42×23. Sebelumnya 0 ditemukan karena jendela bernama "Hidden Window" | `python tools/periksa-toggle.py` |
 | 15 | Tata letak **rapi di semua lebar** | ✅ 0 masalah pada 6 halaman × 3 lebar (920/1200/1580 px). Sebelumnya 269 masalah | `LumaWall.exe --periksa-ui <folder>` |
