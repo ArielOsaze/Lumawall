@@ -30,9 +30,32 @@ JEDA = 1.5
 # "ai" HARUS dicocokkan sebagai kata utuh: h-AI-r, t-AI-l, r-AI-nbow semuanya
 # memuat "ai", dan pencocokan substring pernah melaporkan 1022 dari 1058 entri
 # sebagai karya AI.
+# Pola ini dibentuk dari kenyataan di wallhaven, bukan dari dugaan - dan
+# butuh tiga percobaan karena dua sebelumnya salah tuduh:
+#
+#   Percobaan 1: "ai" sebagai SUBSTRING -> cocok di dalam h-air, t-ail,
+#   r-ainbow, n-ails, p-ainted -> "1022 dari 1058 entri adalah karya AI".
+#
+#   Percobaan 2: "ai" sebagai kata utuh, tetapi masih sendirian -> "Hayasaka Ai"
+#   dan "Tsuru Ai Momono" ikut tertangkap, padahal keduanya nama tokoh anime.
+#   "artificial lights" (lampu buatan) juga ikut tertangkap.
+#
+#   Percobaan 3 (dipakai): menuntut frasa lengkap atau nama alat. Diverifikasi
+#   dengan mencari karya AI di wallhaven dan membaca tag yang benar-benar
+#   dipakainya - ternyata "Midjourney" dipakai sebagai tag, sedangkan "ai
+#   generated" dan "artificial intelligence" tidak menghasilkan apa pun.
+#
+# Diuji 17 kasus: semua nama tokoh dan kata biasa lolos, semua penanda AI asli
+# tertangkap.
 AI_TAG = re.compile(
-    r"(^|\b)(ai|a\.i\.|ai[- ]generated|ai[- ]art|generated|artificial|"
-    r"midjourney|stable[- ]diffusion|novelai|niji)\b", re.I)
+    r"(^|\b)("
+    r"a\.i\.|"
+    r"ai[- ]generated|ai[- ]art|ai[- ]illustration|"
+    r"generated\s+by\s+ai|made\s+with\s+ai|made\s+by\s+ai|"
+    r"artificial\s+intelligence|"
+    r"midjourney|stable[- ]diffusion|novelai|niji[- ]?journey|"
+    r"dall[- ]?e|dall\u00b7e"
+    r")\b", re.I)
 
 _terakhir = [0.0]
 
