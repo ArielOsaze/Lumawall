@@ -227,7 +227,15 @@ def main():
 
     # 8. mature
     selected = read_json(MATURE_SELECTED, []) or []
-    mature_ids = {str(s["motionId"]) for s in selected}
+    # motionId yang kosong dibuang.
+    #
+    # selected.json memuat satu baris tanpa motionId, sehingga himpunannya
+    # berisi string kosong. Akibatnya setiap entri yang URL-nya tidak cocok
+    # dengan pola /media/(\\d+)/ - yaitu SEMUA entri wallhaven - dianggap
+    # "sudah ditinjau" dan lolos dari pemeriksaan kata kunci. Pemeriksa
+    # melaporkan "reviewed: 1221, keyword: 0" dan menyatakan katalog sehat,
+    # padahal 1152 entri baru belum diperiksa sama sekali.
+    mature_ids = {str(s["motionId"]) for s in selected if str(s.get("motionId") or "").strip()}
 
     def mid(entry):
         m = re.search(r"/media/(\d+)/", entry.get("videoUrl", ""))

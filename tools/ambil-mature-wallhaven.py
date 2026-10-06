@@ -147,91 +147,63 @@ for e in items:
 print("  katalog: %d entri, %d url sudah ada" % (len(items), len(sudah)))
 print()
 
-# Menyapu seluruh kategori anime sketchy, lanskap HD ke atas.
+# Pencarian per tag dengan sorting=date_added.
 #
-# Pencarian per tag tidak bisa mencapai 1000: wallhaven hanya mengembalikan
-# sebagian hasil untuk setiap kata kunci, sehingga seluruh daftar tag yang
-# panjang hanya menghasilkan 187 entri. Kategorinya sendiri berisi 17.929
-# lanskap HD, dan penelusuran kategori tidak dibatasi.
+# Setiap tag memberi total penuh (swimsuit 12.538, bikini 12.975, cleavage
+# 18.359, stockings 10.295), dan tag yang dicari langsung menjadi nama entri -
+# jadi tidak perlu satu permintaan tambahan per gambar untuk namanya.
 terkumpul = {}
-halaman = 1
-halaman_maks = 400          # 400 x 24 = 9600 kandidat
-kosong_berturut = 0
-
-while len(terkumpul) < TARGET and halaman <= halaman_maks:
-    url = ("https://wallhaven.cc/api/v1/search"
-           "?categories=010&purity=010&atleast=1920x1080"
-           "&ratios=16x9,16x10,21x9,32x9,16x9,16x10"
-           "&sorting=date_added&per_page=24&page=%d" % halaman)
-    try:
-        d = get_json(url)
-    except Exception as e:
-        print("     hal %d gagal: %s" % (halaman, str(e)[:44]))
+for tag in TAG:
+    if len(terkumpul) >= TARGET:
         break
-    if d is None:
-        break
-    data = d.get("data", [])
-    if not data:
-        kosong_berturut += 1
-        if kosong_berturut >= 3:
-            print("     habis pada halaman %d" % halaman)
+    dapat_tag = 0
+    for halaman in range(1, HALAMAN_MAKS + 1):
+        url = ("https://wallhaven.cc/api/v1/search"
+               "?q=%s&categories=010&purity=010&atleast=1920x1080"
+               "&sorting=date_added&per_page=24&page=%d"
+               % (urllib.parse.quote(tag), halaman))
+        try:
+            d = get_json(url)
+        except Exception as e:
+            print("     %-18s hal %d gagal: %s" % (tag, halaman, str(e)[:36]))
             break
-        halaman += 1
-        continue
-    kosong_berturut = 0
+        if d is None:
+            break
+        data = d.get("data", [])
+        if not data:
+            break
 
-    for e in data:
-        path = (e.get("path") or "").strip()
-        thumb = (e.get("thumbs") or {}).get("large") or ""
-        if not path or not thumb:
-            continue
-        if path.lower() in sudah or path.lower() in terkumpul:
-            continue
-        w = int(e.get("dimension_x") or 0)
-        h = int(e.get("dimension_y") or 0)
-        # Lanskap sungguhan dan tajam. Potret tidak muat di layar lebar, dan
-        # di bawah 1920 tidak tajam di monitor 1080p.
-        if w < 1920 or h < 1080 or w <= h:
-            continue
-        terkumpul[path.lower()] = {
-            "id": e.get("id"),
-            "path": path,
-            "thumb": thumb,
-            "res": "%dx%d" % (w, h),
-            "tag": "",
-            "page": e.get("url"),
-            "favorit": e.get("favorites") or 0,
-        }
+        for e in data:
+            path = (e.get("path") or "").strip()
+            thumb = (e.get("thumbs") or {}).get("large") or ""
+            if not path or not thumb:
+                continue
+            if path.lower() in sudah or path.lower() in terkumpul:
+                continue
+            w = int(e.get("dimension_x") or 0)
+            h = int(e.get("dimension_y") or 0)
+            # Lanskap sungguhan dan tajam. Potret tidak muat di layar lebar,
+            # dan di bawah 1920 tidak tajam di monitor 1080p.
+            if w < 1920 or h < 1080 or w <= h:
+                continue
+            terkumpul[path.lower()] = {
+                "id": e.get("id"),
+                "path": path,
+                "thumb": thumb,
+                "res": "%dx%d" % (w, h),
+                "tag": tag,
+                "page": e.get("url"),
+                "favorit": e.get("favorites") or 0,
+            }
+            dapat_tag += 1
 
-    if halaman % 20 == 0 or len(terkumpul) >= TARGET:
-        print("     hal %3d: total %d" % (halaman, len(terkumpul)))
-    halaman += 1
+        if len(terkumpul) >= TARGET:
+            break
+
+    print("     %-18s +%-3d  (total %d)" % (tag, dapat_tag, len(terkumpul)))
 
 print()
 print("  terkumpul: %d entri unik" % len(terkumpul))
-
-# Nama diambil dari halaman detail, karena field "tags" tidak ada pada hasil
-# pencarian. Hanya tag pertama yang dipakai - itu yang paling relevan menurut
-# wallhaven - dan entri yang gagal diberi nama tetap memakai nama umum.
-print()
-print("  memberi nama dari tag wallhaven...")
-diberi = 0
-for i, k in enumerate(list(terkumpul.values())):
-    try:
-        d = get_json("https://wallhaven.cc/api/v1/w/%s" % k["id"])
-        data = (d or {}).get("data") or {}
-        tag = data.get("tags") or []
-        if tag:
-            nama = (tag[0].get("name") or "").strip()
-            if nama:
-                k["tag"] = nama
-                diberi += 1
-    except Exception:
-        pass
-    if i and i % 200 == 0:
-        print("     %d / %d  (diberi nama: %d)" % (i, len(terkumpul), diberi))
-
-print("     selesai: %d dari %d punya nama" % (diberi, len(terkumpul)))
 
 SIMPAN.parent.mkdir(parents=True, exist_ok=True)
 with open(SIMPAN, "w", encoding="utf-8") as f:
