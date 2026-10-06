@@ -2238,11 +2238,31 @@ namespace LumaWall
             }
             content.Children.Add(profiles);
 
-            var list = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+            // One row per monitor, full width, instead of a grid of tall cards.
+            //
+            // The cards were 306x296 and held a 146px preview, a title, a size line,
+            // two status pills and four buttons. Three of them filled the page with
+            // six small labels and twelve buttons, and every card repeated the same
+            // four actions - which is what "terlalu banyak card dan pil dan saling
+            // menimpa" described. The information that actually differs per monitor is
+            // the wallpaper, the resolution and whether it is running; the actions are
+            // the same for every monitor and belong behind one control, not four.
+            //
+            // A row gives the wallpaper's name room to be read in full instead of being
+            // trimmed to fit a 306px column, and the page stays legible with any number
+            // of monitors.
+            var list = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
             int index = 1;
-            foreach (Forms.Screen screen in Forms.Screen.AllScreens)
+            // OrderedScreens, bukan AllScreens.
+            //
+            // AllScreens comes back in whatever order Windows reports, which is not
+            // stable: a row labelled "MONITOR 1" could be a different physical screen
+            // after a reboot, so the label did not identify anything. OrderedScreens
+            // sorts by primary first, then by position on the desktop - so MONITOR 1 is
+            // always the primary, and the rest read left to right.
+            foreach (Forms.Screen screen in OrderedScreens())
             {
-                // Resolved through the monitor's identity, so the card shows the
+                // Resolved through the monitor's identity, so the row shows the
                 // wallpaper that belongs to this physical screen even after a cable is
                 // moved and Windows renumbers the displays.
                 list.Children.Add(MonitorCard(screen, index, config.WallpaperFor(screen.DeviceName)));
@@ -2337,289 +2357,196 @@ namespace LumaWall
             return string.Join(" · ", parts.ToArray());
         }
 
+        /// <summary>
+        /// One monitor, as a row.
+        ///
+        /// This was a 306x296 card holding a preview, a title, a size line, two status
+        /// pills and four buttons. Three of them filled the page with six small labels
+        /// and twelve buttons, and each card repeated the same four actions - which is
+        /// exactly what "terlalu banyak card dan pil dan saling menimpa" described.
+        ///
+        /// A row is the honest shape for this data. What differs per monitor is the
+        /// wallpaper, its resolution, and whether it is running; what is identical is
+        /// the four actions. A row lets the name be read in full instead of trimmed to
+        /// a 306px column, and it stays legible with any number of monitors.
+        ///
+        /// The four actions are still here, but as small icon buttons on the right,
+        /// where they read as one group rather than four equal-weight blocks. The one
+        /// destructive action keeps its red text so it is not pressed by accident.
+        /// </summary>
         private Border MonitorCard(Forms.Screen screen, int index, string current)
         {
             bool hasWallpaper = File.Exists(current);
-            // Height has to fit four rows: the preview, the name, the device line, and
-            // the status chips. It was 262 and the chips were the row that fell outside
-            // the card - present in the tree, invisible on screen, which is worse than
-            // absent because nothing looks wrong until someone checks.
-            var card = new Border
+            string device = screen.DeviceName;
+
+            var row = new Border
             {
-                Width = 306,
-                Height = 296,
-                Margin = new Thickness(0, 0, 16, 16),
-                CornerRadius = new CornerRadius(11),
+                Margin = new Thickness(0, 0, 0, 8),
+                CornerRadius = new CornerRadius(10),
                 Background = new SolidColorBrush(CSurface),
-                // The primary monitor used to be outlined in the app's crimson, and its
-                // badge carried the same colour. On a page of three cards that reads as
-                // one card wearing a red box - which is what "logo recording merah merah
-                // nutupin laman" was: a red outline around a whole panel looks like a
-                // recording indicator that has covered the page, not like a status.
-                //
-                // The primary monitor is named by the badge instead, in the same neutral
-                // the other cards use, so nothing has to be red to be understood.
                 BorderBrush = new SolidColorBrush(screen.Primary ? CBorderHot : CBorder),
                 BorderThickness = new Thickness(1),
+                Padding = new Thickness(12, 10, 12, 10)
+            };
+
+            var grid = new Grid();
+            // Preview, then the text, then the actions. The preview column is fixed so
+            // every row's text starts at the same x, whatever the thumbnail's shape.
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(132) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // ── the preview ────────────────────────────────────────────────────
+            var media = new Border
+            {
+                Width = 120,
+                Height = 68,
+                CornerRadius = new CornerRadius(7),
+                Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)),
                 ClipToBounds = true
             };
-            var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(146) });
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var media = new Grid { Background = new SolidColorBrush(Color.FromRgb(11, 13, 17)), ClipToBounds = true };
             if (hasWallpaper)
             {
                 var image = new Image { Stretch = Stretch.UniformToFill };
-                SetVideoThumbnail(current, image, 640);
-                media.Children.Add(image);
-                media.Children.Add(BottomShade());
+                SetVideoThumbnail(current, image, 320);
+                media.Child = image;
             }
             else
             {
                 var empty = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-                empty.Children.Add(Icons.Build(Icons.Displays, 24, new SolidColorBrush(CDim)));
-                empty.Children.Add(new TextBlock { Text = Tr("display.unset"), Foreground = new SolidColorBrush(CMuted), FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) });
-                media.Children.Add(empty);
+                empty.Children.Add(Icons.Build(Icons.Displays, 18, new SolidColorBrush(CDim)));
+                media.Child = empty;
             }
-            var number = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(240, 10, 12, 16)),
-                // Neutral for every monitor, primary included.
-                //
-                // This border and the card's outline were both crimson on the primary
-                // display, which put a red box around a whole panel - the thing that
-                // read as a recording indicator covering the page. Which monitor is
-                // primary is already stated in words inside this badge.
-                BorderBrush = new SolidColorBrush(CBorderHot),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(10, 5, 10, 5),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(12)
-            };
+            Grid.SetColumn(media, 0);
+            grid.Children.Add(media);
 
-            // Lencana nomor monitor ditumpuk, bukan didampingkan.
-            //
-            // Sebelumnya "MONITOR 1" dan "· PRIMARY" diletakkan bersebelahan
-            // dalam satu baris horizontal, dan pada kartu selebar 306px
-            // keduanya tidak muat: "PRIMARY" terpotong menjadi "PRIMAR" tanpa
-            // tanda apa pun. Label yang terpotong di dalam lencana kecil
-            // terbaca sebagai kerusakan, bukan sebagai nama.
-            //
-            // Ditumpuk, keduanya selalu utuh - dan lencananya jadi lebih
-            // ringkas, sehingga tidak menutupi pratinjau di belakangnya.
-            var numberStack = new StackPanel();
-            numberStack.Children.Add(new TextBlock
+            // ── the text ───────────────────────────────────────────────────────
+            var copy = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 12, 0) };
+
+            // Name and resolution on one line: the two facts that identify the row.
+            var titleLine = new StackPanel { Orientation = Orientation.Horizontal };
+            titleLine.Children.Add(new TextBlock
             {
                 Text = "MONITOR " + index,
-                Foreground = new SolidColorBrush(CText),
+                Foreground = new SolidColorBrush(CDim),
                 FontFamily = FMono,
-                FontSize = 9.5,
+                FontSize = 9,
                 FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center
             });
             if (screen.Primary)
             {
-                // Neutral, not crimson.
-                //
-                // This badge used to be the app's red, and together with the red card
-                // outline it made the primary monitor's whole panel read as a red box
-                // laid over the page - the "logo recording merah" that looked like it
-                // was covering the screen. The word itself says which monitor is
-                // primary; the colour was decoration that read as a warning.
-                numberStack.Children.Add(new TextBlock
+                titleLine.Children.Add(new TextBlock
                 {
                     Text = Tr("display.primary").ToUpperInvariant(),
                     Foreground = new SolidColorBrush(CMuted),
                     FontFamily = FMono,
                     FontSize = 9,
                     FontWeight = FontWeights.Bold,
-                    Margin = new Thickness(0, 2, 0, 0),
+                    Margin = new Thickness(8, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center
                 });
             }
-            number.Child = numberStack;
-            media.Children.Add(number);
-
-            var resolution = new Border
+            titleLine.Children.Add(new TextBlock
             {
-                Background = new SolidColorBrush(Color.FromArgb(220, 10, 12, 16)),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(8, 4, 8, 4),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(12)
-            };
-            resolution.Child = new TextBlock { Text = screen.Bounds.Width + " × " + screen.Bounds.Height, Foreground = new SolidColorBrush(CAccent), FontFamily = FMono, FontSize = 9.5, FontWeight = FontWeights.Bold };
-            media.Children.Add(resolution);
-            grid.Children.Add(media);
+                Text = screen.Bounds.Width + " x " + screen.Bounds.Height,
+                Foreground = new SolidColorBrush(CAccent),
+                FontFamily = FMono,
+                FontSize = 9.5,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            copy.Children.Add(titleLine);
 
-            var body = new Grid { Margin = new Thickness(14, 11, 12, 12) };
-            body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var copy = new StackPanel();
-            // The name is trimmed to fit the card, so the full name is on the tooltip.
-            // A wallpaper called "moonlit-reverie-raiden-shogun-genshin-impact" is
-            // unreadable at card width, and without this there is no way to tell two
-            // similarly-named files apart.
             string namaLengkap = hasWallpaper ? Path.GetFileNameWithoutExtension(current) : Tr("display.unset");
             var nama = new TextBlock
             {
                 Text = namaLengkap,
                 Foreground = new SolidColorBrush(hasWallpaper ? CText : CMuted),
-                FontSize = 12.5,
+                FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 4, 0, 0)
             };
             if (hasWallpaper) nama.ToolTip = namaLengkap;
             copy.Children.Add(nama);
 
-            // Baris keterangan: jenis wallpaper, ukuran, dan nomor konektor -
-            // bukan nama perangkat internal Windows.
+            // One line of facts, separated by dots rather than split across pills.
             //
-            // Sebelumnya baris ini menampilkan "\\.\DISPLAY2 · LOOP", dan itu
-            // nama yang tidak berarti apa-apa bagi pemakai: ia tidak menyebut
-            // monitor mana, tidak menyebut ukuran berkas, dan "LOOP" hanya satu
-            // kata tanpa keterangan. Yang dicari orang di sini adalah "video ini
-            // berapa besar" dan "ini layar yang mana".
-            //
-            // Nomor konektor dipakai untuk mengenali layar secara fisik - itu
-            // yang tertulis di kabel dan di Windows Settings. Nomor urut kartu
-            // (MONITOR 1, 2, 3) hanya berlaku di dalam aplikasi ini dan berubah
-            // kalau urutan layar berubah, jadi ia tidak bisa dipakai untuk
-            // mencocokkan dengan apa pun di luar aplikasi.
-            string keterangan = "";
+            // Two pills per card added six small labels to a three-monitor page and
+            // made each card's height depend on whether a tuning string happened to be
+            // long. The same facts read better as one sentence: running, video, size,
+            // and how it is tuned.
+            var fakta = new List<string>();
+            fakta.Add(hasWallpaper ? Tr("display.state.on") : Tr("display.state.off"));
             if (hasWallpaper)
             {
-                string jenis = IsImageFile(current) ? Tr("display.kind.static") : Tr("display.kind.video");
-                keterangan = jenis + "   ·   " + FormatBytes(new FileInfo(current).Length);
-            }
-            else
-            {
-                keterangan = Tr("display.noWallpaper");
+                fakta.Add(IsImageFile(current) ? Tr("display.kind.static") : Tr("display.kind.video"));
+                fakta.Add(FormatBytes(new FileInfo(current).Length));
+                string tuning = DescribeDisplayOptions(device);
+                fakta.Add(tuning.Length > 0 ? tuning : Tr("display.default"));
             }
             copy.Children.Add(new TextBlock
             {
-                Text = keterangan,
-                Foreground = new SolidColorBrush(CDim),
-                FontSize = 9.5,
-                Margin = new Thickness(0, 3, 0, 0),
+                Text = string.Join("   ·   ", fakta.ToArray()),
+                Foreground = new SolidColorBrush(hasWallpaper ? CMuted : CDim),
+                FontSize = 10,
+                Margin = new Thickness(0, 4, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
 
-            // What this monitor is actually doing, and how it is tuned.
-            //
-            // The page used to show a name and two buttons and nothing else, so a
-            // monitor's own settings - brightness, filter, fit, speed, all of them
-            // real and all of them adjustable - were invisible here. The card is the
-            // only place that is about one monitor, so it is where they belong.
-            // Pills that wrap, instead of one unbroken row.
-            //
-            // A horizontal StackPanel never wraps, so a long tuning string pushed the
-            // row past the card and the text was cut to "DREAM - Bright 100% -
-            // Saturati...". WrapPanel puts the next pill on its own line when it does
-            // not fit, and the pill itself grows instead of truncating.
-            var status = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
-            status.Children.Add(StatusChip(
-                hasWallpaper ? Tr("display.state.on") : Tr("display.state.off"),
-                hasWallpaper ? CAccent : CDim));
-            if (hasWallpaper)
-            {
-                string tuning = DescribeDisplayOptions(screen.DeviceName);
-                if (tuning.Length > 0)
-                {
-                    status.Children.Add(StatusChip(tuning, CMuted));
-                }
-                else
-                {
-                    status.Children.Add(StatusChip(Tr("display.default"), CDim));
-                }
-            }
-            copy.Children.Add(status);
-            body.Children.Add(copy);
+            Grid.SetColumn(copy, 1);
+            grid.Children.Add(copy);
 
-            // Kontrol per monitor, dengan label yang menjelaskan dirinya sendiri.
+            // ── the actions ────────────────────────────────────────────────────
             //
-            // Halaman ini dulu hanya punya "Apply" dan "Stop", dan keduanya tidak
-            // menjelaskan apa pun: Apply apa? Stop apa? Setelah ditekan, apa yang
-            // berubah? Sekarang setiap tombol menyebut apa yang dilakukannya dan
-            // apa akibatnya, dan ada kontrol yang memang dibutuhkan di sini -
-            // memilih wallpaper untuk monitor INI, menjeda hanya monitor ini, dan
-            // mengatur seberapa keras ia bekerja.
-            //
-            // Disusun sebagai grid 2x2 dengan lebar kolom yang sama, bukan WrapPanel
-            // dengan margin kiri yang ditempelkan pada tiap tombol.
-            //
-            // Dua masalah nyata yang diperbaiki:
-            //
-            //   1. Margin 6px hanya di sisi kiri, ditulis satu per satu pada tiap
-            //      tombol, membuat jaraknya bergantung pada urutan penambahan: tombol
-            //      pertama tidak punya jarak kiri, sisanya punya, dan jarak antar baris
-            //      tidak ada sama sekali. Itulah yang terbaca sebagai "dempetan".
-            //
-            //   2. WrapPanel membagi baris menurut lebar tiap tombol, dan lebarnya
-            //      berbeda-beda karena teksnya berbeda panjang. Hasilnya tiap kartu
-            //      membungkus di titik yang berbeda, sehingga tiga kartu yang
-            //      seharusnya identik terlihat tidak sejajar.
-            //
-            // Grid dengan dua kolom sama lebar membuat keempat tombol rata di semua
-            // kartu, dan jaraknya ditentukan satu tempat saja.
-            var actions = new Grid { Margin = new Thickness(0, 9, 0, 0) };
-            actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            actions.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            actions.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            const double gap = 6;
-            string device = screen.DeviceName;
-
-            Action<UIElement, int, int> taruh = delegate(UIElement el, int kolom, int baris)
+            // Icon buttons rather than four labelled buttons. The labels said what each
+            // one does, which mattered when they were the only thing on the page; in a
+            // row they are the fourth thing, and four labelled buttons per monitor made
+            // twelve buttons compete with the wallpaper names. Each keeps its tooltip
+            // and its automation name, so the meaning is one hover away.
+            var actions = new StackPanel
             {
-                var bungkus = new Border { Child = el };
-                bungkus.Margin = new Thickness(
-                    kolom == 0 ? 0 : gap / 2,
-                    baris == 0 ? 0 : gap,
-                    kolom == 1 ? 0 : gap / 2,
-                    0);
-                Grid.SetColumn(bungkus, kolom);
-                Grid.SetRow(bungkus, baris);
-                actions.Children.Add(bungkus);
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
             };
 
-            // 1. Pilih wallpaper: membuka dialog berkas untuk monitor ini saja.
-            var pilih = CompactActionButton(Tr("display.choose"));
-            pilih.ToolTip = Tr("display.chooseHint");
-            pilih.HorizontalAlignment = HorizontalAlignment.Stretch;
-            pilih.Click += delegate { ChooseWallpaperFor(device); };
-            taruh(pilih, 0, 0);
+            Func<string, string, Action, Button> ikon = delegate(string glyph, string tip, Action kerja)
+            {
+                var b = new Button
+                {
+                    Content = Glyph(glyph, 13, new SolidColorBrush(CText)),
+                    Width = 34,
+                    Height = 34,
+                    Margin = new Thickness(6, 0, 0, 0),
+                    Padding = new Thickness(0),
+                    Cursor = Cursors.Hand,
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = new SolidColorBrush(CBorder),
+                    Background = new SolidColorBrush(CSurface2),
+                    ToolTip = tip
+                };
+                System.Windows.Automation.AutomationProperties.SetName(b, tip);
+                b.MouseEnter += delegate { b.Background = new SolidColorBrush(CPrimary); b.BorderBrush = new SolidColorBrush(CPrimary); };
+                b.MouseLeave += delegate { b.Background = new SolidColorBrush(CSurface2); b.BorderBrush = new SolidColorBrush(CBorder); };
+                b.Click += delegate { kerja(); };
+                SetRoundedButton(b, 8);
+                return b;
+            };
 
-            // 2. Jeda / lanjut monitor ini saja.
-            //
-            // Bukan "Stop": menghentikan satu monitor berarti layar itu menjadi
-            // hitam, dan tidak ada yang menginginkannya. Yang berguna adalah
-            // membekukan monitor ini sementara layar lain tetap berjalan -
-            // misalnya untuk menghemat GPU saat bermain game di satu layar saja.
+            actions.Children.Add(ikon("\uE8E5", Tr("display.choose"), delegate { ChooseWallpaperFor(device); }));
+
             bool sedangJeda = MonitorPaused(device);
-            var jeda = CompactActionButton(sedangJeda ? Tr("display.resume") : Tr("display.pause"));
-            jeda.ToolTip = Tr("display.pauseHint");
-            jeda.HorizontalAlignment = HorizontalAlignment.Stretch;
-            jeda.Click += delegate { ToggleMonitorPause(device); SwitchPage("displays"); };
-            taruh(jeda, 1, 0);
+            actions.Children.Add(ikon(sedangJeda ? "\uE768" : "\uE769",
+                sedangJeda ? Tr("display.resume") : Tr("display.pause"),
+                delegate { ToggleMonitorPause(device); SwitchPage("displays"); }));
 
-            // 3. Buka pengaturan lengkap monitor ini di Luma Studio.
-            var atur = CompactActionButton(Tr("display.tune"));
-            atur.ToolTip = Tr("display.tuneHint");
-            atur.HorizontalAlignment = HorizontalAlignment.Stretch;
-            atur.Click += delegate { BukaStudioUntuk(device); };
-            taruh(atur, 0, 1);
+            actions.Children.Add(ikon("\uE790", Tr("display.tune"), delegate { BukaStudioUntuk(device); }));
 
-            // 4. Hentikan: benar-benar melepas wallpaper dari monitor ini.
-            //
-            // Diberi label yang menyebut akibatnya, dan warnanya dibedakan, supaya
-            // tidak ada yang menekannya karena mengira itu tombol jeda.
-            var stop = CompactActionButton(Tr("display.detach"));
-            stop.ToolTip = Tr("display.detachHint");
-            stop.Foreground = new SolidColorBrush(CPrimaryHi);
-            stop.HorizontalAlignment = HorizontalAlignment.Stretch;
-            stop.Click += delegate
+            var lepas = ikon("\uE8CD", Tr("display.detach"), delegate { });
+            lepas.Foreground = new SolidColorBrush(CPrimaryHi);
+            lepas.Click += delegate
             {
                 var jawab = MessageBox.Show(
                     Tr("display.detachAsk"), Tr("display.detachTitle"),
@@ -2630,14 +2557,13 @@ namespace LumaWall
                     SwitchPage("displays");
                 }
             };
-            taruh(stop, 1, 1);
+            actions.Children.Add(lepas);
 
-            Grid.SetRow(actions, 1);
-            body.Children.Add(actions);
-            Grid.SetRow(body, 1);
-            grid.Children.Add(body);
-            card.Child = grid;
-            return card;
+            Grid.SetColumn(actions, 2);
+            grid.Children.Add(actions);
+
+            row.Child = grid;
+            return row;
         }
 
         // ================= PERFORMANCE =================
