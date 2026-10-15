@@ -4070,11 +4070,35 @@ namespace LumaWall
                     }
                 }
 
-                if (!dapat) return;
+                if (!dapat)
+                {
+                    // Kartu yang gagal menampilkan tanda "tidak ada pratinjau"
+                    // alih-alih tetap kosong. Kartu kosong tidak memberi tahu
+                    // apa pun - tidak apakah gambarnya sedang dimuat, gagal,
+                    // atau memang tidak ada.
+                    try
+                    {
+                        image.Dispatcher.BeginInvoke(new Action(delegate
+                        {
+                            try { ShowThumbnailPlaceholder(image); } catch { }
+                        }));
+                    }
+                    catch { }
+                    return;
+                }
 
                 image.Dispatcher.BeginInvoke(new Action(delegate
                 {
-                    try { ApplyImageFile(image, cached, decodeWidth); } catch { }
+                    try { ApplyImageFile(image, cached, decodeWidth); }
+                    catch (Exception error)
+                    {
+                        // Berkas lolos pemeriksaan tanda awal tetapi tetap
+                        // tidak bisa digambar - dekoder yang menolaknya.
+                        // Ditampilkan sebagai "tidak ada pratinjau", dan
+                        // dicatat, supaya tidak hilang tanpa jejak.
+                        AppLog.Write("Thumbnail tidak bisa digambar: " + url + " - " + error.Message);
+                        try { ShowThumbnailPlaceholder(image); } catch { }
+                    }
                 }));
             });
         }

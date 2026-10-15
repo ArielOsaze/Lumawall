@@ -54,8 +54,13 @@ KATEGORI = ["anime", "games", "movies", "nature", "cars", "superheroes",
 
 POLA_TAUTAN = re.compile(r'https://moewalls\.com/([a-z0-9\-]+)/([a-z0-9\-]+-live-wallpaper)/')
 
-# Token video ada di halaman detail, di dalam pemanggil download.
-POLA_TOKEN = re.compile(r'go\.moewalls\.com/download\.php\?video=([A-Za-z0-9]+)')
+# Token video ada di halaman detail, di atribut data-url pada elemen
+# id="moe-download". Tokennya SUDAH ter-encode di sana dan harus disimpan apa
+# adanya: 6523 dari 6806 token di katalog memuat "%", jadi format itulah yang
+# dipakai aplikasi.
+POLA_KELAS_TOKEN = re.compile(r'id="moe-download"[^>]*', re.I)
+POLA_TOKEN = re.compile(r'data-url\s*=\s*"([^"]+)"', re.I)
+POLA_RESOLUSI = re.compile(r'resolutions-(\d{3,4})x(\d{3,4})', re.I)
 POLA_JUDUL = re.compile(r'<title>(.*?)</title>', re.S | re.I)
 POLA_THUMB = re.compile(r'<meta[^>]+property="og:image"[^>]+content="([^"]+)"', re.I)
 
@@ -151,7 +156,9 @@ def main():
         except Exception:
             detail = {}
 
-    daftar = [u for u in kandidat if u not in detail][:args.target]
+    # Yang sudah BERHASIL dilewati; yang gagal diambil ulang.
+    daftar = [u for u in kandidat
+              if u not in detail or detail[u].get("gagal")][:args.target]
     print("     perlu diambil: %d" % len(daftar))
     print()
 
@@ -159,20 +166,34 @@ def main():
     for n, url in enumerate(daftar, 1):
         try:
             html = get(url)
-            token = POLA_TOKEN.search(html)
+
+            # Token dicari di dalam elemen id="moe-download" saja, bukan di
+            # seluruh halaman: data-url dipakai juga oleh elemen lain, dan
+            # mengambil yang salah menghasilkan alamat video yang tidak bisa
+            # diputar.
+            token = None
+            for kelas in POLA_KELAS_TOKEN.finditer(html):
+                cari = POLA_TOKEN.search(kelas.group(0))
+                if cari:
+                    token = cari.group(1)
+                    break
+
             if not token:
                 gagal += 1
                 detail[url] = {"gagal": "token video tidak ditemukan"}
                 continue
 
-            judul = bersihkan_judul(POLA_JUDUL.search(html).group(1) if POLA_JUDUL.search(html) else "")
+            judul_m = POLA_JUDUL.search(html)
+            judul = bersihkan_judul(judul_m.group(1) if judul_m else "")
             thumb = POLA_THUMB.search(html)
+            res = POLA_RESOLUSI.search(html)
 
             detail[url] = {
                 "title": judul,
                 "category": kandidat[url],
-                "videoUrl": "https://go.moewalls.com/download.php?video=" + token.group(1),
+                "videoUrl": "https://go.moewalls.com/download.php?video=" + token,
                 "thumbnailUrl": thumb.group(1) if thumb else "",
+                "resolution": ("%sx%s" % res.groups()) if res else "1920x1080",
                 "sourceUrl": url,
             }
         except Exception as e:
