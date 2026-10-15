@@ -3972,51 +3972,161 @@ namespace LumaWall
         /// User-Agent, so hosts that filter unknown clients returned an error and
         /// the card stayed black. Fetching to disk once also means scrolling back
         /// to a card is instant instead of re-downloading.
+        ///
+        /// Berapa thumbnail yang boleh diunduh serentak.
+        ///
+        /// Grid katalog membangun SEMUA kartunya sekaligus - UniformGrid tidak
+        /// memvirtualkan - dan tombol "More" menambah 30 kartu setiap kali ditekan
+        /// tanpa batas atas. Setiap kartu menembakkan Task.Run sendiri, jadi satu
+        /// halaman dengan tiga ratus kartu berarti tiga ratus permintaan serentak
+        /// ke beberapa host yang sama. Sebagian ditolak atau kehabisan waktu, dan
+        /// yang gagal tidak pernah dicoba lagi - kartunya tetap kosong.
+        ///
+        /// Delapan sekaligus cukup untuk mengisi layar dengan cepat tanpa membuat
+        /// host memblokir.
         /// </summary>
+        private static readonly System.Threading.SemaphoreSlim ThumbnailGate =
+            new System.Threading.SemaphoreSlim(8, 8);
+
+        /// <summary>
+        /// True kalau berkas benar-benar berisi gambar.
+        ///
+        /// Diperiksa dari beberapa byte pertama, bukan dari ukurannya. Berkas
+        /// berisi halaman error HTML bisa berukuran 600 byte - lebih besar daripada
+        /// ambang 512 yang dipakai sebelumnya - sehingga lolos pemeriksaan dan
+        /// dipakai selamanya, dan kartunya tampak rusak tanpa penjelasan.
+        /// </summary>
+        private static bool LooksLikeImage(string path)
+        {
+            try
+            {
+                using (var f = File.OpenRead(path))
+                {
+                    if (f.Length < 24) return false;
+                    var head = new byte[16];
+                    int read = f.Read(head, 0, head.Length);
+                    if (read < 4) return false;
+                    if (head[0] == 0xFF && head[1] == 0xD8) return true;                     // JPEG
+                    if (head[0] == 0x89 && head[1] == 0x50) return true;                     // PNG
+                    if (head[0] == 0x47 && head[1] == 0x49 && head[2] == 0x46) return true;  // GIF
+                    if (head[0] == 0x42 && head[1] == 0x4D) return true;                     // BMP
+                    if (head[0] == 0x52 && head[1] == 0x49 && head[2] == 0x46 && head[3] == 0x46) return true; // WebP
+                    return false;
+                }
+            }
+            catch { return false; }
+        }
+
         private void LoadRemoteThumbnail(Image image, string url, int decodeWidth)
         {
             string cached = RemoteThumbnailPath(url);
-            if (File.Exists(cached) && new FileInfo(cached).Length > 512)
+
+            // Cache dipakai hanya kalau isinya benar-benar gambar.
+            //
+            // Sebelumnya syaratnya hanya "berkas ada dan lebih dari 512 byte".
+            // Berkas yang isinya halaman error HTML lolos syarat itu, dipakai
+            // apa adanya, dan tidak pernah diunduh ulang - sehingga kartunya
+            // rusak selamanya meski alamatnya sendiri sehat.
+            if (File.Exists(cached) && LooksLikeImage(cached))
             {
                 ApplyImageFile(image, cached, decodeWidth);
                 return;
             }
 
+            if (File.Exists(cached))
+            {
+                try { File.Delete(cached); } catch { }
+            }
+
             Task.Run(delegate
             {
+                bool dapat = false;
                 try
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(cached));
-                    var request = (HttpWebRequest)WebRequest.Create(url);
-                    // Some wallpaper hosts reject requests without a browser UA.
-                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-                    request.Accept = "image/avif,image/webp,image/*,*/*;q=0.8";
-                    request.Referer = "https://motionbgs.com/";
-                    request.Timeout = 20000;
-                    request.ReadWriteTimeout = 20000;
-                    string temporary = cached + ".part";
-                    using (var response = request.GetResponse())
-                    using (var source = response.GetResponseStream())
-                    using (var target = File.Create(temporary))
-                    {
-                        source.CopyTo(target);
-                    }
-                    if (new FileInfo(temporary).Length < 512)
-                    {
-                        // An error page or an empty body: keep the placeholder
-                        // rather than caching something that is not an image.
-                        try { File.Delete(temporary); } catch { }
-                        return;
-                    }
-                    if (File.Exists(cached)) File.Delete(cached);
-                    File.Move(temporary, cached);
-                    image.Dispatcher.BeginInvoke(new Action(delegate
-                    {
-                        try { ApplyImageFile(image, cached, decodeWidth); } catch { }
-                    }));
+                    ThumbnailGate.Wait();
+                    try { dapat = UnduhThumbnail(url, cached); }
+                    finally { ThumbnailGate.Release(); }
                 }
-                catch { }
+                catch (Exception error)
+                {
+                    AppLog.Write("Thumbnail gagal diunduh: " + url + " - " + error.Message);
+                }
+
+                // Satu percobaan ulang. Kegagalan pertama sering hanya jaringan
+                // yang sedang sibuk, dan kartu kosong yang menetap jauh lebih
+                // buruk daripada satu permintaan tambahan.
+                if (!dapat)
+                {
+                    try
+                    {
+                        System.Threading.Thread.Sleep(1200);
+                        ThumbnailGate.Wait();
+                        try { dapat = UnduhThumbnail(url, cached); }
+                        finally { ThumbnailGate.Release(); }
+                    }
+                    catch (Exception error)
+                    {
+                        AppLog.Write("Thumbnail gagal pada percobaan kedua: " + url + " - " + error.Message);
+                    }
+                }
+
+                if (!dapat) return;
+
+                image.Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    try { ApplyImageFile(image, cached, decodeWidth); } catch { }
+                }));
             });
+        }
+
+        /// <summary>
+        /// Mengunduh satu thumbnail ke berkas cache.
+        ///
+        /// Mengembalikan true hanya kalau berkas yang tersimpan benar-benar
+        /// berisi gambar - bukan sekadar ada dan cukup besar.
+        /// </summary>
+        private static bool UnduhThumbnail(string url, string cached)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(cached));
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+            request.Accept = "image/avif,image/webp,image/*,*/*;q=0.8";
+
+            // Referer situs ASAL gambar, bukan satu situs tetap.
+            //
+            // Sebelumnya baris ini selalu "https://motionbgs.com/" - termasuk
+            // untuk gambar dari moewalls, desktophut, wallhaven, dan
+            // wallpaperwaifu. Mengirim Referer milik situs lain adalah hal yang
+            // paling sering ditolak oleh perlindungan hotlink.
+            try
+            {
+                var uri = new Uri(url);
+                request.Referer = uri.Scheme + "://" + uri.Host + "/";
+            }
+            catch { }
+
+            request.Timeout = 20000;
+            request.ReadWriteTimeout = 20000;
+
+            string temporary = cached + ".part";
+            using (var response = request.GetResponse())
+            using (var source = response.GetResponseStream())
+            using (var target = File.Create(temporary))
+            {
+                source.CopyTo(target);
+            }
+
+            // Diperiksa isinya, bukan ukurannya: halaman error HTML bisa lebih
+            // besar daripada ambang ukuran mana pun yang masuk akal.
+            if (!LooksLikeImage(temporary))
+            {
+                try { File.Delete(temporary); } catch { }
+                return false;
+            }
+
+            if (File.Exists(cached)) File.Delete(cached);
+            File.Move(temporary, cached);
+            return true;
         }
 
         private static void ApplyImageFile(Image image, string file, int decodeWidth)

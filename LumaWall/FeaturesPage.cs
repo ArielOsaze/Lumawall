@@ -76,6 +76,51 @@ namespace LumaWall
         // The slider template, parsed once and shared by every slider on the page.
         private static ControlTemplate studioSliderTemplate;
 
+        /// <summary>
+        /// Menyimpan pengaturan Studio setelah pengguna berhenti mengubahnya.
+        ///
+        /// KENAPA INI ADA:
+        ///
+        /// Slider melaporkan setiap pergerakan - puluhan nilai per detik saat
+        /// diseret. Menulis berkas config pada setiap pergerakan akan menghajar
+        /// disk tanpa guna dan membuat seretan tersendat.
+        ///
+        /// Tetapi TIDAK menulis sama sekali justru lebih buruk, dan itulah bug
+        /// yang dilaporkan: "wallpaper sudah di-crop, restart balik lagi".
+        /// Slider hanya mengubah nilai di memori dan memanggil RefreshOptions -
+        /// jadi crop terlihat benar di desktop sampai aplikasi dijalankan ulang,
+        /// lalu kembali ke nilai lama karena config.json tidak pernah ditulis.
+        /// Chip (Fit, Flip) menyimpan dengan benar, sehingga hanya kontrol
+        /// ber-slider yang kehilangan pengaturannya - dan itu membuat bug-nya
+        /// tampak seperti "crop tidak tersimpan" alih-alih "slider tidak
+        /// menyimpan".
+        ///
+        /// Jadi penulisan ditunda sampai nilainya berhenti berubah: satu
+        /// penulisan per sesi pengaturan, bukan satu per piksel.
+        /// </summary>
+        private System.Windows.Threading.DispatcherTimer studioSaveTimer;
+
+        private void StudioSaveSoon()
+        {
+            if (studioSaveTimer == null)
+            {
+                studioSaveTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(350),
+                };
+                studioSaveTimer.Tick += delegate
+                {
+                    studioSaveTimer.Stop();
+                    try { store.Save(config); }
+                    catch (Exception error) { AppLog.Write("Studio: gagal menyimpan pengaturan: " + error.Message); }
+                };
+            }
+            // Restart, bukan mulai: seretan yang masih berjalan tidak boleh
+            // menghasilkan penulisan di tengah jalan.
+            studioSaveTimer.Stop();
+            studioSaveTimer.Start();
+        }
+
         // Per-group accents. There is one.
         //
         // These were four separate hues - cyan for colour, amber for HDR, violet for
@@ -1647,6 +1692,10 @@ namespace LumaWall
                 // Applied live, so the desktop shows the change while the slider moves.
                 manager.RefreshOptions();
                 StudioRefreshPreview();
+                // Ditulis ke disk setelah seretan berhenti. Tanpa ini nilainya
+                // hanya hidup di memori: desktop menunjukkan crop yang benar
+                // sampai aplikasi dijalankan ulang, lalu kembali ke nilai lama.
+                StudioSaveSoon();
             };
 
             return row;
