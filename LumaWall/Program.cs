@@ -284,7 +284,7 @@ namespace LumaWall
                     Console.WriteLine("pilih-video mode=" + mode
                         + " layar=" + lw + "x" + lt
                         + " asli=" + hasil.LebarAsli + "x" + hasil.TinggiAsli
-                        + " putuskan=" + VideoScale.LebarTarget(mode, hasil.LebarAsli, lw)
+                        + " putuskan=" + VideoScale.LebarTarget(mode, hasil.LebarAsli, hasil.TinggiAsli, lw, lt)
                         + " pakai=" + hasil.LebarPakai
                         + " diskalakan=" + (hasil.Diskalakan ? "ya" : "tidak")
                         + " siap=" + (hasil.Diskalakan && hasil.Path != berkas ? "ya" : "belum")

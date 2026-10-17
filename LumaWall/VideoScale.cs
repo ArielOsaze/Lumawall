@@ -112,15 +112,43 @@ namespace LumaWall
         /// Dipisah dari Pilih supaya aturannya bisa diperiksa sendiri: satu
         /// tempat yang menjawab "mode ini meminta lebar berapa", bukan tiga
         /// cabang yang tersebar.
+        ///
+        /// KENAPA TINGGI LAYAR IKUT DIPAKAI:
+        ///
+        /// Sebelumnya hanya lebar layar. Untuk monitor biasa itu benar - video
+        /// 16:9 di layar 16:9 yang diperkecil selebar layar sudah pas.
+        ///
+        /// Untuk monitor yang DIPUTAR, lebar layar justru dimensi yang paling
+        /// kecil. Layar 1080x1920 dengan video 1920x1080: mengecilkan video ke
+        /// lebar 1080 menghasilkan 1080x608, lalu untuk menutupi layar gambar itu
+        /// harus direntangkan 3,2 kali ke tinggi 1920 - dan di situlah "pecah"
+        /// yang dilaporkan terjadi.
+        ///
+        /// Yang dibutuhkan adalah lebar yang membuat TINGGI video juga cukup:
+        ///
+        ///     lebar &gt;= tinggiLayar * (wAsli / hAsli)
+        ///
+        /// dan tetap tidak kurang dari lebar layar itu sendiri.
         /// </summary>
-        private static int LebarUntukMode(string mode, int wAsli, int lebarLayar)
+        private static int LebarUntukMode(string mode, int wAsli, int hAsli,
+                                          int lebarLayar, int tinggiLayar)
         {
             if (mode == Mode.Asli) return 0;
-            if (mode == Mode.Hemat) return BatasLebar(Math.Max(640, lebarLayar / 2));
-            if (mode == Mode.PasLayar) return BatasLebar(lebarLayar);
+
+            // Lebar minimum supaya gambar tetap tajam setelah diskalakan
+            // menutupi layar - termasuk saat layarnya portrait.
+            int perlu = lebarLayar;
+            if (hAsli > 0 && tinggiLayar > 0)
+            {
+                int dariTinggi = (int)Math.Ceiling((double)tinggiLayar * wAsli / hAsli);
+                perlu = Math.Max(perlu, dariTinggi);
+            }
+
+            if (mode == Mode.Hemat) return BatasLebar(Math.Max(640, perlu / 2));
+            if (mode == Mode.PasLayar) return BatasLebar(perlu);
 
             // Otomatis: hanya kalau kelebihannya besar.
-            int batas = BatasLebar(lebarLayar);
+            int batas = BatasLebar(perlu);
             return wAsli > batas * AmbangKelebihan ? batas : 0;
         }
 
@@ -133,10 +161,11 @@ namespace LumaWall
         /// yang hanya membaca berkas yang dipakai akan melihat keempat mode sama dan
         /// menyimpulkan setelannya tidak bekerja - padahal keputusannya sudah benar.
         /// </summary>
-        public static int LebarTarget(string mode, int wAsli, int lebarLayar)
+        public static int LebarTarget(string mode, int wAsli, int hAsli,
+                                      int lebarLayar, int tinggiLayar)
         {
             if (!Mode.Valid(mode)) mode = Mode.Otomatis;
-            int lebar = LebarUntukMode(mode, wAsli, lebarLayar);
+            int lebar = LebarUntukMode(mode, wAsli, hAsli, lebarLayar, tinggiLayar);
             return lebar > 0 && lebar < wAsli ? lebar : 0;
         }
 
@@ -266,7 +295,7 @@ namespace LumaWall
                 hasil.LebarAsli = wAsli;
                 hasil.TinggiAsli = hAsli;
 
-                int lebarMode = LebarUntukMode(mode, wAsli, lebarLayar);
+                int lebarMode = LebarUntukMode(mode, wAsli, hAsli, lebarLayar, tinggiLayar);
                 bool perluKecil = lebarMode > 0 && lebarMode < wAsli;
                 int fps = fpsTarget > 0 ? Math.Max(10, Math.Min(60, fpsTarget)) : 0;
 
