@@ -3689,6 +3689,146 @@ namespace LumaWall
             if (path != null) ShowApplyDialog(path);
         }
 
+        /// <summary>
+                /// Ekstensi media yang dikenali pemutar.
+                ///
+                /// Chromium memutuskan cara memutar sebuah berkas sebagian dari
+                /// ekstensinya. Berkas yang isinya video tetapi berekstensi lain akan
+                /// ditolak - dan penolakan itu terlihat sebagai layar hitam, bukan
+                /// sebagai pesan apa pun.
+                /// </summary>
+        private static readonly HashSet<string> EkstensiMediaDikenal =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".mp4", ".m4v", ".webm", ".mov", ".mkv",
+                ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif", ".avif",
+            };
+
+        /// <summary>
+        /// Ekstensi yang benar untuk ISI sebuah berkas, dibaca dari beberapa
+        /// byte pertamanya - atau null kalau isinya tidak dikenali.
+        ///
+        /// Dipakai untuk menyembuhkan berkas yang sudah tersimpan dengan
+        /// ekstensi salah. Mempercayai ekstensi berkas berarti mempercayai
+        /// URL asalnya, dan URL asal itu tidak selalu menyebut jenis isinya.
+        /// </summary>
+        private static string EkstensiDariIsi(string path)
+        {
+            try
+            {
+                using (var f = File.OpenRead(path))
+                {
+                    var head = new byte[16];
+                    int n = f.Read(head, 0, head.Length);
+                    if (n < 12) return null;
+
+                    // MP4 / MOV / M4V: kotak 'ftyp' di offset 4.
+                    if (head[4] == 0x66 && head[5] == 0x74 && head[6] == 0x79 && head[7] == 0x70) return ".mp4";
+                    // Matroska / WebM: tanda EBML.
+                    if (head[0] == 0x1A && head[1] == 0x45 && head[2] == 0xDF && head[3] == 0xA3) return ".webm";
+
+                    if (head[0] == 0xFF && head[1] == 0xD8) return ".jpg";
+                    if (head[0] == 0x89 && head[1] == 0x50) return ".png";
+                    if (head[0] == 0x47 && head[1] == 0x49 && head[2] == 0x46) return ".gif";
+                    if (head[0] == 0x42 && head[1] == 0x4D) return ".bmp";
+
+                    // RIFF dibedakan dari empat byte setelah ukurannya:
+                    // "WEBP" berarti gambar, "AVI " berarti video tua yang
+                    // tidak diputar Chromium.
+                    if (head[0] == 0x52 && head[1] == 0x49 && head[2] == 0x46 && head[3] == 0x46)
+                    {
+                        if (head[8] == 0x57 && head[9] == 0x45 && head[10] == 0x42 && head[11] == 0x50) return ".webp";
+                        return null;
+                    }
+                    return null;
+                }
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Memperbaiki berkas di folder unduhan yang tersimpan dengan ekstensi
+        /// salah, dengan mengganti namanya sesuai ISI berkas.
+        ///
+        /// Kenapa ini ada: alamat unduhan moewalls berbentuk
+        /// "https://go.moewalls.com/download.php?video=TOKEN", sehingga ekstensi
+        /// yang terbaca dari URL adalah ".php" - padahal isinya MP4. Berkas itu
+        /// tersimpan sebagai "Nama.php", dan Chromium tidak mengenali ".php"
+        /// sebagai video: hasilnya layar hitam.
+        ///
+        /// Berkas yang sudah telanjur tersimpan seperti itu tidak bisa diperbaiki
+        /// dengan mengubah kode pengunduhan saja, jadi namanya diganti di sini
+        /// dan catatan di config ikut diperbarui.
+        /// </summary>
+        private int PerbaikiEkstensiSalah()
+        {
+            int diperbaiki = 0;
+            try
+            {
+                if (!Directory.Exists(store.Downloads)) return 0;
+
+                foreach (string berkas in Directory.GetFiles(store.Downloads))
+                {
+                    // Berkas pendamping dan salinan sementara dilewati.
+                    if (berkas.EndsWith(".license.txt", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    string ext = Path.GetExtension(berkas);
+                    if (EkstensiMediaDikenal.Contains(ext)) continue;
+
+                    string benar = EkstensiDariIsi(berkas);
+                    if (benar == null) continue;
+
+                    string tujuan = Path.ChangeExtension(berkas, benar);
+                    if (File.Exists(tujuan))
+                    {
+                        // Nama tujuan sudah dipakai; berkas ini tidak bisa
+                        // dipindahkan tanpa menimpa yang lain.
+                        AppLog.Write("Ekstensi tidak diperbaiki, nama tujuan sudah ada: " + berkas);
+                        continue;
+                    }
+
+                    try
+                    {
+                        File.Move(berkas, tujuan);
+
+                        // Catatan pendamping ikut dipindahkan supaya tidak
+                        // tertinggal sebagai berkas yatim.
+                        string lisensi = berkas + ".license.txt";
+                        if (File.Exists(lisensi)) { try { File.Move(lisensi, tujuan + ".license.txt"); } catch { } }
+
+                        // Perpustakaan dan penugasan per monitor menunjuk ke
+                        // nama lama; keduanya harus ikut berubah, kalau tidak
+                        // wallpaper itu hilang dari daftar.
+                        for (int i = 0; i < config.Library.Count; i++)
+                            if (string.Equals(config.Library[i], berkas, StringComparison.OrdinalIgnoreCase))
+                                config.Library[i] = tujuan;
+
+                        foreach (var device in config.MonitorVideos.Keys.ToList())
+                            if (string.Equals(config.MonitorVideos[device], berkas, StringComparison.OrdinalIgnoreCase))
+                                config.MonitorVideos[device] = tujuan;
+
+                        foreach (var kunci in config.WallpapersByMonitor.Keys.ToList())
+                            if (string.Equals(config.WallpapersByMonitor[kunci], berkas, StringComparison.OrdinalIgnoreCase))
+                                config.WallpapersByMonitor[kunci] = tujuan;
+
+                        diperbaiki++;
+                        AppLog.Write("Ekstensi diperbaiki: " + Path.GetFileName(berkas) + " -> " + Path.GetFileName(tujuan));
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Write("Gagal memperbaiki ekstensi " + berkas + ": " + ex.Message);
+                    }
+                }
+
+                if (diperbaiki > 0) store.Save(config);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Perbaikan ekstensi gagal: " + ex.Message);
+            }
+            return diperbaiki;
+        }
+
         private async Task<string> DownloadItem(CatalogItem item)
         {
             try
@@ -3696,55 +3836,66 @@ namespace LumaWall
                 Directory.CreateDirectory(store.Downloads);
                 Uri remote;
                 bool isRemote = Uri.TryCreate(item.VideoUrl, UriKind.Absolute, out remote) && (remote.Scheme == "http" || remote.Scheme == "https");
+
+                // Ekstensi ditentukan dari daftar media yang DIKENAL, bukan dari
+                // URL apa adanya.
+                //
+                // Sebelumnya baris ini mengambil ekstensi dari URL, dan hanya
+                // menggantinya kalau kosong atau lebih panjang dari lima huruf.
+                // Alamat moewalls berakhir "download.php", jadi berkasnya
+                // tersimpan sebagai ".php" - panjangnya empat huruf sehingga lolos
+                // syarat itu. Isinya MP4, tetapi Chromium tidak mengenali ".php"
+                // sebagai video dan menolak memutarnya: hasilnya layar hitam.
                 string sourceExt = Path.GetExtension(isRemote ? remote.AbsolutePath : item.VideoUrl);
-                if (string.IsNullOrEmpty(sourceExt) || sourceExt.Length > 5) sourceExt = string.Equals(item.Kind, "dynamic", StringComparison.OrdinalIgnoreCase) ? ".mp4" : ".jpg";
-                bool generateLoop = string.Equals(item.Animation, "kenburns", StringComparison.OrdinalIgnoreCase);
-                string ext = generateLoop ? ".mp4" : sourceExt;
-                string safe = string.Join("_", (item.Title ?? "wallpaper").Split(Path.GetInvalidFileNameChars()));
-                string destination = Path.Combine(store.Downloads, safe + ext);
-                ShowToast(Tr("toast.downloading") + " " + item.Title + "…");
-                string downloadTarget = generateLoop ? destination + ".source" + sourceExt : destination;
-                if (isRemote)
+                if (string.IsNullOrEmpty(sourceExt) || !EkstensiMediaDikenal.Contains(sourceExt))
+                    sourceExt = string.Equals(item.Kind, "dynamic", StringComparison.OrdinalIgnoreCase) ? ".mp4" : ".jpg";
+        bool generateLoop = string.Equals(item.Animation, "kenburns", StringComparison.OrdinalIgnoreCase);
+        string ext = generateLoop ? ".mp4" : sourceExt;
+        string safe = string.Join("_", (item.Title ?? "wallpaper").Split(Path.GetInvalidFileNameChars()));
+        string destination = Path.Combine(store.Downloads, safe + ext);
+        ShowToast(Tr("toast.downloading") + " " + item.Title + "…");
+        string downloadTarget = generateLoop ? destination + ".source" + sourceExt : destination;
+        if (isRemote)
+        {
+            using (var client = new WebClient())
+            {
+                client.Headers.Add("User-Agent", "LumaWall/1.0");
+                if (Uri.IsWellFormedUriString(item.SourceUrl, UriKind.Absolute)) client.Headers.Add("Referer", item.SourceUrl);
+                string downloadTitle = item.Title;
+                client.DownloadProgressChanged += delegate(object s, DownloadProgressChangedEventArgs e)
                 {
-                    using (var client = new WebClient())
+                    Dispatcher.BeginInvoke(new Action(delegate
                     {
-                        client.Headers.Add("User-Agent", "LumaWall/1.0");
-                        if (Uri.IsWellFormedUriString(item.SourceUrl, UriKind.Absolute)) client.Headers.Add("Referer", item.SourceUrl);
-                        string downloadTitle = item.Title;
-                        client.DownloadProgressChanged += delegate(object s, DownloadProgressChangedEventArgs e)
-                        {
-                            Dispatcher.BeginInvoke(new Action(delegate
-                            {
-                                toastText.Text = Tr("toast.downloading") + " " + downloadTitle + " · " + e.ProgressPercentage + "%";
-                                toast.Visibility = Visibility.Visible;
-                            }));
-                        };
-                        await client.DownloadFileTaskAsync(remote, downloadTarget);
-                    }
-                }
-                else
-                {
-                    string source = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.VideoUrl));
-                    string root = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
-                    if (!source.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Lokasi file tidak diizinkan");
-                    File.Copy(source, downloadTarget, true);
-                }
-                if (generateLoop)
-                {
-                    bool created = await CreateImageLoop(downloadTarget, destination);
-                    try { File.Delete(downloadTarget); } catch { }
-                    if (!created) throw new InvalidOperationException("FFmpeg could not create the animated loop.");
-                }
-                string attribution = "Title: " + (item.Title ?? "Unknown") + Environment.NewLine +
-                    "Author: " + (item.Author ?? "Unknown") + Environment.NewLine +
-                    "License: " + (item.License ?? "Check source") + Environment.NewLine +
-                    "Source: " + (item.SourceUrl ?? "Unknown") + Environment.NewLine;
-                File.WriteAllText(destination + ".license.txt", attribution, Encoding.UTF8);
-                if (!config.Library.Contains(destination, StringComparer.OrdinalIgnoreCase)) config.Library.Add(destination);
-                selectedVideo = destination;
-                store.Save(config);
-                ShowToast(item.Title + " · " + Tr("library.title"));
-                return destination;
+                        toastText.Text = Tr("toast.downloading") + " " + downloadTitle + " · " + e.ProgressPercentage + "%";
+                        toast.Visibility = Visibility.Visible;
+                    }));
+                };
+                await client.DownloadFileTaskAsync(remote, downloadTarget);
+            }
+        }
+        else
+        {
+            string source = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, item.VideoUrl));
+            string root = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
+            if (!source.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Lokasi file tidak diizinkan");
+            File.Copy(source, downloadTarget, true);
+        }
+        if (generateLoop)
+        {
+            bool created = await CreateImageLoop(downloadTarget, destination);
+            try { File.Delete(downloadTarget); } catch { }
+            if (!created) throw new InvalidOperationException("FFmpeg could not create the animated loop.");
+        }
+        string attribution = "Title: " + (item.Title ?? "Unknown") + Environment.NewLine +
+            "Author: " + (item.Author ?? "Unknown") + Environment.NewLine +
+            "License: " + (item.License ?? "Check source") + Environment.NewLine +
+            "Source: " + (item.SourceUrl ?? "Unknown") + Environment.NewLine;
+        File.WriteAllText(destination + ".license.txt", attribution, Encoding.UTF8);
+        if (!config.Library.Contains(destination, StringComparer.OrdinalIgnoreCase)) config.Library.Add(destination);
+        selectedVideo = destination;
+        store.Save(config);
+        ShowToast(item.Title + " · " + Tr("library.title"));
+        return destination;
             }
             catch (Exception ex) { ShowToast("Download: " + ex.Message); return null; }
         }
@@ -3755,26 +3906,26 @@ namespace LumaWall
             if (ffmpeg == null) return false;
             int code = await Task.Run(delegate
             {
-                string filter = "[0:v]split=2[bg][fg];" +
-                    "[bg]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,gblur=sigma=35,eq=brightness=-0.18[bg];" +
-                    "[fg]scale=1180:680:force_original_aspect_ratio=decrease[fg];" +
-                    "[bg][fg]overlay=(W-w)/2:(H-h)/2," +
-                    "zoompan=z='1.0+0.015*sin(2*PI*on/192)':x='iw/2-(iw/zoom/2)':" +
-                    "y='ih/2-(ih/zoom/2)':d=192:s=1280x720:fps=24[v]";
-                var start = new ProcessStartInfo
-                {
-                    FileName = ffmpeg,
-                    Arguments = "-y -i \"" + imagePath + "\" -filter_complex \"" + filter + "\" -map \"[v]\" -frames:v 192 -an -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p -movflags +faststart \"" + destination + "\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardError = true
-                };
-                using (var process = Process.Start(start))
-                {
-                    process.StandardError.ReadToEnd();
-                    process.WaitForExit();
-                    return process.ExitCode;
-                }
+        string filter = "[0:v]split=2[bg][fg];" +
+            "[bg]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,gblur=sigma=35,eq=brightness=-0.18[bg];" +
+            "[fg]scale=1180:680:force_original_aspect_ratio=decrease[fg];" +
+            "[bg][fg]overlay=(W-w)/2:(H-h)/2," +
+            "zoompan=z='1.0+0.015*sin(2*PI*on/192)':x='iw/2-(iw/zoom/2)':" +
+            "y='ih/2-(ih/zoom/2)':d=192:s=1280x720:fps=24[v]";
+        var start = new ProcessStartInfo
+        {
+            FileName = ffmpeg,
+            Arguments = "-y -i \"" + imagePath + "\" -filter_complex \"" + filter + "\" -map \"[v]\" -frames:v 192 -an -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p -movflags +faststart \"" + destination + "\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true
+        };
+        using (var process = Process.Start(start))
+        {
+            process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            return process.ExitCode;
+        }
             });
             return code == 0 && File.Exists(destination);
         }
@@ -3803,21 +3954,21 @@ namespace LumaWall
             string captureVideo = video;
             Task.Run(delegate
             {
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(capturePath));
-                    // Try progressively later timestamps until a frame with real
-                    // content comes back (size threshold filters black frames).
-                    foreach (int seek in new[] { 1, 3, 5, 8, 0 })
-                    {
-                        try { if (File.Exists(capturePath)) File.Delete(capturePath); } catch { }
-                        var start = new ProcessStartInfo { FileName = ffmpeg, Arguments = "-y -ss " + seek + " -i \"" + captureVideo + "\" -frames:v 1 -vf scale=1280:-2 -q:v 2 \"" + capturePath + "\"", UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
-                        using (var p = Process.Start(start)) { p.StandardError.ReadToEnd(); p.WaitForExit(); }
-                        if (File.Exists(capturePath) && ThumbnailHasContent(capturePath)) break;
-                    }
-                    if (File.Exists(capturePath)) Dispatcher.BeginInvoke(new Action(delegate { SetImage(target, capturePath, decodeWidth); }));
-                }
-                catch { }
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(capturePath));
+            // Try progressively later timestamps until a frame with real
+            // content comes back (size threshold filters black frames).
+            foreach (int seek in new[] { 1, 3, 5, 8, 0 })
+            {
+                try { if (File.Exists(capturePath)) File.Delete(capturePath); } catch { }
+                var start = new ProcessStartInfo { FileName = ffmpeg, Arguments = "-y -ss " + seek + " -i \"" + captureVideo + "\" -frames:v 1 -vf scale=1280:-2 -q:v 2 \"" + capturePath + "\"", UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+                using (var p = Process.Start(start)) { p.StandardError.ReadToEnd(); p.WaitForExit(); }
+                if (File.Exists(capturePath) && ThumbnailHasContent(capturePath)) break;
+            }
+            if (File.Exists(capturePath)) Dispatcher.BeginInvoke(new Action(delegate { SetImage(target, capturePath, decodeWidth); }));
+        }
+        catch { }
             });
         }
 
@@ -3830,34 +3981,34 @@ namespace LumaWall
         {
             try
             {
-                if (!File.Exists(path)) return false;
-                var info = new FileInfo(path);
-                if (info.Length < 6000) return false;
-                var probe = new BitmapImage();
-                probe.BeginInit();
-                probe.CacheOption = BitmapCacheOption.OnLoad;
-                probe.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
-                probe.EndInit();
-                if (probe.PixelWidth < 1000) return false;
-                var converted = new FormatConvertedBitmap(probe, PixelFormats.Gray8, null, 0);
-                int width = converted.PixelWidth, height = converted.PixelHeight;
-                int stride = (width * converted.Format.BitsPerPixel + 7) / 8;
-                byte[] pixels = new byte[stride * height];
-                converted.CopyPixels(pixels, stride, 0);
-                long sum = 0;
-                int count = 0;
-                for (int y = 0; y < height; y += 4)
-                {
-                    int row = y * stride;
-                    for (int x = 0; x < width; x += 4)
-                    {
-                        sum += pixels[row + x];
-                        count++;
-                    }
-                }
-                if (count == 0) return false;
-                // A black intro frame sits around luma 0-3; real artwork is far above.
-                return (sum / (double)count) > 8d;
+        if (!File.Exists(path)) return false;
+        var info = new FileInfo(path);
+        if (info.Length < 6000) return false;
+        var probe = new BitmapImage();
+        probe.BeginInit();
+        probe.CacheOption = BitmapCacheOption.OnLoad;
+        probe.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
+        probe.EndInit();
+        if (probe.PixelWidth < 1000) return false;
+        var converted = new FormatConvertedBitmap(probe, PixelFormats.Gray8, null, 0);
+        int width = converted.PixelWidth, height = converted.PixelHeight;
+        int stride = (width * converted.Format.BitsPerPixel + 7) / 8;
+        byte[] pixels = new byte[stride * height];
+        converted.CopyPixels(pixels, stride, 0);
+        long sum = 0;
+        int count = 0;
+        for (int y = 0; y < height; y += 4)
+        {
+            int row = y * stride;
+            for (int x = 0; x < width; x += 4)
+            {
+                sum += pixels[row + x];
+                count++;
+            }
+        }
+        if (count == 0) return false;
+        // A black intro frame sits around luma 0-3; real artwork is far above.
+        return (sum / (double)count) > 8d;
             }
             catch { return false; }
         }
@@ -3890,8 +4041,8 @@ namespace LumaWall
         {
             if (string.IsNullOrEmpty(value))
             {
-                ShowThumbnailPlaceholder(target);
-                return;
+        ShowThumbnailPlaceholder(target);
+        return;
             }
             if (Uri.IsWellFormedUriString(value, UriKind.Absolute)) SetImage(target, value, decodeWidth);
             else SetImage(target, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, value), decodeWidth);
@@ -3909,18 +4060,18 @@ namespace LumaWall
             var canvas = new DrawingVisual();
             using (DrawingContext dc = canvas.RenderOpen())
             {
-                dc.DrawRectangle(new SolidColorBrush(CSurface2), null,
-                                 new Rect(0, 0, 320, 180));
+        dc.DrawRectangle(new SolidColorBrush(CSurface2), null,
+                         new Rect(0, 0, 320, 180));
 
-                // A large wallpaper glyph, centred.
-                var glyph = Icons.Build(Icons.Wallpaper, 44, new SolidColorBrush(CDim));
-                var host = new VisualBrush(glyph)
-                {
-                    Stretch = Stretch.None,
-                    AlignmentX = AlignmentX.Center,
-                    AlignmentY = AlignmentY.Center,
-                };
-                dc.DrawRectangle(host, null, new Rect(0, 0, 320, 180));
+        // A large wallpaper glyph, centred.
+        var glyph = Icons.Build(Icons.Wallpaper, 44, new SolidColorBrush(CDim));
+        var host = new VisualBrush(glyph)
+        {
+            Stretch = Stretch.None,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+        dc.DrawRectangle(host, null, new Rect(0, 0, 320, 180));
             }
 
             var image = new DrawingImage(canvas.Drawing);
@@ -3940,25 +4091,25 @@ namespace LumaWall
         {
             try
             {
-                if (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    LoadRemoteThumbnail(image, path, decodeWidth);
-                    return;
-                }
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                // Ignore WPF's URI image cache: thumbnails are regenerated in
-                // place when a cached frame was black or low resolution, and the
-                // stale decode would otherwise keep showing the old bitmap.
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                // Decode near source width so full-size previews stay sharp; WPF
-                // scales down cheaply for small cards.
-                bitmap.DecodePixelWidth = decodeWidth;
-                bitmap.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
-                bitmap.EndInit();
-                bitmap.Freeze();
-                image.Source = bitmap;
+        if (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            LoadRemoteThumbnail(image, path, decodeWidth);
+            return;
+        }
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        // Ignore WPF's URI image cache: thumbnails are regenerated in
+        // place when a cached frame was black or low resolution, and the
+        // stale decode would otherwise keep showing the old bitmap.
+        bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+        // Decode near source width so full-size previews stay sharp; WPF
+        // scales down cheaply for small cards.
+        bitmap.DecodePixelWidth = decodeWidth;
+        bitmap.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
+        bitmap.EndInit();
+        bitmap.Freeze();
+        image.Source = bitmap;
             }
             catch { }
         }
@@ -4000,19 +4151,19 @@ namespace LumaWall
         {
             try
             {
-                using (var f = File.OpenRead(path))
-                {
-                    if (f.Length < 24) return false;
-                    var head = new byte[16];
-                    int read = f.Read(head, 0, head.Length);
-                    if (read < 4) return false;
-                    if (head[0] == 0xFF && head[1] == 0xD8) return true;                     // JPEG
-                    if (head[0] == 0x89 && head[1] == 0x50) return true;                     // PNG
-                    if (head[0] == 0x47 && head[1] == 0x49 && head[2] == 0x46) return true;  // GIF
-                    if (head[0] == 0x42 && head[1] == 0x4D) return true;                     // BMP
-                    if (head[0] == 0x52 && head[1] == 0x49 && head[2] == 0x46 && head[3] == 0x46) return true; // WebP
-                    return false;
-                }
+        using (var f = File.OpenRead(path))
+        {
+            if (f.Length < 24) return false;
+            var head = new byte[16];
+            int read = f.Read(head, 0, head.Length);
+            if (read < 4) return false;
+            if (head[0] == 0xFF && head[1] == 0xD8) return true;                     // JPEG
+            if (head[0] == 0x89 && head[1] == 0x50) return true;                     // PNG
+            if (head[0] == 0x47 && head[1] == 0x49 && head[2] == 0x46) return true;  // GIF
+            if (head[0] == 0x42 && head[1] == 0x4D) return true;                     // BMP
+            if (head[0] == 0x52 && head[1] == 0x49 && head[2] == 0x46 && head[3] == 0x46) return true; // WebP
+            return false;
+        }
             }
             catch { return false; }
         }
@@ -4029,77 +4180,77 @@ namespace LumaWall
             // rusak selamanya meski alamatnya sendiri sehat.
             if (File.Exists(cached) && LooksLikeImage(cached))
             {
-                ApplyImageFile(image, cached, decodeWidth);
-                return;
+        ApplyImageFile(image, cached, decodeWidth);
+        return;
             }
 
             if (File.Exists(cached))
             {
-                try { File.Delete(cached); } catch { }
+        try { File.Delete(cached); } catch { }
             }
 
             Task.Run(delegate
             {
-                bool dapat = false;
-                try
-                {
-                    ThumbnailGate.Wait();
-                    try { dapat = UnduhThumbnail(url, cached); }
-                    finally { ThumbnailGate.Release(); }
-                }
-                catch (Exception error)
-                {
-                    AppLog.Write("Thumbnail gagal diunduh: " + url + " - " + error.Message);
-                }
+        bool dapat = false;
+        try
+        {
+            ThumbnailGate.Wait();
+            try { dapat = UnduhThumbnail(url, cached); }
+            finally { ThumbnailGate.Release(); }
+        }
+        catch (Exception error)
+        {
+            AppLog.Write("Thumbnail gagal diunduh: " + url + " - " + error.Message);
+        }
 
-                // Satu percobaan ulang. Kegagalan pertama sering hanya jaringan
-                // yang sedang sibuk, dan kartu kosong yang menetap jauh lebih
-                // buruk daripada satu permintaan tambahan.
-                if (!dapat)
-                {
-                    try
-                    {
-                        System.Threading.Thread.Sleep(1200);
-                        ThumbnailGate.Wait();
-                        try { dapat = UnduhThumbnail(url, cached); }
-                        finally { ThumbnailGate.Release(); }
-                    }
-                    catch (Exception error)
-                    {
-                        AppLog.Write("Thumbnail gagal pada percobaan kedua: " + url + " - " + error.Message);
-                    }
-                }
+        // Satu percobaan ulang. Kegagalan pertama sering hanya jaringan
+        // yang sedang sibuk, dan kartu kosong yang menetap jauh lebih
+        // buruk daripada satu permintaan tambahan.
+        if (!dapat)
+        {
+            try
+            {
+                System.Threading.Thread.Sleep(1200);
+                ThumbnailGate.Wait();
+                try { dapat = UnduhThumbnail(url, cached); }
+                finally { ThumbnailGate.Release(); }
+            }
+            catch (Exception error)
+            {
+                AppLog.Write("Thumbnail gagal pada percobaan kedua: " + url + " - " + error.Message);
+            }
+        }
 
-                if (!dapat)
-                {
-                    // Kartu yang gagal menampilkan tanda "tidak ada pratinjau"
-                    // alih-alih tetap kosong. Kartu kosong tidak memberi tahu
-                    // apa pun - tidak apakah gambarnya sedang dimuat, gagal,
-                    // atau memang tidak ada.
-                    try
-                    {
-                        image.Dispatcher.BeginInvoke(new Action(delegate
-                        {
-                            try { ShowThumbnailPlaceholder(image); } catch { }
-                        }));
-                    }
-                    catch { }
-                    return;
-                }
-
+        if (!dapat)
+        {
+            // Kartu yang gagal menampilkan tanda "tidak ada pratinjau"
+            // alih-alih tetap kosong. Kartu kosong tidak memberi tahu
+            // apa pun - tidak apakah gambarnya sedang dimuat, gagal,
+            // atau memang tidak ada.
+            try
+            {
                 image.Dispatcher.BeginInvoke(new Action(delegate
                 {
-                    try { ApplyImageFile(image, cached, decodeWidth); }
-                    catch (Exception error)
-                    {
-                        // Berkas lolos pemeriksaan tanda awal tetapi tetap
-                        // tidak bisa digambar - dekoder yang menolaknya.
-                        // Ditampilkan sebagai "tidak ada pratinjau", dan
-                        // dicatat, supaya tidak hilang tanpa jejak.
-                        AppLog.Write("Thumbnail tidak bisa digambar: " + url + " - " + error.Message);
-                        try { ShowThumbnailPlaceholder(image); } catch { }
-                    }
+                    try { ShowThumbnailPlaceholder(image); } catch { }
                 }));
+            }
+            catch { }
+            return;
+        }
+
+        image.Dispatcher.BeginInvoke(new Action(delegate
+        {
+            try { ApplyImageFile(image, cached, decodeWidth); }
+            catch (Exception error)
+            {
+                // Berkas lolos pemeriksaan tanda awal tetapi tetap
+                // tidak bisa digambar - dekoder yang menolaknya.
+                // Ditampilkan sebagai "tidak ada pratinjau", dan
+                // dicatat, supaya tidak hilang tanpa jejak.
+                AppLog.Write("Thumbnail tidak bisa digambar: " + url + " - " + error.Message);
+                try { ShowThumbnailPlaceholder(image); } catch { }
+            }
+        }));
             });
         }
 
@@ -4124,8 +4275,8 @@ namespace LumaWall
             // paling sering ditolak oleh perlindungan hotlink.
             try
             {
-                var uri = new Uri(url);
-                request.Referer = uri.Scheme + "://" + uri.Host + "/";
+        var uri = new Uri(url);
+        request.Referer = uri.Scheme + "://" + uri.Host + "/";
             }
             catch { }
 
@@ -4137,15 +4288,15 @@ namespace LumaWall
             using (var source = response.GetResponseStream())
             using (var target = File.Create(temporary))
             {
-                source.CopyTo(target);
+        source.CopyTo(target);
             }
 
             // Diperiksa isinya, bukan ukurannya: halaman error HTML bisa lebih
             // besar daripada ambang ukuran mana pun yang masuk akal.
             if (!LooksLikeImage(temporary))
             {
-                try { File.Delete(temporary); } catch { }
-                return false;
+        try { File.Delete(temporary); } catch { }
+        return false;
             }
 
             if (File.Exists(cached)) File.Delete(cached);
@@ -4171,7 +4322,7 @@ namespace LumaWall
         {
             byte[] hash;
             using (var sha = SHA1.Create())
-                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(url));
+        hash = sha.ComputeHash(Encoding.UTF8.GetBytes(url));
             var name = new StringBuilder(hash.Length * 2);
             foreach (byte b in hash) name.Append(b.ToString("x2"));
             return Path.Combine(store.Folder, "Thumbnails", name.ToString() + ".jpg");
@@ -4195,6 +4346,27 @@ namespace LumaWall
 
             config.Library = config.Library.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             AppLog.Write(string.Format("startup: library filtered ({0} files) at {1} ms", config.Library.Count, loadedClock.ElapsedMilliseconds));
+
+            // Berkas yang tersimpan dengan ekstensi salah diperbaiki SEBELUM
+            // apa pun dipasang.
+            //
+            // Alamat unduhan moewalls berakhir "download.php", sehingga berkas
+            // video tersimpan sebagai ".php" - dan Chromium menolak memutarnya,
+            // yang terlihat sebagai layar hitam. Berkas seperti itu sudah ada di
+            // PC pengguna, jadi memperbaiki kode pengunduhan saja tidak cukup:
+            // namanya harus dibetulkan di sini, dan penugasan per monitor ikut
+            // diperbarui supaya wallpaper-nya tidak hilang dari desktop.
+            try
+            {
+                int diperbaiki = PerbaikiEkstensiSalah();
+                if (diperbaiki > 0)
+                    AppLog.Write(string.Format("startup: {0} berkas dengan ekstensi salah diperbaiki", diperbaiki));
+            }
+            catch (Exception error)
+            {
+                AppLog.Write("startup: perbaikan ekstensi gagal - " + error.Message);
+            }
+
             store.Save(config);
             AppLog.Write(string.Format("startup: config saved at {0} ms", loadedClock.ElapsedMilliseconds));
 
@@ -4235,28 +4407,28 @@ namespace LumaWall
         {
             try
             {
-                string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
-                if (string.IsNullOrWhiteSpace(version))
-                {
-                    AppLog.Write("WebView2 Runtime NOT found; animated wallpapers will not render");
-                    Dispatcher.BeginInvoke(new Action(delegate { ShowToast(Tr("toast.noruntime")); }));
-                }
-                else
-                {
-                    AppLog.Write("WebView2 Runtime " + version);
-                }
+        string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            AppLog.Write("WebView2 Runtime NOT found; animated wallpapers will not render");
+            Dispatcher.BeginInvoke(new Action(delegate { ShowToast(Tr("toast.noruntime")); }));
+        }
+        else
+        {
+            AppLog.Write("WebView2 Runtime " + version);
+        }
             }
             catch (Exception ex)
             {
-                AppLog.Write("WebView2 Runtime check failed (treated as missing): " + ex.Message);
-                Dispatcher.BeginInvoke(new Action(delegate { ShowToast(Tr("toast.noruntime")); }));
+        AppLog.Write("WebView2 Runtime check failed (treated as missing): " + ex.Message);
+        Dispatcher.BeginInvoke(new Action(delegate { ShowToast(Tr("toast.noruntime")); }));
             }
         }
 
         internal void HandleSecondaryInvocation(string[] args)
         {
             bool backgroundOnly = args.Any(x => string.Equals(x, "--background", StringComparison.OrdinalIgnoreCase)) &&
-                !args.Any(x => x.StartsWith("--apply=", StringComparison.OrdinalIgnoreCase));
+        !args.Any(x => x.StartsWith("--apply=", StringComparison.OrdinalIgnoreCase));
             bool silent = args.Any(x => string.Equals(x, "--silent", StringComparison.OrdinalIgnoreCase));
             HandleInvocation(args, !backgroundOnly && !silent);
         }
@@ -4266,44 +4438,44 @@ namespace LumaWall
             string applyArgument = args.FirstOrDefault(x => x.StartsWith("--apply=", StringComparison.OrdinalIgnoreCase));
             if (!string.IsNullOrWhiteSpace(applyArgument))
             {
-                string requested = applyArgument.Substring("--apply=".Length).Trim().Trim('"');
-                if (File.Exists(requested))
-                {
-                    if (!config.Library.Contains(requested, StringComparer.OrdinalIgnoreCase)) config.Library.Add(requested);
-                    selectedVideo = requested;
-                    bool allTargets = args.Any(x => string.Equals(x, "--all-monitors", StringComparison.OrdinalIgnoreCase));
-                    string monitorArgument = args.FirstOrDefault(x => x.StartsWith("--monitor=", StringComparison.OrdinalIgnoreCase));
-                    Forms.Screen[] orderedScreens = OrderedScreens();
-                    Forms.Screen[] targets = allTargets ? orderedScreens : new[] { Forms.Screen.PrimaryScreen };
-                    int monitorNumber;
-                    if (!allTargets && !string.IsNullOrWhiteSpace(monitorArgument) && int.TryParse(monitorArgument.Substring("--monitor=".Length), out monitorNumber) && monitorNumber >= 1 && monitorNumber <= orderedScreens.Length)
-                        targets = new[] { orderedScreens[monitorNumber - 1] };
-                    foreach (Forms.Screen target in targets)
-                    {
-                        manager.Apply(target, requested, config.Mute, config.TargetFps);
-                        config.SetWallpaper(target.DeviceName, requested);
-                    }
-                    store.Save(config);
-                    AppLog.Write("Invocation applied wallpaper to " + targets.Length + " monitor(s): " + requested);
-                }
-                else
-                {
-                    // This used to fall through with no log at all, so an --apply= that
-                    // named a missing file looked identical to one that worked: nothing
-                    // happened and nothing was written down.
-                    AppLog.Write("Invocation ignored; no such file: " + requested);
-                }
+        string requested = applyArgument.Substring("--apply=".Length).Trim().Trim('"');
+        if (File.Exists(requested))
+        {
+            if (!config.Library.Contains(requested, StringComparer.OrdinalIgnoreCase)) config.Library.Add(requested);
+            selectedVideo = requested;
+            bool allTargets = args.Any(x => string.Equals(x, "--all-monitors", StringComparison.OrdinalIgnoreCase));
+            string monitorArgument = args.FirstOrDefault(x => x.StartsWith("--monitor=", StringComparison.OrdinalIgnoreCase));
+            Forms.Screen[] orderedScreens = OrderedScreens();
+            Forms.Screen[] targets = allTargets ? orderedScreens : new[] { Forms.Screen.PrimaryScreen };
+            int monitorNumber;
+            if (!allTargets && !string.IsNullOrWhiteSpace(monitorArgument) && int.TryParse(monitorArgument.Substring("--monitor=".Length), out monitorNumber) && monitorNumber >= 1 && monitorNumber <= orderedScreens.Length)
+                targets = new[] { orderedScreens[monitorNumber - 1] };
+            foreach (Forms.Screen target in targets)
+            {
+                manager.Apply(target, requested, config.Mute, config.TargetFps);
+                config.SetWallpaper(target.DeviceName, requested);
+            }
+            store.Save(config);
+            AppLog.Write("Invocation applied wallpaper to " + targets.Length + " monitor(s): " + requested);
+        }
+        else
+        {
+            // This used to fall through with no log at all, so an --apply= that
+            // named a missing file looked identical to one that worked: nothing
+            // happened and nothing was written down.
+            AppLog.Write("Invocation ignored; no such file: " + requested);
+        }
             }
             if (showWindow)
             {
-                // Page selection from the command line: used by the marketing
-                // capture script, and handy for shortcuts that open straight to
-                // a section.
-                if (args.Any(x => string.Equals(x, "--library", StringComparison.OrdinalIgnoreCase))) SwitchPage("library");
-                else if (args.Any(x => string.Equals(x, "--displays", StringComparison.OrdinalIgnoreCase))) SwitchPage("displays");
-                else if (args.Any(x => string.Equals(x, "--performance", StringComparison.OrdinalIgnoreCase))) SwitchPage("performance");
-                else if (args.Any(x => string.Equals(x, "--discover", StringComparison.OrdinalIgnoreCase))) SwitchPage("discover");
-                ShowFromTray();
+        // Page selection from the command line: used by the marketing
+        // capture script, and handy for shortcuts that open straight to
+        // a section.
+        if (args.Any(x => string.Equals(x, "--library", StringComparison.OrdinalIgnoreCase))) SwitchPage("library");
+        else if (args.Any(x => string.Equals(x, "--displays", StringComparison.OrdinalIgnoreCase))) SwitchPage("displays");
+        else if (args.Any(x => string.Equals(x, "--performance", StringComparison.OrdinalIgnoreCase))) SwitchPage("performance");
+        else if (args.Any(x => string.Equals(x, "--discover", StringComparison.OrdinalIgnoreCase))) SwitchPage("discover");
+        ShowFromTray();
             }
         }
 
@@ -4319,7 +4491,7 @@ namespace LumaWall
             // renumbers the displays.
             manager.WallpaperLookup = delegate(string device)
             {
-                return config.WallpaperFor(device);
+        return config.WallpaperFor(device);
             };
             manager.SetDefaults(config.Mute, config.TargetFps);
             // The resolution mode is a property of the machine, so it is pushed to the
@@ -4328,48 +4500,48 @@ namespace LumaWall
             manager.SetResolutionMode(config.VideoResolution);
             foreach (Forms.Screen screen in Forms.Screen.AllScreens)
             {
-                string path = config.WallpaperFor(screen.DeviceName);
-                if (string.IsNullOrWhiteSpace(path))
-                    continue;
+        string path = config.WallpaperFor(screen.DeviceName);
+        if (string.IsNullOrWhiteSpace(path))
+            continue;
 
-                // A wallpaper whose file cannot be found used to be skipped in silence.
-                //
-                // That silence is a real defect, and it is what "primary display ga jalan
-                // animasinya" was: the config held a path that no longer resolved, the
-                // monitor was dropped from the restore loop without a log line and without
-                // anything on screen, and the desktop simply stayed empty on that display.
-                //
-                // The path can stop resolving for reasons that have nothing to do with the
-                // file being deleted. A name with a non-ASCII character is the one that
-                // actually happened here: the config stored "Ð¡iaccona - Wuthering
-                // Waves.mp4" while the disk holds "Сiaccona - Wuthering Waves.mp4" - the
-                // Cyrillic С had been mangled into two characters. File.Exists said no, the
-                // monitor was skipped, and the wallpaper that was sitting right there was
-                // never shown.
-                //
-                // So: try the recorded path, then look for a file in the same folder whose
-                // name matches once the encoding is repaired. If one is found, use it and
-                // write the corrected path back.
-                string resolved = ResolveWallpaperPath(path);
-                if (resolved == null)
-                {
-                    AppLog.Write(string.Format(
-                        "Wallpaper for {0} could not be found and was skipped: {1}",
-                        screen.DeviceName, path));
-                    continue;
-                }
-                if (!string.Equals(resolved, path, StringComparison.Ordinal))
-                {
-                    AppLog.Write(string.Format(
-                        "Wallpaper for {0} was recorded as '{1}' but found as '{2}'; using the file on disk",
-                        screen.DeviceName, path, resolved));
-                    config.SetWallpaper(screen.DeviceName, resolved);
-                    store.Save(config);
-                }
-                // Record the assignment under the monitor's identity as well, so the
-                // next run finds it without having to fall back to the display number.
-                config.SetWallpaper(screen.DeviceName, resolved);
-                manager.Apply(screen, resolved, config.Mute, config.TargetFps);
+        // A wallpaper whose file cannot be found used to be skipped in silence.
+        //
+        // That silence is a real defect, and it is what "primary display ga jalan
+        // animasinya" was: the config held a path that no longer resolved, the
+        // monitor was dropped from the restore loop without a log line and without
+        // anything on screen, and the desktop simply stayed empty on that display.
+        //
+        // The path can stop resolving for reasons that have nothing to do with the
+        // file being deleted. A name with a non-ASCII character is the one that
+        // actually happened here: the config stored "Ð¡iaccona - Wuthering
+        // Waves.mp4" while the disk holds "Сiaccona - Wuthering Waves.mp4" - the
+        // Cyrillic С had been mangled into two characters. File.Exists said no, the
+        // monitor was skipped, and the wallpaper that was sitting right there was
+        // never shown.
+        //
+        // So: try the recorded path, then look for a file in the same folder whose
+        // name matches once the encoding is repaired. If one is found, use it and
+        // write the corrected path back.
+        string resolved = ResolveWallpaperPath(path);
+        if (resolved == null)
+        {
+            AppLog.Write(string.Format(
+                "Wallpaper for {0} could not be found and was skipped: {1}",
+                screen.DeviceName, path));
+            continue;
+        }
+        if (!string.Equals(resolved, path, StringComparison.Ordinal))
+        {
+            AppLog.Write(string.Format(
+                "Wallpaper for {0} was recorded as '{1}' but found as '{2}'; using the file on disk",
+                screen.DeviceName, path, resolved));
+            config.SetWallpaper(screen.DeviceName, resolved);
+            store.Save(config);
+        }
+        // Record the assignment under the monitor's identity as well, so the
+        // next run finds it without having to fall back to the display number.
+        config.SetWallpaper(screen.DeviceName, resolved);
+        manager.Apply(screen, resolved, config.Mute, config.TargetFps);
             }
 
             // Saved once at the end rather than inside the loop: the identity keys are
@@ -4397,22 +4569,22 @@ namespace LumaWall
             string folder = Path.GetDirectoryName(path);
             string name = Path.GetFileName(path);
             if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(name) || !Directory.Exists(folder))
-                return null;
+        return null;
 
             var candidates = new List<string> { name };
             try
             {
-                // UTF-8 bytes that were read as Latin-1: "Ð¡" -> "С".
-                byte[] asLatin1 = Encoding.GetEncoding(28591).GetBytes(name);
-                candidates.Add(Encoding.UTF8.GetString(asLatin1));
+        // UTF-8 bytes that were read as Latin-1: "Ð¡" -> "С".
+        byte[] asLatin1 = Encoding.GetEncoding(28591).GetBytes(name);
+        candidates.Add(Encoding.UTF8.GetString(asLatin1));
             }
             catch { }
             try
             {
-                // The other direction: characters written as UTF-8 that were meant to be
-                // read back as Latin-1.
-                byte[] asUtf8 = Encoding.UTF8.GetBytes(name);
-                candidates.Add(Encoding.GetEncoding(28591).GetString(asUtf8));
+        // The other direction: characters written as UTF-8 that were meant to be
+        // read back as Latin-1.
+        byte[] asUtf8 = Encoding.UTF8.GetBytes(name);
+        candidates.Add(Encoding.GetEncoding(28591).GetString(asUtf8));
             }
             catch { }
 
@@ -4422,18 +4594,18 @@ namespace LumaWall
 
             foreach (string candidate in candidates)
             {
-                // Exact name first.
-                string direct = Path.Combine(folder, candidate);
-                if (File.Exists(direct)) return direct;
+        // Exact name first.
+        string direct = Path.Combine(folder, candidate);
+        if (File.Exists(direct)) return direct;
 
-                // Then a case- and form-insensitive match against what is really there. This
-                // also covers a file whose name differs only by a Unicode normalisation the
-                // filesystem treats as distinct.
-                foreach (string file in onDisk)
-                {
-                    if (string.Equals(Path.GetFileName(file), candidate, StringComparison.OrdinalIgnoreCase))
-                        return file;
-                }
+        // Then a case- and form-insensitive match against what is really there. This
+        // also covers a file whose name differs only by a Unicode normalisation the
+        // filesystem treats as distinct.
+        foreach (string file in onDisk)
+        {
+            if (string.Equals(Path.GetFileName(file), candidate, StringComparison.OrdinalIgnoreCase))
+                return file;
+        }
             }
 
             // Last resort: the same extension and the same tail, which is enough to identify
@@ -4441,9 +4613,9 @@ namespace LumaWall
             string tail = name.Length > 12 ? name.Substring(name.Length - 12) : name;
             foreach (string file in onDisk)
             {
-                string other = Path.GetFileName(file);
-                if (other.Length == name.Length && other.EndsWith(tail, StringComparison.OrdinalIgnoreCase))
-                    return file;
+        string other = Path.GetFileName(file);
+        if (other.Length == name.Length && other.EndsWith(tail, StringComparison.OrdinalIgnoreCase))
+            return file;
             }
             return null;
         }
@@ -4481,15 +4653,15 @@ namespace LumaWall
             // Jeda otomatis: jendela yang menutupi layar.
             if (!globalPause)
             {
-                // Both lists come from ONE pass over the window list. Asking for them
-                // separately walked every window twice, every two seconds, for as long as
-                // the app ran - which was the largest part of its idle CPU.
-                List<string> fullscreen, maximized;
-                NativeDesktop.FindCoveringMonitors(out fullscreen, out maximized);
-                if (config.PauseFullscreen)
-                    foreach (string device in fullscreen) covered.Add(device);
-                if (config.PauseMaximized)
-                    foreach (string device in maximized) covered.Add(device);
+        // Both lists come from ONE pass over the window list. Asking for them
+        // separately walked every window twice, every two seconds, for as long as
+        // the app ran - which was the largest part of its idle CPU.
+        List<string> fullscreen, maximized;
+        NativeDesktop.FindCoveringMonitors(out fullscreen, out maximized);
+        if (config.PauseFullscreen)
+            foreach (string device in fullscreen) covered.Add(device);
+        if (config.PauseMaximized)
+            foreach (string device in maximized) covered.Add(device);
             }
             // Pilihan pengguna, ditambahkan di atas jeda otomatis.
             //
@@ -4521,19 +4693,19 @@ namespace LumaWall
             string signature = GetMonitorSignature();
             if (signature != lastMonitorSignature)
             {
-                lastMonitorSignature = signature;
+        lastMonitorSignature = signature;
 
-                // The identity cache is per display number, and this is the one moment
-                // it is guaranteed to be stale: a number can now belong to a different
-                // monitor. Reading a cached answer here would describe the monitor that
-                // used to hold the number - the exact mix-up being fixed.
-                MonitorIdentity.Forget();
-                config.ReconcileMonitors();
+        // The identity cache is per display number, and this is the one moment
+        // it is guaranteed to be stale: a number can now belong to a different
+        // monitor. Reading a cached answer here would describe the monitor that
+        // used to hold the number - the exact mix-up being fixed.
+        MonitorIdentity.Forget();
+        config.ReconcileMonitors();
 
-                manager.CloseAll();
-                RestoreWallpapers();
-                ShowToast(Forms.Screen.AllScreens.Length + " " + Tr("apply.screens"));
-                if (activePage == "displays") SwitchPage("displays");
+        manager.CloseAll();
+        RestoreWallpapers();
+        ShowToast(Forms.Screen.AllScreens.Length + " " + Tr("apply.screens"));
+        if (activePage == "displays") SwitchPage("displays");
             }
             if (activePage == "performance") UpdateTelemetry();
 
@@ -4546,9 +4718,9 @@ namespace LumaWall
             // berkas asli pengguna tidak pernah disentuh.
             if ((DateTime.UtcNow - terakhirBersihkanCache).TotalHours >= 6)
             {
-                terakhirBersihkanCache = DateTime.UtcNow;
-                var umur = TimeSpan.FromDays(14);
-                Task.Run(delegate { VideoScale.BersihkanCache(umur); });
+        terakhirBersihkanCache = DateTime.UtcNow;
+        var umur = TimeSpan.FromDays(14);
+        Task.Run(delegate { VideoScale.BersihkanCache(umur); });
             }
             }
 
@@ -4574,11 +4746,11 @@ namespace LumaWall
             menu.Items.Add("Buka LumaWall", null, delegate { ShowFromTray(); });
             menu.Items.Add("Pause / Lanjut", null, delegate
             {
-                userPaused = !userPaused;
-                // Apply immediately instead of waiting for the next 2s health tick,
-                // which made the tray toggle feel broken for up to two seconds.
-                ApplyPauseState();
-                ShowToast(userPaused ? "Wallpaper dijeda" : "Wallpaper dilanjutkan");
+        userPaused = !userPaused;
+        // Apply immediately instead of waiting for the next 2s health tick,
+        // which made the tray toggle feel broken for up to two seconds.
+        ApplyPauseState();
+        ShowToast(userPaused ? "Wallpaper dijeda" : "Wallpaper dilanjutkan");
             });
             menu.Items.Add("Keluar", null, delegate { ExitApp(); });
             tray.ContextMenuStrip = menu;
@@ -4654,7 +4826,7 @@ namespace LumaWall
             manager.Config = config;
 
             if (desktopTimer == null)
-                desktopTimer = new DesktopTimer(delegate { return config.Timer; }, delegate { return manager.PrimaryWallpaperHandle(); });
+        desktopTimer = new DesktopTimer(delegate { return config.Timer; }, delegate { return manager.PrimaryWallpaperHandle(); });
 
             if (config.Timer != null && config.Timer.Enabled) desktopTimer.Start();
             else desktopTimer.Stop();
@@ -4677,10 +4849,10 @@ namespace LumaWall
             grid.Children.Add(copy);
             if (action != null)
             {
-                var element = action as FrameworkElement;
-                if (element != null) element.VerticalAlignment = VerticalAlignment.Center;
-                Grid.SetColumn(action, 1);
-                grid.Children.Add(action);
+        var element = action as FrameworkElement;
+        if (element != null) element.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(action, 1);
+        grid.Children.Add(action);
             }
             return grid;
         }
@@ -4701,13 +4873,13 @@ namespace LumaWall
             // time, from a call site that reads as harmless.
             if (action != null && click != null)
             {
-                var button = new Button { Content = action, Foreground = new SolidColorBrush(CPrimaryHi), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontSize = 12 };
-                // Same reason as the settings toggle: the default template's hover is a
-                // pale blue that does not belong in this palette.
-                SetRoundedButton(button, 5);
-                button.Click += click;
-                Grid.SetColumn(button, 1);
-                grid.Children.Add(button);
+        var button = new Button { Content = action, Foreground = new SolidColorBrush(CPrimaryHi), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontSize = 12 };
+        // Same reason as the settings toggle: the default template's hover is a
+        // pale blue that does not belong in this palette.
+        SetRoundedButton(button, 5);
+        button.Click += click;
+        Grid.SetColumn(button, 1);
+        grid.Children.Add(button);
             }
 
             return grid;
@@ -4755,35 +4927,35 @@ namespace LumaWall
             stack.Children.Add(Icons.Build(iconName, 12, Brushes.White));
             stack.Children.Add(new TextBlock
             {
-                Text = text,
-                Foreground = Brushes.White,
-                FontSize = 12,
-                Margin = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.SemiBold,
-                // Teks tombol tidak boleh dibungkus.
-                //
-                // Tombol dengan ikon dan teks di dalamnya punya lebar yang
-                // ditentukan isinya, dan kalau teksnya dibungkus, "Add wallpaper"
-                // menjadi dua baris di dalam tombol setinggi 38px - terlihat
-                // sebagai tombol yang isinya tumpang tindih.
-                //
-                // NoWrap dengan lebar otomatis membuat tombolnya melebar mengikuti
-                // teksnya, yang memang perilaku yang benar untuk tombol.
-                TextWrapping = TextWrapping.NoWrap,
+        Text = text,
+        Foreground = Brushes.White,
+        FontSize = 12,
+        Margin = new Thickness(8, 0, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center,
+        FontWeight = FontWeights.SemiBold,
+        // Teks tombol tidak boleh dibungkus.
+        //
+        // Tombol dengan ikon dan teks di dalamnya punya lebar yang
+        // ditentukan isinya, dan kalau teksnya dibungkus, "Add wallpaper"
+        // menjadi dua baris di dalam tombol setinggi 38px - terlihat
+        // sebagai tombol yang isinya tumpang tindih.
+        //
+        // NoWrap dengan lebar otomatis membuat tombolnya melebar mengikuti
+        // teksnya, yang memang perilaku yang benar untuk tombol.
+        TextWrapping = TextWrapping.NoWrap,
             });
             var b = new Button
             {
-                Content = stack,
-                Height = 38,
-                Padding = new Thickness(17, 0, 17, 0),
-                Background = new SolidColorBrush(CPrimary),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0),
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = FontWeights.SemiBold,
-                Effect = new DropShadowEffect { Color = CPrimary, BlurRadius = 14, ShadowDepth = 0, Opacity = .5 }
+        Content = stack,
+        Height = 38,
+        Padding = new Thickness(17, 0, 17, 0),
+        Background = new SolidColorBrush(CPrimary),
+        Foreground = Brushes.White,
+        BorderThickness = new Thickness(0),
+        Cursor = Cursors.Hand,
+        VerticalAlignment = VerticalAlignment.Center,
+        FontWeight = FontWeights.SemiBold,
+        Effect = new DropShadowEffect { Color = CPrimary, BlurRadius = 14, ShadowDepth = 0, Opacity = .5 }
             };
             b.MouseEnter += delegate { b.Background = new SolidColorBrush(CPrimaryHi); };
             b.MouseLeave += delegate { b.Background = new SolidColorBrush(CPrimary); };
@@ -4795,16 +4967,16 @@ namespace LumaWall
         {
             var b = new Button
             {
-                Content = text,
-                Height = 38,
-                Padding = new Thickness(15, 0, 15, 0),
-                Background = new SolidColorBrush(CSurface2),
-                Foreground = new SolidColorBrush(CText),
-                BorderBrush = new SolidColorBrush(CBorder),
-                BorderThickness = new Thickness(1),
-                Cursor = Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 12
+        Content = text,
+        Height = 38,
+        Padding = new Thickness(15, 0, 15, 0),
+        Background = new SolidColorBrush(CSurface2),
+        Foreground = new SolidColorBrush(CText),
+        BorderBrush = new SolidColorBrush(CBorder),
+        BorderThickness = new Thickness(1),
+        Cursor = Cursors.Hand,
+        VerticalAlignment = VerticalAlignment.Center,
+        FontSize = 12
             };
             b.MouseEnter += delegate { b.Background = new SolidColorBrush(CSurfaceHover); b.BorderBrush = new SolidColorBrush(CBorderHot); };
             b.MouseLeave += delegate { b.Background = new SolidColorBrush(CSurface2); b.BorderBrush = new SolidColorBrush(CBorder); };
@@ -4816,14 +4988,14 @@ namespace LumaWall
         {
             var button = new Button
             {
-                Content = Icons.Build(IconNameFor(icon), 13, new SolidColorBrush(CText)),
-                ToolTip = tooltip,
-                Width = 40,
-                Height = 38,
-                Background = new SolidColorBrush(CSurface2),
-                BorderBrush = new SolidColorBrush(CBorder),
-                BorderThickness = new Thickness(1),
-                Cursor = Cursors.Hand
+        Content = Icons.Build(IconNameFor(icon), 13, new SolidColorBrush(CText)),
+        ToolTip = tooltip,
+        Width = 40,
+        Height = 38,
+        Background = new SolidColorBrush(CSurface2),
+        BorderBrush = new SolidColorBrush(CBorder),
+        BorderThickness = new Thickness(1),
+        Cursor = Cursors.Hand
             };
             System.Windows.Automation.AutomationProperties.SetName(button, tooltip);
             SetRoundedButton(button, 7);
@@ -4842,28 +5014,28 @@ namespace LumaWall
             // ContentPresenter (0,0 ukuran 113x14 di dalam 110x14)".
             var label = new TextBlock
             {
-                Text = text,
-                FontSize = 10.5,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+        Text = text,
+        FontSize = 10.5,
+        FontWeight = FontWeights.SemiBold,
+        TextTrimming = TextTrimming.CharacterEllipsis,
+        TextAlignment = TextAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Stretch
             };
             var button = new Button
             {
-                Content = label,
-                Height = 31,
-                MinWidth = 64,
-                Padding = new Thickness(8, 0, 8, 0),
-                Background = new SolidColorBrush(CSurface2),
-                Foreground = new SolidColorBrush(CText),
-                BorderBrush = new SolidColorBrush(CBorder),
-                BorderThickness = new Thickness(1),
-                Cursor = Cursors.Hand,
-                FontSize = 10.5,
-                FontWeight = FontWeights.SemiBold,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center
+        Content = label,
+        Height = 31,
+        MinWidth = 64,
+        Padding = new Thickness(8, 0, 8, 0),
+        Background = new SolidColorBrush(CSurface2),
+        Foreground = new SolidColorBrush(CText),
+        BorderBrush = new SolidColorBrush(CBorder),
+        BorderThickness = new Thickness(1),
+        Cursor = Cursors.Hand,
+        FontSize = 10.5,
+        FontWeight = FontWeights.SemiBold,
+        HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center
             };
             button.MouseEnter += delegate { button.Background = new SolidColorBrush(CPrimary); button.BorderBrush = new SolidColorBrush(CPrimary); button.Foreground = Brushes.White; };
             button.MouseLeave += delegate { button.Background = new SolidColorBrush(CSurface2); button.BorderBrush = new SolidColorBrush(CBorder); button.Foreground = new SolidColorBrush(CText); };
@@ -4884,29 +5056,29 @@ namespace LumaWall
         {
             switch (code)
             {
-                case "\uE80F": return Icons.Dashboard;
-                case "\uE8F1": return Icons.Library;
-                case "\uE774": return Icons.Catalog;
-                case "\uE7F4": return Icons.Displays;
-                case "\uE945": return Icons.Performance;
-                case "\uE721": return Icons.Search;
-                case "\uE710": return Icons.Add;
-                case "\uE768": return Icons.Apply;
-                case "\uE896": return Icons.Download;
-                case "\uE71A": return Icons.Stop;
-                case "\uE950": return Icons.Cpu;
-                case "\uE964": return Icons.Memory;
-                case "\uE7BA": return Icons.Warning;
-                case "\uE7C3": return Icons.Empty;
-                case "\uE73E": return Icons.Check;
-                case "\uE74E": return Icons.Save;
-                case "\uE8B9": return Icons.AllDisplays;
-                case "\uE8BB": return Icons.Close;
-                case "\uE921": return Icons.Minimize;
-                case "\uE922": return Icons.Maximize;
-                case "\uE923": return Icons.Restore;
-                case "\uE72C": return Icons.Optimize;
-                default: return Icons.Wallpaper;
+        case "\uE80F": return Icons.Dashboard;
+        case "\uE8F1": return Icons.Library;
+        case "\uE774": return Icons.Catalog;
+        case "\uE7F4": return Icons.Displays;
+        case "\uE945": return Icons.Performance;
+        case "\uE721": return Icons.Search;
+        case "\uE710": return Icons.Add;
+        case "\uE768": return Icons.Apply;
+        case "\uE896": return Icons.Download;
+        case "\uE71A": return Icons.Stop;
+        case "\uE950": return Icons.Cpu;
+        case "\uE964": return Icons.Memory;
+        case "\uE7BA": return Icons.Warning;
+        case "\uE7C3": return Icons.Empty;
+        case "\uE73E": return Icons.Check;
+        case "\uE74E": return Icons.Save;
+        case "\uE8B9": return Icons.AllDisplays;
+        case "\uE8BB": return Icons.Close;
+        case "\uE921": return Icons.Minimize;
+        case "\uE922": return Icons.Maximize;
+        case "\uE923": return Icons.Restore;
+        case "\uE72C": return Icons.Optimize;
+        default: return Icons.Wallpaper;
             }
         }
 
@@ -4915,8 +5087,8 @@ namespace LumaWall
             DependencyObject current = source as DependencyObject;
             while (current != null && current != stopAt)
             {
-                if (current is Button) return true;
-                current = VisualTreeHelper.GetParent(current);
+        if (current is Button) return true;
+        current = VisualTreeHelper.GetParent(current);
             }
             return false;
         }
@@ -4938,19 +5110,19 @@ namespace LumaWall
             // Plate: the dark squircle the icon generator paints first.
             root.Children.Add(new Border
             {
-                CornerRadius = new CornerRadius(size * plateRadius),
-                Background = new LinearGradientBrush
-                {
-                    StartPoint = new Point(0, 0),
-                    EndPoint = new Point(0, 1),
-                    GradientStops = new GradientStopCollection
-                    {
-                        new GradientStop(Color.FromRgb(16, 19, 26), 0),
-                        new GradientStop(Color.FromRgb(7, 8, 11), 1)
-                    }
-                },
-                BorderBrush = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)),
-                BorderThickness = new Thickness(1)
+        CornerRadius = new CornerRadius(size * plateRadius),
+        Background = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(0, 1),
+            GradientStops = new GradientStopCollection
+            {
+                new GradientStop(Color.FromRgb(16, 19, 26), 0),
+                new GradientStop(Color.FromRgb(7, 8, 11), 1)
+            }
+        },
+        BorderBrush = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)),
+        BorderThickness = new Thickness(1)
             });
 
             // The "L", mirrored from mark_outline() in the generator: bold strokes,
@@ -4968,32 +5140,32 @@ namespace LumaWall
             Func<double, double, Point> pt = (x, y) => new Point(cx + x * s, cy + y * s);
             var mark = new System.Windows.Shapes.Polygon
             {
-                Points = new PointCollection
-                {
-                    pt(-0.24, -0.38),
-                    pt(-0.08, -0.38),
-                    pt(-0.08, 0.08),
-                    pt(0.38, 0.08),
-                    pt(0.38, 0.24),
-                    pt(0.24, 0.38),
-                    pt(-0.38, 0.38),
-                    pt(-0.38, -0.24)
-                },
-                // One brush across the whole mark so the ramp runs corner to corner
-                // exactly like the generated icon.
-                Fill = new LinearGradientBrush
-                {
-                    StartPoint = new Point(0, 0),
-                    EndPoint = new Point(1, 1),
-                    GradientStops = new GradientStopCollection
-                    {
-                        new GradientStop(CPrimary, 0.00),
-                        new GradientStop(CPrimaryHi, 0.28),
-                        new GradientStop(Color.FromRgb(255, 238, 244), 0.50),
-                        new GradientStop(Color.FromRgb(124, 233, 252), 0.72),
-                        new GradientStop(CAccent, 1.00)
-                    }
-                }
+        Points = new PointCollection
+        {
+            pt(-0.24, -0.38),
+            pt(-0.08, -0.38),
+            pt(-0.08, 0.08),
+            pt(0.38, 0.08),
+            pt(0.38, 0.24),
+            pt(0.24, 0.38),
+            pt(-0.38, 0.38),
+            pt(-0.38, -0.24)
+        },
+        // One brush across the whole mark so the ramp runs corner to corner
+        // exactly like the generated icon.
+        Fill = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            GradientStops = new GradientStopCollection
+            {
+                new GradientStop(CPrimary, 0.00),
+                new GradientStop(CPrimaryHi, 0.28),
+                new GradientStop(Color.FromRgb(255, 238, 244), 0.50),
+                new GradientStop(Color.FromRgb(124, 233, 252), 0.72),
+                new GradientStop(CAccent, 1.00)
+            }
+        }
             };
             root.Children.Add(mark);
             return root;
@@ -5081,8 +5253,8 @@ namespace LumaWall
         {
             try
             {
-                int length = 0;
-                return GetCurrentPackageFullName(ref length, null) == ERROR_INSUFFICIENT_BUFFER;
+        int length = 0;
+        return GetCurrentPackageFullName(ref length, null) == ERROR_INSUFFICIENT_BUFFER;
             }
             catch { return false; }
         }
@@ -5127,12 +5299,12 @@ namespace LumaWall
             IntPtr classId = IntPtr.Zero;
             try
             {
-                if (WindowsCreateString(className, className.Length, out classId) != 0) return -1;
-                return RoGetActivationFactory(classId, ref iid, out factory);
+        if (WindowsCreateString(className, className.Length, out classId) != 0) return -1;
+        return RoGetActivationFactory(classId, ref iid, out factory);
             }
             finally
             {
-                if (classId != IntPtr.Zero) WindowsDeleteString(classId);
+        if (classId != IntPtr.Zero) WindowsDeleteString(classId);
             }
         }
 
@@ -5170,64 +5342,64 @@ namespace LumaWall
             IntPtr factory = IntPtr.Zero, taskId = IntPtr.Zero, task = IntPtr.Zero;
             try
             {
-                Guid iid = IID_IStartupTaskStatics;
-                int hr = ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory);
-                if (hr != 0 || factory == IntPtr.Zero)
-                {
-                    AppLog.Write("StartupTask activation failed (hr=0x" + hr.ToString("X8") + "); using the Run key");
-                    return false;
-                }
+        Guid iid = IID_IStartupTaskStatics;
+        int hr = ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory);
+        if (hr != 0 || factory == IntPtr.Zero)
+        {
+            AppLog.Write("StartupTask activation failed (hr=0x" + hr.ToString("X8") + "); using the Run key");
+            return false;
+        }
 
-                if (WindowsCreateString("LumaWallStartup", 15, out taskId) != 0) return false;
+        if (WindowsCreateString("LumaWallStartup", 15, out taskId) != 0) return false;
 
-                IntPtr operation = IntPtr.Zero;
-                hr = Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation);
-                if (hr != 0 || operation == IntPtr.Zero)
-                {
-                    AppLog.Write("StartupTask.GetAsync failed (hr=0x" + hr.ToString("X8") + ")");
-                    return false;
-                }
+        IntPtr operation = IntPtr.Zero;
+        hr = Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation);
+        if (hr != 0 || operation == IntPtr.Zero)
+        {
+            AppLog.Write("StartupTask.GetAsync failed (hr=0x" + hr.ToString("X8") + ")");
+            return false;
+        }
 
-                hr = Resolve(operation, out task);
-                if (hr != 0 || task == IntPtr.Zero)
-                {
-                    AppLog.Write("StartupTask lookup returned nothing (hr=0x" + hr.ToString("X8") + ")");
-                    return false;
-                }
+        hr = Resolve(operation, out task);
+        if (hr != 0 || task == IntPtr.Zero)
+        {
+            AppLog.Write("StartupTask lookup returned nothing (hr=0x" + hr.ToString("X8") + ")");
+            return false;
+        }
 
-                if (enabled)
-                {
-                    IntPtr op2 = IntPtr.Zero;
-                    hr = Vtable<RequestEnableAsyncDelegate>(task, Slot_RequestEnableAsync)(task, out op2);
-                    if (hr != 0 || op2 == IntPtr.Zero)
-                    {
-                        AppLog.Write("StartupTask.RequestEnableAsync failed (hr=0x" + hr.ToString("X8") + ")");
-                        return false;
-                    }
-                    IntPtr statePtr;
-                    hr = Resolve(op2, out statePtr);
-                    int state = hr == 0 ? statePtr.ToInt32() : -1;
-                    AppLog.Write("MSIX startup task requested; state=" + state);
-                    if (state == StartupDisabledByUser)
-                        AppLog.Write("Startup is disabled by the user in Windows settings and must be re-enabled there");
-                }
-                else
-                {
-                    hr = Vtable<DisableDelegate>(task, Slot_Disable)(task);
-                    AppLog.Write("MSIX startup task disabled (hr=0x" + hr.ToString("X8") + ")");
-                }
-                return true;
+        if (enabled)
+        {
+            IntPtr op2 = IntPtr.Zero;
+            hr = Vtable<RequestEnableAsyncDelegate>(task, Slot_RequestEnableAsync)(task, out op2);
+            if (hr != 0 || op2 == IntPtr.Zero)
+            {
+                AppLog.Write("StartupTask.RequestEnableAsync failed (hr=0x" + hr.ToString("X8") + ")");
+                return false;
+            }
+            IntPtr statePtr;
+            hr = Resolve(op2, out statePtr);
+            int state = hr == 0 ? statePtr.ToInt32() : -1;
+            AppLog.Write("MSIX startup task requested; state=" + state);
+            if (state == StartupDisabledByUser)
+                AppLog.Write("Startup is disabled by the user in Windows settings and must be re-enabled there");
+        }
+        else
+        {
+            hr = Vtable<DisableDelegate>(task, Slot_Disable)(task);
+            AppLog.Write("MSIX startup task disabled (hr=0x" + hr.ToString("X8") + ")");
+        }
+        return true;
             }
             catch (Exception ex)
             {
-                AppLog.Write("StartupTask call failed (" + ex.Message + "); using the Run key");
-                return false;
+        AppLog.Write("StartupTask call failed (" + ex.Message + "); using the Run key");
+        return false;
             }
             finally
             {
-                if (task != IntPtr.Zero) Marshal.Release(task);
-                if (factory != IntPtr.Zero) Marshal.Release(factory);
-                if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
+        if (task != IntPtr.Zero) Marshal.Release(task);
+        if (factory != IntPtr.Zero) Marshal.Release(factory);
+        if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
             }
         }
 
@@ -5244,19 +5416,19 @@ namespace LumaWall
             result = IntPtr.Zero;
             for (int attempt = 0; attempt < 200; attempt++)   // up to ~10 s
             {
-                try
-                {
-                    int hr = Vtable<GetResultsDelegate>(operation, Slot_GetResults)(operation, out result);
-                    if (hr == 0) return 0;
-                    // E_ILLEGAL_METHOD_CALL = still running.
-                    if (hr != unchecked((int)0x8000000EL)) return hr;
-                }
-                catch (Exception ex)
-                {
-                    AppLog.Write("Waiting for a WinRT operation failed: " + ex.Message);
-                    return -1;
-                }
-                System.Threading.Thread.Sleep(50);
+        try
+        {
+            int hr = Vtable<GetResultsDelegate>(operation, Slot_GetResults)(operation, out result);
+            if (hr == 0) return 0;
+            // E_ILLEGAL_METHOD_CALL = still running.
+            if (hr != unchecked((int)0x8000000EL)) return hr;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("Waiting for a WinRT operation failed: " + ex.Message);
+            return -1;
+        }
+        System.Threading.Thread.Sleep(50);
             }
             AppLog.Write("WinRT operation timed out");
             return -1;
@@ -5273,12 +5445,12 @@ namespace LumaWall
         {
             try
             {
-                using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", true))
-                {
-                    if (key == null) return;
-                    if (enabled) key.SetValue("LumaWall", "\"" + Process.GetCurrentProcess().MainModule.FileName + "\" --background");
-                    else key.DeleteValue("LumaWall", false);
-                }
+        using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", true))
+        {
+            if (key == null) return;
+            if (enabled) key.SetValue("LumaWall", "\"" + Process.GetCurrentProcess().MainModule.FileName + "\" --background");
+            else key.DeleteValue("LumaWall", false);
+        }
             }
             catch (Exception ex) { AppLog.Write("Could not update the Run key: " + ex.Message); }
         }
@@ -5290,34 +5462,34 @@ namespace LumaWall
             // the opposite of what Windows will actually do.
             if (IsPackaged())
             {
-                IntPtr factory = IntPtr.Zero, taskId = IntPtr.Zero, task = IntPtr.Zero;
-                try
-                {
-                    Guid iid = IID_IStartupTaskStatics;
-                    IntPtr operation = IntPtr.Zero;
-                    if (ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory) == 0 && factory != IntPtr.Zero &&
-                        WindowsCreateString("LumaWallStartup", 15, out taskId) == 0 &&
-                        Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation) == 0 &&
-                        Resolve(operation, out task) == 0 && task != IntPtr.Zero)
-                    {
-                        int state;
-                        if (Vtable<GetStateDelegate>(task, Slot_get_State)(task, out state) == 0)
-                            return state == StartupEnabled || state == StartupEnabledByPolicy;
-                    }
-                }
-                catch (Exception ex) { AppLog.Write("Could not read the startup task state: " + ex.Message); }
-                finally
-                {
-                    if (task != IntPtr.Zero) Marshal.Release(task);
-                    if (factory != IntPtr.Zero) Marshal.Release(factory);
-                    if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
-                }
+        IntPtr factory = IntPtr.Zero, taskId = IntPtr.Zero, task = IntPtr.Zero;
+        try
+        {
+            Guid iid = IID_IStartupTaskStatics;
+            IntPtr operation = IntPtr.Zero;
+            if (ActivateFactory("Windows.ApplicationModel.StartupTask", iid, out factory) == 0 && factory != IntPtr.Zero &&
+                WindowsCreateString("LumaWallStartup", 15, out taskId) == 0 &&
+                Vtable<GetAsyncDelegate>(factory, Slot_GetAsync)(factory, taskId, out operation) == 0 &&
+                Resolve(operation, out task) == 0 && task != IntPtr.Zero)
+            {
+                int state;
+                if (Vtable<GetStateDelegate>(task, Slot_get_State)(task, out state) == 0)
+                    return state == StartupEnabled || state == StartupEnabledByPolicy;
+            }
+        }
+        catch (Exception ex) { AppLog.Write("Could not read the startup task state: " + ex.Message); }
+        finally
+        {
+            if (task != IntPtr.Zero) Marshal.Release(task);
+            if (factory != IntPtr.Zero) Marshal.Release(factory);
+            if (taskId != IntPtr.Zero) WindowsDeleteString(taskId);
+        }
             }
 
             try
             {
-                using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", false))
-                    return key != null && key.GetValue("LumaWall") != null;
+        using (var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Run", false))
+            return key != null && key.GetValue("LumaWall") != null;
             }
             catch { return false; }
         }
